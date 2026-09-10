@@ -1,6 +1,6 @@
 # CMake build directory
 build/
-
+tests/
 # Compiled binaries
 bin/
 
@@ -12,3 +12,8 @@ Makefile
 
 # IDE/editor files
 .vscode/
+
+# addional images
+./src/assets/electronic-symbols/JPG-ICO/
+./src/assets/electronic-symbols/JPG/
+./src/assets/electronic-symbols/SVG/

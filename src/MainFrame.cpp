@@ -1,8 +1,11 @@
 #include "MainFrame.hpp"
+#include"./utils/SVGPool.hpp"
 #include<wx/simplebook.h>
 #include <wx/wx.h>
 #include "./MainPages/MainPageSizer.hpp"
 #include "./MainPages/MainPagesExport.hpp"
+// #include<iostream>
+// using std::cout;
 MainFrame::MainFrame()
     : wxFrame(
         nullptr,
@@ -11,12 +14,14 @@ MainFrame::MainFrame()
         wxDefaultPosition,
         wxSize(1200, 800)
     )
-{
+{   
+    SetBackgroundColour(wxColour(240, 240, 240));
     InitChildren(); 
 }
 
 
 void MainFrame::InitChildren(){
+    this->svgPool=new SVGPool("./src/assets/electronic-symbols/manifest.json");
     InitMenuBar();
     InitMainPage();
 }
@@ -60,8 +65,9 @@ void MainFrame::InitMenuBar()
 
     Bind(
         wxEVT_MENU,
-        [](wxCommandEvent&)
+        [this](wxCommandEvent&)
         {
+            
             wxLogMessage(
                 wxString::FromUTF8("点击了新建")
             );

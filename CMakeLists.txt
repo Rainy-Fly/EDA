@@ -1,8 +1,9 @@
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)  #在build下生成compile_commands.json文件,使得VScode识别到<wx/wx.h>头文件,避免谎报军情
 cmake_minimum_required(VERSION 3.24)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 project(
-    MyProject
+    TinyEDA
     VERSION 0.1.0
     LANGUAGES CXX
 )
@@ -17,10 +18,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 # =========================
-# 获取 wxWidgets
+# 获取第三方依赖
 # =========================
 
 include(FetchContent)
+
+# wxWidgets 自己的 CMake 版本规则问题
+set(CMAKE_POLICY_DEFAULT_CMP0219 OLD)
+
+
+# ---------- wxWidgets ----------
 
 FetchContent_Declare(
     wxWidgets
@@ -32,24 +39,65 @@ FetchContent_Declare(
         v3.2.11
 )
 
-FetchContent_MakeAvailable(wxWidgets)
+
+# ---------- JsonCpp ----------
+
+FetchContent_Declare(
+    jsoncpp
+
+    GIT_REPOSITORY
+        https://github.com/open-source-parsers/jsoncpp.git
+
+    GIT_TAG
+        1.9.6
+)
+
+
+FetchContent_MakeAvailable(
+    wxWidgets
+    jsoncpp
+)
 
 
 # =========================
-# 识别源文件
+# 源文件
 # =========================
 
-file(GLOB_RECURSE SOURCES "src/*.cpp" )  #识别所有cpp文件
+option(
+    TEST
+    "build test files rather than src"
+    OFF
+)
+
+if(TEST)
+
+    file(
+        GLOB_RECURSE SOURCES
+        "tests/*.cpp"
+    )
+
+else()
+
+    file(
+        GLOB_RECURSE SOURCES
+        "src/*.cpp"
+    )
+
+endif()
+
+
+# =========================
+# TinyEDA
+# =========================
 
 add_executable(
     TinyEDA
-
     ${SOURCES}
 )
 
 
 # =========================
-# 链接 wxWidgets
+# 链接第三方库
 # =========================
 
 target_link_libraries(
@@ -59,4 +107,5 @@ target_link_libraries(
 
     wx::core
     wx::base
+    jsoncpp_lib
 )

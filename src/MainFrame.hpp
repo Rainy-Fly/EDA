@@ -1,7 +1,10 @@
 #pragma once
 #include <wx/wx.h>
 #include<wx/simplebook.h>
+#include"./utils/SVGPool.hpp"
 
+
+using std::vector;
 class MainFrame : public wxFrame
 {
 public:
@@ -12,5 +15,5 @@ private:
     void InitMainPage();
     wxMenuBar* menuBar;
     wxSimplebook* mainPage;
-    
+    SVGPool* svgPool;
 };
