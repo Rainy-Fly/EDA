@@ -1,0 +1,41 @@
+{
+  "file": "sources.json",
+  "description": "电源/地/激励源元件元数据（预留，供后续元件子系统使用）",
+  "components": [
+    {
+      "id": 301,
+      "name": "电源",
+      "name_en": "VCC",
+      "type": "POWER",
+      "category": "Source",
+      "description": "电源：提供稳定直流电压",
+      "DataBits": 1,
+      "params": {
+        "voltage": "5V"
+      }
+    },
+    {
+      "id": 302,
+      "name": "地",
+      "name_en": "GND",
+      "type": "GND",
+      "category": "Source",
+      "description": "地：参考电位0V",
+      "DataBits": 1
+    },
+    {
+      "id": 303,
+      "name": "激励源",
+      "name_en": "Stimulus",
+      "type": "STIMULUS",
+      "category": "Source",
+      "description": "激励源：仿真激励信号",
+      "DataBits": 1,
+      "params": {
+        "waveform": "square",
+        "frequency": "1kHz",
+        "amplitude": "5V"
+      }
+    }
+  ]
+}

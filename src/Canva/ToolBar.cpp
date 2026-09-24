@@ -18,8 +18,9 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     Fit();
     Move(8, 8);    //放在画布左上角
     Raise();       //始终在元件之上
-    //滚轮事件不会自动传播到父窗口，转发给Canvas实现缩放
+    //滚轮/移动事件不会自动传播到父窗口，转发给Canvas（保证虚影跟随、缩放不因悬停工具栏而中断）
     Bind(wxEVT_MOUSEWHEEL, [this](wxMouseEvent& e){ canvas->on_mouse_scroll(e); });
+    Bind(wxEVT_MOTION,     [this](wxMouseEvent& e){ canvas->on_mouse_move(e); });
 }
 
 void ToolBar::add_tool(wxSizer* sizer, const std::string& label, ItemType type){
@@ -33,8 +34,9 @@ void ToolBar::add_tool(wxSizer* sizer, const std::string& label, ItemType type){
     btn->Bind(wxEVT_BUTTON, [this, label, type, btn](wxCommandEvent&){
         on_tool_click(label, type, btn);
     });
-    //按钮上的滚轮事件也转发给Canvas
+    //按钮上的滚轮/移动事件也转发给Canvas（鼠标悬停在按钮上时虚影仍能跟随）
     btn->Bind(wxEVT_MOUSEWHEEL, [this](wxMouseEvent& e){ canvas->on_mouse_scroll(e); });
+    btn->Bind(wxEVT_MOTION,     [this](wxMouseEvent& e){ canvas->on_mouse_move(e); });
     sizer->Add(btn, 0, wxALL, 2);
 }
 
