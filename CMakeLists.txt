@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 project(
-    MyProject
+    TinyEDA
     VERSION 0.1.0
     LANGUAGES CXX
 )
@@ -14,44 +16,96 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(MSVC)
-    add_compile_options(/utf-8)
-endif()
+
 # =========================
-# 获取 wxWidgets
+# 获取第三方依赖
 # =========================
 
 include(FetchContent)
 
+# wxWidgets 自己的 CMake 版本规则问题
+set(CMAKE_POLICY_DEFAULT_CMP0219 OLD)
+
+
+# ---------- wxWidgets ----------
+
 FetchContent_Declare(
     wxWidgets
-    URL https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.11/wxWidgets-3.2.11.zip
-    TLS_VERIFY OFF   # 忽略 SSL 证书验证错误
+
+    GIT_REPOSITORY
+        https://github.com/wxWidgets/wxWidgets.git
+
+    GIT_TAG
+        v3.2.11
 )
-FetchContent_MakeAvailable(wxWidgets)
+
+
+# ---------- JsonCpp ----------
+
+FetchContent_Declare(
+    jsoncpp
+
+    GIT_REPOSITORY
+        https://github.com/open-source-parsers/jsoncpp.git
+
+    GIT_TAG
+        1.9.6
+)
+
+
+FetchContent_MakeAvailable(
+    wxWidgets
+    jsoncpp
+)
 
 
 # =========================
-# 你的程序
+# 源文件
+# =========================
+
+option(
+    TEST
+    "build test files rather than src"
+    OFF
+)
+
+if(TEST)
+
+    file(
+        GLOB_RECURSE SOURCES
+        "tests/*.cpp"
+    )
+
+else()
+
+    file(
+        GLOB_RECURSE SOURCES
+        "src/*.cpp"
+    )
+
+endif()
+
+
+# =========================
+# TinyEDA
 # =========================
 
 add_executable(
-    MyProject
-    WIN32
-    src/main.cpp
-    src/ExplorerPane.cpp
+    TinyEDA
+    ${SOURCES}
 )
 
 
 # =========================
-# 链接 wxWidgets
+# 链接第三方库
 # =========================
 
 target_link_libraries(
-    MyProject
+    TinyEDA
 
     PRIVATE
 
     wx::core
     wx::base
+    jsoncpp_lib
 )
