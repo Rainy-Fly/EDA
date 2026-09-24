@@ -42,6 +42,8 @@ public:
     //依据画布scale与offset_coords，从image重新缩放得到目标大小，并把UI节点放在coords（锚点）对应位置：
     //  大小 = 源图片尺寸 × scale（限制在[1, MaxDisplaySize]内）
     //  位置 = (coords - offset_coords) × scale，图片中心对准该点
+    //性能拆分：仅在目标尺寸变化（缩放）时才从源图重渲染位图；单纯移动只更新位置（Move），
+    //避免鼠标移动时反复缩放图片导致的卡顿
     virtual void update_ui(float scale, const wxPoint& offset_coords);
 
 protected:
@@ -50,6 +52,9 @@ protected:
 
 private:
     static int next_id;
+    int rendered_width;         //当前已渲染位图的尺寸（=0表示尚未渲染）
+    int rendered_height;
+    wxBitmap rendered_bitmap;   //当前显示的位图（缓存，避免重复缩放）
 };
 
 // 器件实例类	: 与非门、电阻、电容、芯片、模块、子图、连接器、电源/地符号、激励源

@@ -52,6 +52,9 @@ private:
     wxPoint pos_to_coords(canvasPos pos);   //Canvas面板视觉坐标 => 画布逻辑坐标
     wxPoint snap_coords(wxPoint coords);    //网格吸附
 
+    //网格步长（逻辑坐标单位）：网格线绘制与虚影/元件吸附都按此步长对齐
+    static constexpr int GridStep = 10;
+
     //摆放与显示
     void reput_items(); //重新摆放与显示元件
     void reput();       //重新绘制元件的位置

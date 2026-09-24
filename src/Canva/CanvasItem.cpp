@@ -20,6 +20,8 @@ CanvasItem::CanvasItem(const std::string& name, ItemType type,
       metadata(metadata),
       ghost_mode(false){
     //图片引用构造后不再改变；放大缩小时由update_ui从这张源图重新缩放
+    rendered_width = 0;
+    rendered_height = 0;
 }
 
 CanvasItem::~CanvasItem(){
@@ -44,23 +46,32 @@ void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
     //大小：源图片尺寸 × 画布缩放（限制在[1, MaxDisplaySize]内，极端缩放不至于过大）
     const int width  = std::clamp((int)std::lround(image->GetWidth()  * scale), 1, MaxDisplaySize);
     const int height = std::clamp((int)std::lround(image->GetHeight() * scale), 1, MaxDisplaySize);
-    wxBitmap scaled = scale_image(scale, width, height);
-    if(wxStaticBitmap* bmp = dynamic_cast<wxStaticBitmap*>(ui_node)){
-        bmp->SetBitmap(wxBitmapBundle::FromBitmap(scaled));
+
+    //性能关键：仅当目标尺寸变化（滚轮缩放）时才从源图重渲染位图；
+    //鼠标移动（尺寸不变）时跳过重渲染，只更新位置，保证虚影/元件移动流畅
+    if(width != rendered_width || height != rendered_height){
+        rendered_bitmap = scale_image(scale, width, height);
+        rendered_width  = width;
+        rendered_height = height;
+        if(wxStaticBitmap* bmp = dynamic_cast<wxStaticBitmap*>(ui_node)){
+            bmp->SetBitmap(wxBitmapBundle::FromBitmap(rendered_bitmap));
+        }
+        ui_node->SetSize(width, height);   //节点尺寸与位图尺寸一致，保证命中检测与显示一致
     }
-    ui_node->SetSize(width, height);   //节点尺寸与位图尺寸一致，保证命中检测与显示一致
-    //位置：coords（锚点）对应图片中心 => 窗口坐标pos
+
+    //位置：coords（锚点）对应图片中心 => 窗口坐标pos（恒更新，代价极低）
     const float pos_x = (coords_x - offset_coords.x) * scale;
     const float pos_y = (coords_y - offset_coords.y) * scale;
-    ui_node->Move((int)std::lround(pos_x - width  / 2.0f),
-                  (int)std::lround(pos_y - height / 2.0f));
+    ui_node->Move((int)std::lround(pos_x - rendered_width  / 2.0f),
+                  (int)std::lround(pos_y - rendered_height / 2.0f));
 }
 
 wxBitmap CanvasItem::scale_image(float scale, int width, int height) const{
     if(!image) return wxBitmap();
     wxImage img = image->ConvertToImage();
     if(img.GetWidth() != width || img.GetHeight() != height){
-        img = img.Scale(width, height, wxIMAGE_QUALITY_HIGH);
+        //交互缩放用NORMAL质量：明显快于HIGH，视觉上可接受
+        img = img.Scale(width, height, wxIMAGE_QUALITY_NORMAL);
     }
     //虚影：叠加半透明（保留原图透明区域，仅降低不透明像素的alpha）
     if(ghost_mode){

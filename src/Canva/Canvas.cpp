@@ -3,7 +3,8 @@
 #include<cmath>
 #include<algorithm>
 
-const float MoveRatio=2.0f;
+//每滚一格缩放的倍率：1.2 = 每格放大/缩小20%（过大的倍率会导致缩放幅度太大）
+const float MoveRatio=1.2f;
 
 //wxPoint -> canvasPos 辅助转换
 static canvasPos to_canvas_pos(const wxPoint& p){
@@ -62,7 +63,9 @@ void Canvas::on_mouse_scroll(wxMouseEvent& event){
     offset_coords.y = (int)std::lround(new_offset_y);
     scale = new_scale;
 
-    reput();
+    //性能关键：这里不做同步重渲染。Refresh()把重绘交给事件循环，
+    //连续多次滚轮会合并成少数几次onPaint，由onPaint统一对元件重渲染图片，
+    //避免每次滚轮都同步对全部元件做图片缩放导致的卡顿
     Refresh();
 }
 
@@ -158,8 +161,10 @@ wxPoint Canvas::pos_to_coords(canvasPos pos){
 }
 
 wxPoint Canvas::snap_coords(wxPoint coords){
-    //网格吸附：目前逻辑网格单位为1个坐标，后续可改为更粗的吸附网格
-    return coords;
+    //网格吸附：以GridStep（逻辑坐标）为单位取整，与画布绘制的网格线对齐。
+    //  吸附后坐标 = round(coords / GridStep) × GridStep
+    return wxPoint((int)std::lround((float)coords.x / GridStep) * GridStep,
+                   (int)std::lround((float)coords.y / GridStep) * GridStep);
 }
 
 void Canvas::select_tool(const std::string& name, ItemType type){
@@ -172,10 +177,19 @@ void Canvas::select_tool(const std::string& name, ItemType type){
     ghost = ItemPNG(name);
     ghost->ghost_mode = true;   //半透明虚影
     ghost->create_ui(this);
-    ghost->ui_node->Show(false);  //鼠标移动时再显示并跟随
-    ghost->ui_node->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent& e){
-        if(placing) place_at_mouse(e);
-    });
+    //关键：虚影节点也要绑定完整的事件转发（MOTION/MIDDLE/滚轮/LEFT）。
+    //否则鼠标悬停在虚影上时，移动事件被虚影窗口吞掉且不向父窗口传播，
+    //虚影会冻结不动、只能等光标逃出范围后跳变追赶（表现为卡顿+非网格跳变）。
+    bind_ui_events(ghost);
+    //立刻把虚影放到当前鼠标位置（吸附网格）并显示，无需先移动鼠标
+    {
+        const wxPoint pos = ScreenToClient(wxGetMousePosition());
+        const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        ghost->coords_x = coords.x;
+        ghost->coords_y = coords.y;
+        ghost->update_ui(scale, offset_coords);
+        ghost->ui_node->Show(true);
+    }
     if(toolbar) toolbar->Raise();
 }
 
@@ -194,14 +208,13 @@ void Canvas::clear_ghost(){
     }
 }
 
-//在鼠标位置实例化元件（用虚影的名字），然后结束放置模式
+//在鼠标位置实例化元件（用虚影的名字），然后结束放置模式。
+//直接采用虚影当前的coords（已吸附到网格），保证放置位置与虚影显示位置完全一致
 void Canvas::place_at_mouse(const wxMouseEvent& event){
     if(!placing || !ghost) return;
     CanvasItem* item = ItemPNG(ghost->name);
-    const wxPoint mouse_pos = mouse_position(event);
-    wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(mouse_pos)));
-    item->coords_x = coords.x;
-    item->coords_y = coords.y;
+    item->coords_x = ghost->coords_x;
+    item->coords_y = ghost->coords_y;
     item->create_ui(this);
     item->update_ui(scale, offset_coords);
     bind_ui_events(item);
@@ -263,8 +276,8 @@ void Canvas::onPaint(wxPaintEvent& event){
     dc.SetBackground(wxBrush(wxColour(255, 255, 255)));
     dc.Clear();
 
-    //网格：每GRID_STEP个逻辑坐标画一条浅色线
-    const int GRID_STEP = 10;
+    //网格：每GridStep个逻辑坐标画一条浅色线（与吸附网格一致）
+    const int GRID_STEP = GridStep;
     const float x0 = (float)offset_coords.x;
     const float y0 = (float)offset_coords.y;
     const float x1 = (float)offset_coords.x + (float)size.GetWidth()  / scale;
