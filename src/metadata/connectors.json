@@ -1,0 +1,31 @@
+{
+  "file": "connectors.json",
+  "description": "连接器类元件元数据：连接器、排针（预留，供后续元件子系统使用）",
+  "components": [
+    {
+      "id": 401,
+      "name": "连接器",
+      "name_en": "Connector",
+      "type": "CONNECTOR",
+      "category": "Connector",
+      "description": "连接器：对外接口",
+      "DataBits": 1,
+      "params": {
+        "pin_count": "2"
+      }
+    },
+    {
+      "id": 402,
+      "name": "排针",
+      "name_en": "Header",
+      "type": "HEADER",
+      "category": "Connector",
+      "description": "排针：多引脚直插连接器",
+      "DataBits": 8,
+      "params": {
+        "pin_count": "8",
+        "pitch": "2.54mm"
+      }
+    }
+  ]
+}

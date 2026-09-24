@@ -1,6 +1,7 @@
 #pragma once
 #include<wx/wx.h>
 #include<unordered_set>
+#include<functional>
 #include<tuple>
 #include"./CanvasItem.hpp"
 #include"./ToolBar.hpp"
@@ -18,6 +19,10 @@ public:
     //结束放置模式：清除虚影与工具栏选中态
     void cancel_tool();
 
+    //注册“当前元件变化”回调（供属性栏等联动）。
+    //点击选中/放置元件时回调该元件；点击空白或开始新放置时回调nullptr
+    void set_current_item_callback(std::function<void(CanvasItem*)> callback);
+
     friend class ToolBar;   //工具栏需要转发滚轮事件给画布
 
 private:
@@ -31,6 +36,11 @@ private:
     CanvasItem* dragging_item;  //正在拖动的元件
     bool middle_dragging;  //按住中键拖动画布中
     wxPoint middle_last_pos;
+    CanvasItem* current_item;                //当前选中的元件（nullptr=未选择）
+    std::function<void(CanvasItem*)> current_item_callback;  //当前元件变化回调
+
+    //更新当前元件并触发回调（指针未变化时不触发）
+    void set_current_item(CanvasItem* item);
 
     //事件处理
     void on_mouse_scroll(wxMouseEvent& event);//鼠标中键滚动时触发（缩放）

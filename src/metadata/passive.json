@@ -1,0 +1,45 @@
+{
+  "file": "passive.json",
+  "description": "无源器件元件元数据：电阻、电容、电感（预留，供后续元件子系统使用）",
+  "components": [
+    {
+      "id": 201,
+      "name": "电阻",
+      "name_en": "Resistor",
+      "type": "RESISTOR",
+      "category": "Passive",
+      "description": "电阻：限制电流、分压",
+      "DataBits": 1,
+      "params": {
+        "resistance": "10k",
+        "tolerance": "5%",
+        "power": "0.25W"
+      }
+    },
+    {
+      "id": 202,
+      "name": "电容",
+      "name_en": "Capacitor",
+      "type": "CAPACITOR",
+      "category": "Passive",
+      "description": "电容：储能、滤波、耦合",
+      "DataBits": 1,
+      "params": {
+        "capacitance": "100nF",
+        "voltage": "50V"
+      }
+    },
+    {
+      "id": 203,
+      "name": "电感",
+      "name_en": "Inductor",
+      "type": "INDUCTOR",
+      "category": "Passive",
+      "description": "电感：储能、滤波",
+      "DataBits": 1,
+      "params": {
+        "inductance": "10uH"
+      }
+    }
+  ]
+}

@@ -15,6 +15,11 @@ enum class ItemType{
     WIRE,   // 导线
 };
 
+// ItemType -> 类型字符串（与 src/metadata/*.json 中元数据的 type 字段对应，如 "NAND"/"WIRE"）
+const char* item_type_name(ItemType type);
+// ItemType -> 中文显示名（如 "与非门"），供属性栏等界面显示
+const char* item_type_label(ItemType type);
+
 // 可放置元件的父类
 class CanvasItem{
 public:

@@ -1,4 +1,5 @@
 #include"./CanvasItem.hpp"
+#include"../metadata/MetaDataJson.hpp"
 #include<algorithm>
 #include<cmath>
 
@@ -6,6 +7,32 @@ int CanvasItem::next_id = 1;
 
 //显示尺寸上限（像素），避免极端缩放下把图片缩得过大
 static const int MaxDisplaySize = 2048;
+
+const char* item_type_name(ItemType type){
+    switch(type){
+        case ItemType::NAND: return "NAND";
+        case ItemType::AND:  return "AND";
+        case ItemType::OR:   return "OR";
+        case ItemType::NOR:  return "NOR";
+        case ItemType::XOR:  return "XOR";
+        case ItemType::NOT:  return "NOT";
+        case ItemType::WIRE: return "WIRE";
+    }
+    return "";
+}
+
+const char* item_type_label(ItemType type){
+    switch(type){
+        case ItemType::NAND: return "与非门";
+        case ItemType::AND:  return "与门";
+        case ItemType::OR:   return "或门";
+        case ItemType::NOR:  return "或非门";
+        case ItemType::XOR:  return "异或门";
+        case ItemType::NOT:  return "非门";
+        case ItemType::WIRE: return "导线";
+    }
+    return "";
+}
 
 //构造函数：持有图片引用（来自ItemPNG共享缓存，不拥有）与元数据
 CanvasItem::CanvasItem(const std::string& name, ItemType type,
@@ -30,10 +57,12 @@ CanvasItem::~CanvasItem(){
     //ui_node是画布面板的子窗口，由wxWidgets窗口树统一释放，这里不删除
 }
 
+//读取配置：从 src/metadata/ 下的JSON文件（见MetaDataJson）读取元件元数据。
+//优先按类型字符串（"NAND"/"WIRE"）查找，再按名字（中文/英文）兜底；
+//找不到返回nullptr（不报错，与图片缺失不报错一致）
 MetaData* CanvasItem::load_config(ItemType type, const std::string& name){
-    //TODO:具体怎么读暂未实现：根据type去assets下的元件子文件夹，根据name从json读取数据并返回MetaData*
-    //暂返回nullptr，不报错
-    return nullptr;
+    if(MetaData* m = load_metadata(item_type_name(type))) return m;
+    return load_metadata(name);
 }
 
 void CanvasItem::create_ui(wxWindow* parent){

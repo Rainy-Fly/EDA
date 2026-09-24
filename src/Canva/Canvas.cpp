@@ -21,7 +21,9 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       ghost(nullptr),
       dragging_item(nullptr),
       middle_dragging(false),
-      middle_last_pos(0, 0){
+      middle_last_pos(0, 0),
+      current_item(nullptr),
+      current_item_callback(){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     Bind(wxEVT_PAINT,        &Canvas::onPaint, this);
     Bind(wxEVT_MOUSEWHEEL,   &Canvas::on_mouse_scroll, this);
@@ -39,6 +41,18 @@ Canvas::~Canvas(){
     cancel_tool();
     for(CanvasItem* item : *canvasItemCollection) delete item;
     delete canvasItemCollection;
+}
+
+void Canvas::set_current_item_callback(std::function<void(CanvasItem*)> callback){
+    current_item_callback = std::move(callback);
+    //注册后立即同步一次当前状态，方便界面初始化
+    if(current_item_callback) current_item_callback(current_item);
+}
+
+void Canvas::set_current_item(CanvasItem* item){
+    if(current_item == item) return;   //指针未变化不触发，避免拖动时反复刷新
+    current_item = item;
+    if(current_item_callback) current_item_callback(item);
 }
 
 //中键滚轮缩放：鼠标在屏幕的pos不变，画布的逻辑坐标（offset_coords）改变
@@ -125,6 +139,8 @@ void Canvas::on_left_down(wxMouseEvent& event){
     //兜底命中检测（正常情况下元件节点上的点击已由节点事件转发处理）
     if(CanvasItem* hit = item_at(pos)){
         on_item_left_down(hit, event);
+    }else{
+        set_current_item(nullptr);   //点击空白：取消当前选中
     }
 }
 
@@ -138,7 +154,8 @@ void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
         place_at_mouse(event);
         return;
     }
-    //点击元件后进入移动
+    //点击元件后进入移动，并把它设为当前选中（通知属性栏）
+    set_current_item(item);
     dragging_item = item;
     if(!HasCapture()) CaptureMouse();
 }
@@ -173,6 +190,7 @@ void Canvas::select_tool(const std::string& name, ItemType type){
         //导线：点击后先不做处理，以后再说
         return;
     }
+    set_current_item(nullptr);   //开始新放置：清空当前选中（尚未实例化的虚影不算元件）
     placing = true;
     ghost = ItemPNG(name);
     ghost->ghost_mode = true;   //半透明虚影
@@ -221,6 +239,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     canvasItemCollection->insert(item);
     if(toolbar) toolbar->Raise();
     cancel_tool();  //结束放置：之后再点击该元件可移动它
+    set_current_item(item);  //刚放置的元件成为当前选中（通知属性栏）
     Refresh();
 }
 
