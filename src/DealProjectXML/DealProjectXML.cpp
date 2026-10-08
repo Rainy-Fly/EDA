@@ -8,6 +8,10 @@
 #include<wx/xml/xml.h>
 #include<ctime>
 
+#ifdef _WIN32
+    #define localtime_r(timep, result) localtime_s(result, timep)
+#endif
+
 namespace{
 
 // ---- 小工具 ----
