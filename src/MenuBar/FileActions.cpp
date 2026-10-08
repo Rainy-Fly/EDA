@@ -10,6 +10,7 @@
 #include<wx/stdpaths.h>
 #include<wx/filefn.h>       //wxDirExists
 #include<wx/utils.h>        //wxGetUserName
+#include<wx/log.h>          //wxLogNull
 
 namespace{
 
@@ -106,15 +107,18 @@ void FileActions::on_set_default_dir(wxCommandEvent& event){
     if(dlg.ShowModal() != wxID_OK) return;
 
     settings.default_dir = to_utf8(dlg.GetPath());
-    if(!AppSettings::Save(settings)){
-        wxMessageBox(wxString::FromUTF8("配置保存失败，默认目录只在本次运行内有效：") +
+
+    wxString written;
+    if(!AppSettings::Save(settings, &written)){
+        wxMessageBox(wxString::FromUTF8("配置保存失败（没有写入权限）：") +
                          AppSettings::ConfigPath(),
                      wxString::FromUTF8("保存设置失败"), wxOK | wxICON_WARNING, frame);
         return;
     }
     if(frame){
         frame->SetStatusText(wxString::FromUTF8("默认目录已设为: ") +
-                             wxString::FromUTF8(settings.default_dir.c_str()));
+                             wxString::FromUTF8(settings.default_dir.c_str()) +
+                             wxString::FromUTF8("（写入 ") + written + wxT("）"));
     }
 }
 
@@ -172,9 +176,16 @@ bool FileActions::open_project(){
     const wxString path = dlg.GetPath();
 
     //第二步：交给 DealProjectXML 读。它内部先完整解析、成功后才动画布，
-    //所以文件损坏/格式不对时画布保持原样（不会“打开失败还把画布清空了”）
+    //所以文件损坏/格式不对时画布保持原样（不会“打开失败还把画布清空了”）。
+    //wxLogNull：否则 XML 解析失败时 wxWidgets 会先弹它自己的原始错误框，
+    //和我们下面这条友好提示重复
     DealProjectXML::ProjectInfo loaded;
-    if(!DealProjectXML::LoadProject(canvas, to_utf8(path), &loaded)){
+    bool ok = false;
+    {
+        wxLogNull no_log;
+        ok = DealProjectXML::LoadProject(canvas, to_utf8(path), &loaded);
+    }
+    if(!ok){
         wxMessageBox(wxString::FromUTF8("无法读取该文件（不是有效的 TinyEDA 项目文件，或文件已损坏）：") + path,
                      wxString::FromUTF8("打开失败"), wxOK | wxICON_ERROR, frame);
         return false;
@@ -211,7 +222,13 @@ bool FileActions::write_to(const wxString& path){
     if(info.name.empty() || info.name == "Untitled") info.name = to_utf8(wxFileName(path).GetName());
     if(info.author.empty()) info.author = to_utf8(wxGetUserName());
 
-    if(!DealProjectXML::SaveProject(canvas, to_utf8(path), info)){
+    //wxLogNull：文件写不进去时 wxWidgets 会先弹它自己的原始错误框，和我们下面的提示重复
+    bool ok = false;
+    {
+        wxLogNull no_log;
+        ok = DealProjectXML::SaveProject(canvas, to_utf8(path), info);
+    }
+    if(!ok){
         wxMessageBox(wxString::FromUTF8("写入文件失败（路径不存在、文件被占用或没有写权限）：") + path,
                      wxString::FromUTF8("保存失败"), wxOK | wxICON_ERROR, frame);
         return false;   //保存失败：modified保持true，用户不会以为已经存好了

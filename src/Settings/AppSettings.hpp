@@ -24,11 +24,17 @@ struct Settings{
 wxString ConfigPath();
 
 // 读取配置：文件不存在/损坏时返回全空设置（不报错）。
-// 目录已不存在时对应字段会被清空，避免“最近位置”指向已删除的目录
+// 目录已不存在时对应字段会被清空，避免“最近位置”指向已删除的目录。
+// 读取过程不会弹任何对话框（内部屏蔽了 wxWidgets 自带的日志弹窗）
 Settings Load();
 
-// 写入配置（目录不存在会自动创建）；失败返回false
-bool Save(const Settings& s);
+// 写入配置（目录不存在会自动创建）；失败返回false。
+// 首选写到 ConfigPath()；如果那个位置不可写（受限环境/无权限），自动退回写到
+// 可执行文件旁边的 tinyeda-settings.xml。
+// written_path 非空时返回实际写入的路径，便于调用方提示用户。
+// 本函数不会弹任何对话框（wxWidgets 自带的“Tinyeda Error”弹窗被屏蔽），
+// 失败由调用方决定怎么提示
+bool Save(const Settings& s, wxString* written_path = nullptr);
 
 // 项目根目录：优先“当前工作目录含 src/”，否则从可执行文件所在目录向上找含 src/ 的目录
 // （build/Debug -> build -> 仓库根），最后退回可执行文件所在目录
