@@ -555,6 +555,19 @@ void Canvas::clear_all_items(){
     Refresh();
 }
 
+//按实例ID查找元件（供 Agent 工具按id操作）；找不到返回nullptr
+CanvasItem* Canvas::find_item_by_id(int id){
+    for(CanvasItem* item : *canvasItemCollection){
+        if(item->id == id) return item;
+    }
+    return nullptr;
+}
+
+//移除并释放指定元件（供 Agent 工具删除用）
+void Canvas::remove_item(CanvasItem* item){
+    delete_item(item);
+}
+
 //删除元件：从集合移除、销毁UI节点并释放（门/导线均可）
 void Canvas::delete_item(CanvasItem* item){
     if(!item) return;

@@ -18,3 +18,6 @@ Makefile
 ./src/assets/electronic-symbols/JPG/
 ./src/assets/electronic-symbols/SVG/
 
+# scripts
+compile_and_run.sh
+run_TinyEDA.bat

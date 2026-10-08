@@ -27,7 +27,13 @@ MenuBar::MenuBar(){
     simulate_menu->Append(ID_RUN_PAUSE, wxString::FromUTF8("运行 / 暂停"));
     simulate_menu->Append(ID_TICK,      wxString::FromUTF8("单步时钟"));
 
+    //---- View（视图）----
+    wxMenu* view_menu = new wxMenu;
+    view_menu->AppendCheckItem(ID_SHOW_AGENT, wxString::FromUTF8("AI 助手面板(&A)\tF12"));
+    //菜单里的勾选状态由主窗口随面板实际显隐同步（默认隐藏 => 不勾选）
+
     Append(file_menu,     wxString::FromUTF8("文件"));
     Append(edit_menu,     wxString::FromUTF8("编辑"));
     Append(simulate_menu, wxString::FromUTF8("模拟"));
+    Append(view_menu,     wxString::FromUTF8("视图"));
 }

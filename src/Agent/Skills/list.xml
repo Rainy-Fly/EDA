@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AI 工具注册表：每个 <tool> 描述一个 AI 可调用的函数。
+  - description / parameters：会原样组进 OpenAI 兼容接口的 tools 数组（发给模型的函数定义）
+  - handler：C++ 侧注册的处理函数名（见 src/Agent/Skills/Tools.cpp 的 RegisterCanvasTools）
+  - 容错：未知元素/属性忽略；description 缺失取空串；parameters 缺失视为无参数对象
+-->
+<agent-tools version="1">
+
+  <!-- 只读：画布现状 -->
+  <tool name="get_canvas_state" handler="get_canvas_state">
+    <description>返回画布当前状态：视口（offset/scale/网格步长）、全部元件（id/类型/名称/位置/参数）与导线（id/类型/折点）。适合在动手修改前先查看现状。</description>
+    <when-to-use>用户询问画布上有什么、或 AI 需要知道现有元件布局后再决定如何修改时。</when-to-use>
+    <parameters>{"type":"object","properties":{},"required":[]}</parameters>
+  </tool>
+
+  <!-- 只读：可放置的元件清单 -->
+  <tool name="list_available_components" handler="list_available_components">
+    <description>返回元件库中所有可放置的元件：类型串（type，place_component 用它）、名称、英文名、类别、元数据id。类型串是放置元件的唯一键。</description>
+    <when-to-use>用户让 AI 放置某个元件、或 AI 需要知道有哪些元件可用时。先调用它拿到合法 type 再放置。</when-to-use>
+    <parameters>{"type":"object","properties":{},"required":[]}</parameters>
+  </tool>
+
+  <!-- 写：放置元件 -->
+  <tool name="place_component" handler="place_component">
+    <description>在画布指定逻辑网格坐标放置一个元件。type 必须是 list_available_components 返回的类型串；x/y 会被自动吸附到网格（GridStep=10 的倍数）。返回新元件的 id。</description>
+    <when-to-use>用户要求添加/放置某个元件时。坐标未指明时放在空白处（例如视口中心附近）。</when-to-use>
+    <parameters>{"type":"object","properties":{"type":{"type":"string","description":"元件类型串，如 NAND / Resistor-IEC-Standard"},"x":{"type":"number","description":"逻辑网格坐标X（自动吸附网格）"},"y":{"type":"number","description":"逻辑网格坐标Y（自动吸附网格）"}},"required":["type","x","y"]}</parameters>
+  </tool>
+
+  <!-- 写：画导线 -->
+  <tool name="connect_wire" handler="connect_wire">
+    <description>在画布上创建一根导线。points 是至少2个折点 [[x,y],...]（逻辑网格坐标，自动吸附网格），相邻折点之间会自动补正交拐角（只有水平/垂直段）。返回导线 id。</description>
+    <when-to-use>用户要求连线/连接两个引脚或两个点之间时。建议把折点放在元件引脚上（引脚位置见 get_canvas_state 返回的坐标+引脚规则）。</when-to-use>
+    <parameters>{"type":"object","properties":{"points":{"type":"array","items":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},"minItems":2,"description":"折点序列，如 [[0,0],[50,0],[50,60]]"}},"required":["points"]}</parameters>
+  </tool>
+
+  <!-- 写：移动元件 -->
+  <tool name="move_component" handler="move_component">
+    <description>把指定 id 的元件移动到新位置（逻辑网格坐标，自动吸附网格）。</description>
+    <when-to-use>用户要求移动/重新摆放某元件时。id 来自 get_canvas_state 或最近一次放置的返回值。</when-to-use>
+    <parameters>{"type":"object","properties":{"id":{"type":"number","description":"元件id（get_canvas_state 返回）"},"x":{"type":"number"},"y":{"type":"number"}},"required":["id","x","y"]}</parameters>
+  </tool>
+
+  <!-- 写：删除元件 -->
+  <tool name="delete_component" handler="delete_component">
+    <description>删除指定 id 的元件或导线。返回 ok。</description>
+    <when-to-use>用户要求删除/移除某元件或导线时。</when-to-use>
+    <parameters>{"type":"object","properties":{"id":{"type":"number","description":"元件或导线id"}},"required":["id"]}</parameters>
+  </tool>
+
+  <!-- 写：调整视口 -->
+  <tool name="set_view" handler="set_view">
+    <description>调整画布视口：offset_x/offset_y 是视口左上角的逻辑坐标，scale 是缩放比例（0.01~100）。</description>
+    <when-to-use>用户要求缩放/平移/聚焦某处时；放置元件后可把视口移过去方便用户查看。</when-to-use>
+    <parameters>{"type":"object","properties":{"offset_x":{"type":"number"},"offset_y":{"type":"number"},"scale":{"type":"number"}},"required":["offset_x","offset_y","scale"]}</parameters>
+  </tool>
+
+</agent-tools>

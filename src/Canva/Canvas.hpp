@@ -49,6 +49,8 @@ public:
     void set_view(wxPoint offset, float s);                   //设置视口并重排
     void add_item(CanvasItem* item);                          //插入元件（创建UI/绑定事件/摆放）
     void clear_all_items();                                   //清空全部元件并复位绘制状态
+    CanvasItem* find_item_by_id(int id);                      //按实例ID查找（供Agent工具等）
+    void remove_item(CanvasItem* item);                       //移除并释放指定元件（供Agent工具等）
 
     //注册内容变化回调：放置/删除/移动元件、画完导线、修改属性后触发
     //（供菜单栏标记“有未保存的修改”）

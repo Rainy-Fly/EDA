@@ -3,6 +3,7 @@
 #include<wx/xml/xml.h>
 #include<wx/filename.h>
 #include<wx/stdpaths.h>
+#include<wx/utils.h>   //wxGetEnv
 #include<wx/filefn.h>
 #include<wx/log.h>       //wxLogNull：屏蔽 wxWidgets 自带的模态错误弹窗
 
@@ -31,11 +32,43 @@ wxXmlNode* append_element(wxXmlNode* parent, const wxString& tag){
 
 namespace AppSettings{
 
+// 用户配置目录，按平台惯例显式指定（不依赖 wxStandardPaths 的默认布局，
+// 它的默认 Classic 布局在 Linux 上会落在 $HOME 下，不符合 XDG 惯例）：
+//   Windows: %APPDATA%          -> %APPDATA%\TinyEDA\settings.xml
+//   macOS  : ~/Library/Preferences
+//   Linux  : XDG 配置目录       -> ~/.config/TinyEDA/settings.xml
+//            （尊重 XDG_CONFIG_HOME 环境变量；不依赖 wxApp，可被测试直接调用）
+wxString UserConfigDir(){
+#if defined(_WIN32)
+    // Windows：%APPDATA%（Roaming），与 wx msw 的 CSIDL_APPDATA 一致
+    return wxStandardPaths::Get().GetUserConfigDir();
+#elif defined(__WXMAC__)
+    // macOS 惯例：~/Library/Preferences
+    return wxStandardPaths::Get().GetUserConfigDir();
+#else
+    // Linux：XDG 约定（~/.config，或用户自定义的 XDG_CONFIG_HOME）
+    wxString dir;
+    if(!wxGetEnv("XDG_CONFIG_HOME", &dir) || dir.empty()){
+        dir = wxFileName::GetHomeDir() + wxFILE_SEP_PATH + wxT(".config");
+    }
+    return dir + wxFILE_SEP_PATH + wxT("TinyEDA");
+#endif
+}
+
+// 老版本（改用 XDG 之前）Linux 上配置落在 $HOME/TinyEDA/settings.xml。
+// 读取时作为兜底迁移源：新位置没有才去老位置读，保证切目录不丢设置；
+// 写入始终写到新位置。Windows/macOS 从未换过位置，返回空。
+wxString legacy_config_path(){
+#ifndef _WIN32
+    return wxFileName::GetHomeDir() + wxFILE_SEP_PATH + wxT("TinyEDA") +
+           wxFILE_SEP_PATH + wxT("settings.xml");
+#else
+    return wxString();
+#endif
+}
+
 wxString ConfigPath(){
-    //用户配置目录：%APPDATA%（Roaming）。特意不依赖 GetUserDataDir()，
-    //因为它取的是应用名（可执行文件名），改名就会换位置
-    return wxStandardPaths::Get().GetUserConfigDir() + wxFILE_SEP_PATH +
-           wxT("TinyEDA") + wxFILE_SEP_PATH + wxT("settings.xml");
+    return UserConfigDir() + wxFILE_SEP_PATH + wxT("settings.xml");
 }
 
 namespace{
@@ -62,6 +95,18 @@ bool load_from(const wxString& path, Settings& s){
             s.last_dir  = to_utf8(n->GetAttribute(wxT("dir"),  wxString()));
         }else if(tag == wxT("default-dir")){
             s.default_dir = to_utf8(n->GetAttribute(wxT("path"), wxString()));
+        }else if(tag == wxT("apis")){
+            for(wxXmlNode* a = n->GetChildren(); a; a = a->GetNext()){
+                if(a->GetType() != wxXML_ELEMENT_NODE || a->GetName() != wxT("api")) continue;
+                ApiProfile p;
+                p.name     = to_utf8(a->GetAttribute(wxT("name"),     wxString()));
+                p.base_url = to_utf8(a->GetAttribute(wxT("base-url"), wxString()));
+                p.model    = to_utf8(a->GetAttribute(wxT("model"),    wxString()));
+                p.api_key  = to_utf8(a->GetAttribute(wxT("key"),      wxString()));
+                if(!p.name.empty()) s.apis.push_back(std::move(p));   //无名的配置忽略
+            }
+        }else if(tag == wxT("active-api")){
+            s.active_api = to_utf8(n->GetAttribute(wxT("name"), wxString()));
         }
         //其它元素忽略（以后加设置项时老版本也能读）
     }
@@ -91,6 +136,20 @@ bool save_to(const Settings& s, const wxString& path){
         wxXmlNode* dd = append_element(root, wxT("default-dir"));
         dd->AddAttribute(wxT("path"), from_utf8(s.default_dir));
     }
+    if(!s.apis.empty()){
+        wxXmlNode* apis = append_element(root, wxT("apis"));
+        for(const ApiProfile& p : s.apis){
+            wxXmlNode* api = append_element(apis, wxT("api"));
+            api->AddAttribute(wxT("name"),     from_utf8(p.name));
+            api->AddAttribute(wxT("base-url"), from_utf8(p.base_url));
+            api->AddAttribute(wxT("model"),    from_utf8(p.model));
+            api->AddAttribute(wxT("key"),      from_utf8(p.api_key));
+        }
+    }
+    if(!s.active_api.empty()){
+        wxXmlNode* act = append_element(root, wxT("active-api"));
+        act->AddAttribute(wxT("name"), from_utf8(s.active_api));
+    }
 
     return doc.Save(path, 2);
 }
@@ -104,7 +163,9 @@ Settings Load(){
     wxLogNull no_log;
 
     if(!load_from(ConfigPath(), s)){
-        load_from(fallback_path(), s);   //首选位置没有/坏了，看退路位置
+        if(!load_from(legacy_config_path(), s)){   //老位置（Linux Classic布局）兜底迁移
+            load_from(fallback_path(), s);          //再退回可执行文件旁边
+        }
     }
 
     //目录已经不存在了就当没设置过（例如U盘/网络盘拔掉了，或目录被删）

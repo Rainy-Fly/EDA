@@ -58,9 +58,25 @@ FetchContent_Declare(
 )
 
 
+# ---------- md4c（Markdown 解析，AI 回复渲染成 HTML） ----------
+# md4c-html 把 Markdown 转成 HTML 片段，喂给聊天气泡的 wxHtmlWindow。
+# 用法：链接 md4c-html（自动带上 md4c），#include <md4c-html.h>，调 md_html()
+
+FetchContent_Declare(
+    md4c
+
+    GIT_REPOSITORY
+        https://github.com/mity/md4c.git
+
+    GIT_TAG
+        release-0.5.3
+)
+
+
 FetchContent_MakeAvailable(
     wxWidgets
     jsoncpp
+    md4c
 )
 
 
@@ -117,7 +133,11 @@ target_link_libraries(
     # 项目文件（.xml）读写用 wxXmlDocument；wxWidgets 把 XML 支持放在独立的 xml 组件里，
     # 不链这个库会出现 wxXmlDocument/wxXmlNode 的 LNK2019 无法解析的外部符号
     wx::xml
+    # 聊天界面用 wxHtmlWindow（Agent 面板），HTML 渲染在独立的 html 组件里
+    wx::html
     jsoncpp_lib
+    curl      # Agent 的 HTTPS 通信（DeepSeek /chat/completions）
+    md4c-html # AI 回复的 Markdown -> HTML 渲染（ChatPanel）
 )
 
 
