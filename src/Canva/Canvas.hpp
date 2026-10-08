@@ -52,29 +52,14 @@ public:
     //点击选中/放置元件时回调该元件；点击空白或开始新放置时回调nullptr
     void set_current_item_callback(std::function<void(CanvasItem*)> callback);
 
-    //================ 项目文件读写接口（供 CircuitFile / FileActions 使用）================
-    //画布上所有元件（含导线），按id升序排列（保证保存出的文件内容稳定、可对比）。
-    //返回的指针由画布拥有，调用者只读，不得delete
-    std::vector<CanvasItem*> items() const;
-
-    //清空画布：销毁全部元件的显示节点并删除元件（新建/打开项目前调用）。
-    //不触发内容变化回调（调用方在清空后自行把“未保存”标记复位）
-    void clear_items();
-
-    //按查找名（元件中文名或元数据类型串）新建一个元件并接入画布，返回新元件（由画布拥有）。
-    //restored_id >= 0 时恢复该编号；display_name 非空时覆盖元件的显示名。
-    //导线的折点由调用方拿到返回值后填进 Linking::points（与finish_wire的写法一致）
-    CanvasItem* add_item(const std::string& lookup_name, int coords_x, int coords_y,
-                         int restored_id = -1,
-                         const std::string& display_name = std::string());
-
-    //画布视口：逻辑坐标偏移与缩放比例（随项目文件一起保存/恢复）
-    wxPoint get_offset_coords() const { return offset_coords; }
-    float   get_scale() const         { return scale; }
-    void    set_offset_coords(const wxPoint& coords);
-    void    set_scale(float new_scale);
-    //网格步长（逻辑坐标单位；写入项目文件时作为坐标单位的说明）
-    static constexpr int grid_step() { return GridStep; }
+    //----- 项目文件（DealProjectXML）支持 -----
+    const std::unordered_set<CanvasItem*>& get_items() const; //全部元件（门/通用元件/导线）
+    wxPoint get_offset() const { return offset_coords; }      //视口：画布左上角逻辑坐标
+    float get_scale() const { return scale; }                 //缩放比例
+    int get_grid_step() const { return GridStep; }            //网格步长
+    void set_view(wxPoint offset, float s);                   //设置视口并重排
+    void add_item(CanvasItem* item);                          //插入元件（创建UI/绑定事件/摆放）
+    void clear_all_items();                                   //清空全部元件并复位绘制状态
 
     //注册内容变化回调：放置/删除/移动元件、画完导线、修改属性后触发
     //（供菜单栏标记“有未保存的修改”）

@@ -127,71 +127,6 @@ void Canvas::notify_changed(){
     if(changed_callback) changed_callback();
 }
 
-//================ 项目文件读写接口 ================
-
-//按id升序返回所有元件（含导线）：保存出的文件内容因此稳定
-//（同一张图每次保存结果一致，便于对比与版本管理）
-std::vector<CanvasItem*> Canvas::items() const{
-    std::vector<CanvasItem*> result(canvasItemCollection->begin(), canvasItemCollection->end());
-    std::sort(result.begin(), result.end(), [](const CanvasItem* a, const CanvasItem* b){
-        return a->id < b->id;
-    });
-    return result;
-}
-
-//清空画布：结束一切进行中的状态，然后逐个删除元件（含导线）。
-//刻意复用 delete_item：它会顺带清掉 dragging_item / select_follow_item / ghost 等
-//可能指向该元件的状态、先Destroy再delete，避免留下悬空指针或“鬼影”窗口
-void Canvas::clear_items(){
-    cancel_tool();               //结束放置/导线/编辑工具等一切进行中状态
-    set_current_item(nullptr);   //先断开选中，避免属性栏留着即将被删除的元件
-
-    const std::vector<CanvasItem*> all = items();   //先取快照，避免边遍历边改集合
-    for(CanvasItem* item : all){
-        delete_item(item);
-    }
-    Refresh();
-}
-
-//按查找名新建元件：走与手工放置相同的流程（ItemSVG工厂 + create_ui + 事件绑定 + 入集合）
-CanvasItem* Canvas::add_item(const std::string& lookup_name, int coords_x, int coords_y,
-                             int restored_id, const std::string& display_name){
-    if(lookup_name.empty()) return nullptr;
-    CanvasItem* item = ItemSVG(lookup_name);
-    if(!item) return nullptr;
-
-    item->coords_x = coords_x;
-    item->coords_y = coords_y;
-    if(!display_name.empty()) item->name = display_name;   //显示名以文件里记录的为准
-    if(restored_id >= 0){
-        item->id = restored_id;
-        CanvasItem::reserve_id(restored_id);   //保证后续新建元件的编号不与文件里的冲突
-    }
-
-    item->create_ui(this);
-    item->update_ui(scale, offset_coords);
-    bind_ui_events(item);
-    canvasItemCollection->insert(item);
-    if(toolbar) toolbar->Raise();
-    return item;
-}
-
-void Canvas::set_offset_coords(const wxPoint& coords){
-    if(coords == offset_coords) return;
-    offset_coords = coords;
-    reput();
-    Refresh();
-}
-
-void Canvas::set_scale(float new_scale){
-    if(new_scale < MinScale) new_scale = MinScale;
-    if(new_scale > MaxScale) new_scale = MaxScale;
-    if(new_scale == scale) return;
-    scale = new_scale;
-    reput();
-    Refresh();
-}
-
 //中键滚轮缩放：鼠标在屏幕的pos不变，画布的逻辑坐标（offset_coords）改变
 void Canvas::on_mouse_scroll(wxMouseEvent& event){
     const float rotation = event.GetWheelRotation() / (float)event.GetWheelDelta();
@@ -576,6 +511,47 @@ void Canvas::finish_wire(){
 void Canvas::cancel_wire(){
     wire_placing = false;
     wire_points.clear();
+}
+
+//----- 项目文件（DealProjectXML）支持 -----
+const std::unordered_set<CanvasItem*>& Canvas::get_items() const{
+    return *canvasItemCollection;
+}
+
+void Canvas::set_view(wxPoint offset, float s){
+    //从项目文件恢复视口：缩放必须落在合法范围内（手工改过的文件可能写着极端值）
+    if(s < MinScale) s = MinScale;
+    if(s > MaxScale) s = MaxScale;
+    offset_coords = offset;
+    scale = s;
+    reput();
+    Refresh();
+}
+
+//插入元件：创建UI节点、绑定事件转发、按当前视口摆放（导线无UI节点，仅入集合由onPaint绘制）
+void Canvas::add_item(CanvasItem* item){
+    if(!item) return;
+    item->create_ui(this);
+    bind_ui_events(item);
+    item->update_ui(scale, offset_coords);
+    canvasItemCollection->insert(item);
+    Refresh();
+}
+
+//清空全部元件：结束绘制/编辑状态、销毁所有UI节点与实例
+void Canvas::clear_all_items(){
+    cancel_tool();   //结束放置/导线/编辑工具并清工具栏高亮
+    //cancel_tool不会清拖动状态：清空后这些指针会悬空，必须在这里断开（否则后续鼠标移动会访问已释放内存）
+    dragging_item = nullptr;
+    wire_drag_saved.clear();
+    for(CanvasItem* item : *canvasItemCollection){
+        if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，安全
+        item->ui_node = nullptr;
+        delete item;
+    }
+    canvasItemCollection->clear();
+    set_current_item(nullptr);
+    Refresh();
 }
 
 //删除元件：从集合移除、销毁UI节点并释放（门/导线均可）

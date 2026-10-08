@@ -114,7 +114,8 @@ target_link_libraries(
 
 
 # ============================================================================
-# 项目文件（XML）读写自检程序：只用于验证 src/io/CircuitFile 的读写实现。
+# 项目文件（XML）读写自检程序：验证 src/DealProjectXML 的读写实现是否符合 README 的规范，
+# 以及 src/Settings 的配置文件读取与本机路径是否正常（只读用户配置，不会改写）。
 # 控制台程序（不加 WIN32）：自己提供 main，因此排除定义了 wxIMPLEMENT_APP 的 demoApp.cpp。
 # 自检源码 tests/xml_selftest.cpp 被 .gitignore 忽略（属本地验证工具，不在版本库里），
 # 所以这里用 EXISTS 护栏：文件不存在时（队友克隆下来的环境）直接跳过，不会让 cmake 配置失败。
