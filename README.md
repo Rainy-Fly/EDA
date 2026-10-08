@@ -2,9 +2,131 @@
 
 一个用 wxWidgets 实现的简易电子设计自动化（EDA）教学项目：在画布上放置逻辑门与电子元件、绘制导线，查看并编辑元件属性。
 
+## 快速开始
+
+### 环境要求
+
+- Windows + Visual Studio 2022（MSVC）
+- CMake ≥ 3.24
+- 第三方依赖由 CMake 的 `FetchContent` 自动拉取（wxWidgets 3.2.11、jsoncpp 1.9.6），
+  首次配置需要能访问 GitHub
+
+### 构建
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Debug --target TinyEDA
+```
+
+产物：`build\Debug\TinyEDA.exe`
+
+### 运行
+
+**推荐：双击仓库根目录的 `run_TinyEDA.bat`。** 它会先把工作目录切到仓库根，再启动 exe。
+另有两种等价方式：命令行 `cd <仓库根>; .\build\Debug\TinyEDA.exe`，
+或建快捷方式并把「起始位置」设为仓库根。
+
+不建议直接在资源管理器里双击 `build\Debug\TinyEDA.exe`，原因有两个：
+
+1. **工作目录必须是仓库根**：程序按「当前目录」或「exe 目录的上一级」查找
+   `src/metadata/*.json` 与元件 SVG（`src/Canva/assets/Symbols/`、`src/assets/electronic-symbols/SVG/`）。
+   直接双击时工作目录是 `build\Debug`，两处都找不到 —— 界面能开，但**没有元件图标、属性栏也没有元数据**
+   （程序对这些缺失是静默容错的，不会报错，不容易发现）。
+2. **DLL 要在 exe 旁边**：wxWidgets 与 jsoncpp 是动态库。仓库的 `build\Debug\` 里已经放过一份，
+   但**重新 clone 或清理构建目录后需要再复制一次**：
+
+```powershell
+Copy-Item build\_deps\wxwidgets-build\lib\vc_x64_dll\*.dll build\Debug\ -Force
+Copy-Item build\_deps\jsoncpp-build\src\lib_json\Debug\jsoncpp.dll build\Debug\ -Force
+```
+
+### MSVC 上必须注意的几点（已写进 CMakeLists）
+
+| 项 | 不这么做会怎样 |
+|---|---|
+| `add_executable(... WIN32 ...)` | wxWidgets 在 Windows 下的入口是 `WinMain`；不加会 `LNK2019 无法解析的外部符号 main`，运行时还会多弹一个控制台窗口 |
+| `if(MSVC) add_compile_options(/utf-8)` | 源码是 UTF-8 无 BOM 且含大量中文字面量，MSVC 默认按本地代码页（GBK）解析 → 乱码/警告 |
+| 链接 `wx::xml` | `wxXmlDocument` 在独立的 xml 组件里，不链会有一堆 `LNK2019` |
+| 枚举名用 `ERASE` 而不是 `DELETE` | Windows 的 `winnt.h` 把 `DELETE` 定义成访问权限宏（`0x00010000L`），MSVC 下会报语法错误 |
+| `DealProjectXML.cpp` 里的 `localtime_r` 兼容宏 | MSVC 没有 POSIX 的 `localtime_r`（只有参数顺序相反的 `localtime_s`） |
+
+另外：不带 `--target` 直接跑 `cmake --build build`，会因为 jsoncpp 自带的测试工程
+`jsoncpp_test.exe` 找不到 `jsoncpp.dll` 而返回 exit code 1 —— 这与本项目无关。
+只编主程序请加 `--target TinyEDA`；想彻底消掉噪音可以在 CMakeLists 里加
+`set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)`。
+
+## 功能
+
+### 文件菜单
+
+| 菜单项 | 快捷键 | 行为 |
+|---|---|---|
+| 新建 | Ctrl+N | 若有未保存修改先询问；然后清空画布、视角复位、清空当前路径 |
+| 打开... | Ctrl+O | 先选起始位置（见下），再选文件；**解析失败时画布保持原样** |
+| 保存 | Ctrl+S | 没有路径时自动转为「另存为」 |
+| 另存为... | Ctrl+Shift+S | 默认文件名 `project.xml`；没写扩展名会自动补 `.xml` |
+| 设置默认目录... | — | 选择默认目录并写入用户配置文件 |
+| 退出 | Ctrl+Q | 走窗口关闭流程（含未保存确认），退出前把配置落盘 |
+
+其它约定：
+
+- 标题栏显示 `TinyEDA - <文件名>`；有未保存修改时前面加 `*`；新项目还没保存过时显示 `未命名`
+- 关闭窗口（右上角 ×）同样会问是否保存
+- 「有未保存修改」的判定：放置/删除/移动元件、画完导线、在属性栏改属性都会标记；
+  单纯点击选中不算修改（除非「选择」工具确实把元件挪动了）
+
+### 打开项目的三种起始位置
+
+点「打开」后先弹一个对话框选择从哪里开始找：
+
+1. **从最近位置打开** —— 上次打开/保存的项目所在目录（首次运行时不可选）
+2. **从根目录打开** —— 项目根目录（当前目录含 `src/`，否则从 exe 位置向上找含 `src/` 的目录）
+3. **从默认目录打开** —— 在「设置默认目录...」里设定的目录（未设置时不可选）
+
+目录不存在或还没有记录的选项会自动置灰，默认选中第一个可用项；取消则不打开。
+
+### 用户配置文件
+
+- 位置：`%APPDATA%\TinyEDA\settings.xml`（如 `C:\Users\<你>\AppData\Roaming\TinyEDA\settings.xml`）
+- 该位置不可写时（受限环境、便携部署）自动回退到**可执行文件旁边**的 `tinyeda-settings.xml`
+- 主程序启动时加载；打开/保存项目、设置默认目录后立即写回；退出前再落盘一次
+- 读写失败不会弹错误框（只是设置没保存），也不会影响项目文件的操作
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<tinyeda-settings version="1">
+  <recent file="C:\work\a.xml" dir="C:\work"/>
+  <default-dir path="D:\EDA\projects"/>
+</tinyeda-settings>
+```
+
+| 元素 | 含义 |
+|---|---|
+| `recent@file` | 上次打开/保存的项目文件（完整路径） |
+| `recent@dir` | 上次打开/保存所在目录（「从最近位置打开」用） |
+| `default-dir@path` | 用户设置的默认目录 |
+
+读取容错：文件不存在/损坏/字段缺失一律按默认值处理；记录里的目录已被删除时视为未设置。
+
+## 代码结构
+
+| 目录/文件 | 职责 |
+|---|---|
+| `src/DealProjectXML/` | **项目文件（.xml）读写**。上层统一调用这里的 `SaveProject` / `LoadProject` / `CollectFromCanvas` / `ApplyToCanvas` / `ReadXml` / `WriteXml`，格式见下节 |
+| `src/Settings/` | 用户配置文件（settings.xml）的读写、项目根目录识别 |
+| `src/MenuBar/` | `MenuBar` 负责菜单结构；`FileActions` 实现新建/打开/保存/另存为/设置默认目录/退出与未保存确认；`OpenLocationDialog` 是「从哪开始找」的三选一对话框 |
+| `src/Canva/` | 画布：逻辑坐标系与缩放/平移，元件与导线的放置、选中、拖动、删除、克隆、网格与导线绘制；`CanvasItem`/`Symbol`/`Linking` 数据模型；`ItemSVG` 按类型串加载 SVG 与元数据（共享缓存） |
+| `src/metadata/` | 元件元数据 JSON（每个元件一条定义，`type` 是主键）+ JSON 读取器 |
+| `src/Explorer/` | 左侧资源树：按类别列出所有元件，点击后进入放置模式 |
+| `src/AttributeBar/` | 右下属性栏：显示并编辑当前元件的元数据 |
+| `src/demoApp.cpp`、`src/demoMainFrame.*` | 演示用程序入口与主窗口（把上面几块拼起来） |
+
+> 约定：项目文件（`.xml`）的读写**只有 `src/DealProjectXML` 一处实现**，其它模块不要再各写一套；
+> 以后要保存新的内容，改那一处即可。用户配置文件的读写同理，只在 `src/Settings`。
+
 ## 项目描述文件（.xml）定义
 
-项目以单个 XML 文件保存（如 `project.xml`），同时包含**项目信息**与**电路图各元件信息**，类似 Logisim 的 `.circ` 文件。当前仅完成格式定义，保存/加载尚未实现。
+项目以单个 XML 文件保存（如 `project.xml`），同时包含**项目信息**与**电路图各元件信息**，类似 Logisim 的 `.circ` 文件。读写由 `src/DealProjectXML` 实现。
 
 ### 总体结构
 
@@ -180,3 +302,20 @@ teda-project           根元素（schema-version 属性标明格式版本）
 - **容错原则**：与现有代码"图片缺失/元数据缺失不报错"一致，加载时忽略未知元素、未知属性与无法解析的字段，缺失的 `type` 对应的元件按空元数据创建。
 - **版本兼容**：`schema-version` 用于向前兼容。未来新增元素类型（如文本标注 `annotation`、子电路、总线标签等）或字段时递增主版本号，加载器按版本分支处理。
 - **坐标单位**：所有坐标均为逻辑网格坐标（整数），网格步长由 `info/view@grid-step` 决定（默认 10），与画布吸附一致。
+
+## 已知问题与约定
+
+- **`src/UI_frame_1.cpp` 目前不参与构建**（见 CMakeLists 的排除规则）。它是分步教程式的独立示例，
+  自带 `wxIMPLEMENT_APP(MyApp)` 与 `MyFrame`，与 `demoApp.cpp` 的应用入口重复：一起编会
+  `LNK2005`（`WinMain` / `wxCreateApp` / `wxTheAppInitializer` 重复定义）→ `LNK1169`。
+  它是否取代 `demoApp`/`demoMainFrame` 需要团队决定，决定前先排除；文件仍保留在版本库
+  （它 include 的 `src/mondrian.xpm` 也一并保留）。另外它用的是 `#include "Explorer\ExplorerPane.h"`
+  （反斜杠），MSVC 能编过，GCC/MinGW 不行。
+- **`<wire>` 没有 `<description>`**：规范里给 `<wire>` 定义的子元素只有 `param`/`point`，
+  所以导线上被编辑过的「描述」不会写进文件（而属性栏对导线仍显示可编辑的描述框）。
+  要修的话：规范里给 wire 补一个 `<description>`，或者属性栏对导线隐藏它。
+- `<modified>` 每次保存都会刷新为当时时间（设计如此）；`<name>` 为空时写成 `Untitled`。
+- 本机工作区里保留、但不参与构建、也不进版本库的文件：`src/ExplorerBak/`（备份目录）、
+  `src/main.cpp`（本地测试入口）、`src/Explorer.zip`。CMakeLists 里有对应的排除规则。
+- 直接 `cmake --build build` 会因 jsoncpp 自带测试工程返回 exit code 1（与本项目无关），
+  只编主程序请用 `--target TinyEDA`。
