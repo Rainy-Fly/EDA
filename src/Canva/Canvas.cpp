@@ -3,13 +3,6 @@
 #include<cmath>
 #include<algorithm>
 
-//Windows 的 winnt.h 把 DELETE 定义成访问权限宏 (0x00010000L)，
-//与 EditTool::DELETE / ToolAction::DELETE 冲突（MSVC下会报语法错误）。
-//本文件用不到该宏，这里直接取消；头文件里的枚举声明另有 push_macro/undef/pop_macro 保护
-#ifdef DELETE
-    #undef DELETE
-#endif
-
 //每滚一格缩放的倍率：1.2 = 每格放大/缩小20%（过大的倍率会导致缩放幅度太大）
 const float MoveRatio=1.2f;
 

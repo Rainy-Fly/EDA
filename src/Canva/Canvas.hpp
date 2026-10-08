@@ -12,25 +12,14 @@ using canvasPos=std::tuple<float,float>;
 float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint& b);
 
 // 画布编辑工具（选择/删除/克隆，作用于已放置的元件）
-// 注意：Windows 的 winnt.h 把 DELETE 定义成访问权限宏 (0x00010000L)，与本枚举的 DELETE 冲突，
-// MSVC 下会报语法错误。这里只在声明枚举的几行内临时取消该宏，随后立刻恢复
-#ifdef DELETE
-    #define TINYEDA_HAD_DELETE_MACRO
-    #pragma push_macro("DELETE")
-    #undef DELETE
-#endif
-
+// 枚举值用 ERASE 而不是 DELETE：Windows 的 winnt.h 把 DELETE 定义成访问权限宏
+// (0x00010000L)，用 DELETE 作枚举名在 MSVC 下会报语法错误
 enum class EditTool{
     NONE,    //无编辑工具（默认：点击拖动）
     SELECT,  //选择：点击元件→跟随鼠标移动；右键取消跟随；Del删除
-    ERASE,  //删除：点击元件即删除
+    ERASE,   //删除：点击元件即删除
     CLONE,   //克隆：点击元件→复制出跟随鼠标的虚影，再点击放置
 };
-
-#ifdef TINYEDA_HAD_DELETE_MACRO
-    #pragma pop_macro("DELETE")
-    #undef TINYEDA_HAD_DELETE_MACRO
-#endif
 
 // 画布：保持内部逻辑坐标系，像摄像机一样在逻辑网格coords上移动。
 // 元件附着在逻辑坐标coords上（自身不变），在画布窗口上的视觉位置pos随offset_coords与scale变化。

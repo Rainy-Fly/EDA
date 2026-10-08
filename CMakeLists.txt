@@ -73,11 +73,16 @@ file(
     "src/*.cpp"
 )
 
-# 本机工作区里保留的文件（不进版本库、或已由远端删除）需要排除，否则会与其他文件重复定义符号：
-#   /ExplorerBak/  本地备份目录（里面是 ExplorerPane 的一份副本，与 src/Explorer/ 下的重复）
-#   /main\\.cpp$   本地测试用入口（与 demoApp.cpp 里的 wxIMPLEMENT_APP 重复）
+# 以下文件要排除，否则会与其他文件重复定义符号、链接失败：
+#   /ExplorerBak/      本机工作区的备份目录（ExplorerPane 的副本，与 src/Explorer/ 下的重复）
+#   /main\\.cpp$       本机测试用入口（与 demoApp.cpp 里的 wxIMPLEMENT_APP 重复）
+#   /UI_frame_1\\.cpp$ 队友提交里的分步教程式示例：自带 wxIMPLEMENT_APP(MyApp) 与 MyFrame，
+#                      与 demoApp.cpp 的应用入口、demoMainFrame 的主窗口重复。
+#                      它是否取代 demoApp/demoMainFrame 需要团队决定；在决定前先不参与构建，
+#                      文件仍保留在版本库里（需要时删掉这一行即可启用）
 list(FILTER SOURCES EXCLUDE REGEX "/ExplorerBak/")
 list(FILTER SOURCES EXCLUDE REGEX "/main\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX "/UI_frame_1\\.cpp$")
 
 # =========================
 # TinyEDA
