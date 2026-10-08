@@ -1,0 +1,5 @@
+# Windows 批处理文件必须使用 CRLF 换行：cmd 遇到 LF 换行会把每行的第一个字符吃掉，
+# 表现为 cmake 被当成 make、echo 被当成 cho，报一堆“不是内部或外部命令”。
+# 这里显式固定这两个后缀的换行，不受各人 core.autocrlf 设置影响。
+*.bat text eol=crlf
+*.cmd text eol=crlf

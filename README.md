@@ -51,18 +51,28 @@ cmake --build build --config Debug --target TinyEDA
 
 ### 运行
 
-**推荐：双击仓库根目录的 `run_TinyEDA.bat`。** 它会先把工作目录切到仓库根，再启动 exe。
-另有两种等价方式：命令行 `cd <仓库根>; .\build\Debug\TinyEDA.exe`，
-或建快捷方式并把「起始位置」设为仓库根。
+**推荐：双击仓库根目录的 `run_TinyEDA.bat`。** 它做三件事：
 
-不建议直接在资源管理器里双击 `build\Debug\TinyEDA.exe`，原因有两个：
+1. 把工作目录切到仓库根（必须，原因见下）
+2. exe 旁边缺 wxWidgets / jsoncpp 的 DLL 时**自动从 `build\_deps` 里补一份**
+   （重新 clone、或清理过构建目录之后很常见）
+3. 启动 `build\Debug\TinyEDA.exe`（没有 Debug 就用 Release）；如果**还没构建过**，
+   会打印构建命令并停住，不会一闪而过
+
+> 该脚本是 **GBK 编码 + CRLF 换行**（中文 Windows 的 cmd 要求），改动它时请保持，
+> 否则 cmd 会把每行第一个字符吃掉、报一堆莫名其妙的语法错误。
+
+不用脚本也可以：命令行 `cd <仓库根>` 后再 `.\build\Debug\TinyEDA.exe`，
+或建快捷方式并把「起始位置」设为仓库根 —— 但这两条路 DLL 要自己保证在位（见下）。
+
+**不建议直接双击 `build\Debug\TinyEDA.exe`**，两个原因：
 
 1. **工作目录必须是仓库根**：程序按「当前目录」或「exe 目录的上一级」查找
    `src/metadata/*.json` 与元件 SVG（`src/Canva/assets/Symbols/`、`src/assets/electronic-symbols/SVG/`）。
    直接双击时工作目录是 `build\Debug`，两处都找不到 —— 界面能开，但**没有元件图标、属性栏也没有元数据**
    （程序对这些缺失是静默容错的，不会报错，不容易发现）。
-2. **DLL 要在 exe 旁边**：wxWidgets 与 jsoncpp 是动态库。仓库的 `build\Debug\` 里已经放过一份，
-   但**重新 clone 或清理构建目录后需要再复制一次**：
+2. **DLL 要在 exe 旁边**：wxWidgets 与 jsoncpp 是动态库，缺了会直接启动失败。
+   `run_TinyEDA.bat` 会自动补；手动补的话：
 
 ```powershell
 Copy-Item build\_deps\wxwidgets-build\lib\vc_x64_dll\*.dll build\Debug\ -Force
