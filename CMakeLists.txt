@@ -124,11 +124,9 @@ target_link_libraries(
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/xml_selftest.cpp")
 
-    file(
-        GLOB_RECURSE SELFTEST_SOURCES
-        "src/*.cpp"
-    )
-
+    # 复用主程序那份源文件列表（它已经排除了本机的备份/测试入口等文件），
+    # 只再排除定义 wxIMPLEMENT_APP 的 demoApp.cpp（自检程序自带 main）
+    set(SELFTEST_SOURCES ${SOURCES})
     list(FILTER SELFTEST_SOURCES EXCLUDE REGEX "/demoApp\\.cpp$")
 
     add_executable(
