@@ -7,7 +7,7 @@ class Canvas;
 // 工具栏动作工具（非元件，作用于已放置的元件）
 enum class ToolAction{
     SELECT,   //选择：点击元件后跟随鼠标移动；右键取消跟随；Del删除
-    DELETE,   //删除：点击元件即删除
+    ERASE,   //删除：点击元件即删除
     CLONE,    //克隆：点击元件复制出一个跟随鼠标的虚影，再点击放置
 };
 

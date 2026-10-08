@@ -240,7 +240,7 @@ void Canvas::on_left_down(wxMouseEvent& event){
         return;
     }
     //编辑工具：命中元件则执行对应动作，空白处只清除选中（工具保持激活）
-    if(edit_tool == EditTool::DELETE){
+    if(edit_tool == EditTool::ERASE){
         if(CanvasItem* hit = item_at(pos)) delete_item(hit);
         else set_current_item(nullptr);
         return;
@@ -277,7 +277,7 @@ void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
         return;
     }
     //编辑工具（点击的是元件节点）
-    if(edit_tool == EditTool::DELETE){
+    if(edit_tool == EditTool::ERASE){
         delete_item(item);
         return;
     }
@@ -432,7 +432,7 @@ void Canvas::select_action(ToolAction action){
     set_current_item(nullptr);
     switch(action){
         case ToolAction::SELECT: edit_tool = EditTool::SELECT; break;
-        case ToolAction::DELETE: edit_tool = EditTool::DELETE; break;
+        case ToolAction::ERASE: edit_tool = EditTool::ERASE; break;
         case ToolAction::CLONE:  edit_tool = EditTool::CLONE;  break;
     }
 }
