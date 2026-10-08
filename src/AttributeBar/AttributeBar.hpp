@@ -1,6 +1,7 @@
 #pragma once
 #include<wx/wx.h>
 #include<string>
+#include<functional>
 
 class CanvasItem;
 class MetaData;
@@ -20,11 +21,18 @@ public:
     // 当前元件（nullptr 表示未选择）
     CanvasItem* get_item() const { return current_item; }
 
+    // 注册“属性被编辑”回调：编辑框写回元数据成功后触发，
+    // 供菜单栏把项目标记为“有未保存的修改”（传空则取消）
+    void set_edited_callback(std::function<void()> callback){
+        edited_callback = std::move(callback);
+    }
+
 private:
     CanvasItem* current_item;   //指向当前元件的引用（不拥有，由画布管理）
     wxStaticText* title_text;   //标题（显示元件名）
     wxSizer* content_sizer;     //属性行容器（每次刷新重建）
     bool updating;              //重建期间抑制编辑框写回
+    std::function<void()> edited_callback;   //属性编辑回调（可为空）
 
     void rebuild();                                             //按 current_item 重建属性行
     void add_label_value(wxSizer* sizer, const wxString& label,

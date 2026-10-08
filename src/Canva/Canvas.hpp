@@ -12,12 +12,25 @@ using canvasPos=std::tuple<float,float>;
 float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint& b);
 
 // 画布编辑工具（选择/删除/克隆，作用于已放置的元件）
+// 注意：Windows 的 winnt.h 把 DELETE 定义成访问权限宏 (0x00010000L)，与本枚举的 DELETE 冲突，
+// MSVC 下会报语法错误。这里只在声明枚举的几行内临时取消该宏，随后立刻恢复
+#ifdef DELETE
+    #define TINYEDA_HAD_DELETE_MACRO
+    #pragma push_macro("DELETE")
+    #undef DELETE
+#endif
+
 enum class EditTool{
     NONE,    //无编辑工具（默认：点击拖动）
     SELECT,  //选择：点击元件→跟随鼠标移动；右键取消跟随；Del删除
     DELETE,  //删除：点击元件即删除
     CLONE,   //克隆：点击元件→复制出跟随鼠标的虚影，再点击放置
 };
+
+#ifdef TINYEDA_HAD_DELETE_MACRO
+    #pragma pop_macro("DELETE")
+    #undef TINYEDA_HAD_DELETE_MACRO
+#endif
 
 // 画布：保持内部逻辑坐标系，像摄像机一样在逻辑网格coords上移动。
 // 元件附着在逻辑坐标coords上（自身不变），在画布窗口上的视觉位置pos随offset_coords与scale变化。
@@ -39,6 +52,34 @@ public:
     //点击选中/放置元件时回调该元件；点击空白或开始新放置时回调nullptr
     void set_current_item_callback(std::function<void(CanvasItem*)> callback);
 
+    //================ 项目文件读写接口（供 CircuitFile / FileActions 使用）================
+    //画布上所有元件（含导线），按id升序排列（保证保存出的文件内容稳定、可对比）。
+    //返回的指针由画布拥有，调用者只读，不得delete
+    std::vector<CanvasItem*> items() const;
+
+    //清空画布：销毁全部元件的显示节点并删除元件（新建/打开项目前调用）。
+    //不触发内容变化回调（调用方在清空后自行把“未保存”标记复位）
+    void clear_items();
+
+    //按查找名（元件中文名或元数据类型串）新建一个元件并接入画布，返回新元件（由画布拥有）。
+    //restored_id >= 0 时恢复该编号；display_name 非空时覆盖元件的显示名。
+    //导线的折点由调用方拿到返回值后填进 Linking::points（与finish_wire的写法一致）
+    CanvasItem* add_item(const std::string& lookup_name, int coords_x, int coords_y,
+                         int restored_id = -1,
+                         const std::string& display_name = std::string());
+
+    //画布视口：逻辑坐标偏移与缩放比例（随项目文件一起保存/恢复）
+    wxPoint get_offset_coords() const { return offset_coords; }
+    float   get_scale() const         { return scale; }
+    void    set_offset_coords(const wxPoint& coords);
+    void    set_scale(float new_scale);
+    //网格步长（逻辑坐标单位；写入项目文件时作为坐标单位的说明）
+    static constexpr int grid_step() { return GridStep; }
+
+    //注册内容变化回调：放置/删除/移动元件、画完导线、修改属性后触发
+    //（供菜单栏标记“有未保存的修改”）
+    void set_changed_callback(std::function<void()> callback);
+
     friend class ToolBar;   //工具栏需要转发滚轮事件给画布
 
 private:
@@ -54,6 +95,8 @@ private:
     wxPoint middle_last_pos;
     CanvasItem* current_item;                //当前选中的元件（nullptr=未选择）
     std::function<void(CanvasItem*)> current_item_callback;  //当前元件变化回调
+    std::function<void()> changed_callback;  //内容变化回调（放置/删除/移动/改属性后触发）
+    bool move_dirty;                         //本次移动是否真的改变了位置（只点击不算修改）
 
     //----- 导线(wire)状态 -----
     bool wire_placing;               //是否处于导线绘制模式
@@ -68,6 +111,8 @@ private:
 
     //更新当前元件并触发回调（指针未变化时不触发）
     void set_current_item(CanvasItem* item);
+    //触发内容变化回调（供菜单栏标记“未保存”）
+    void notify_changed();
 
     //删除元件（从集合移除、销毁UI节点并释放）
     void delete_item(CanvasItem* item);

@@ -76,6 +76,11 @@ MetaData* CanvasItem::load_config(ItemType type, const std::string& name){
     return load_metadata(name);
 }
 
+void CanvasItem::reserve_id(int id){
+    //下一枚待分配编号至少要比已恢复的最大编号大1，否则新元件会与文件里的元件撞编号
+    if(id >= next_id) next_id = id + 1;
+}
+
 void CanvasItem::create_ui(wxWindow* parent){
     //基类：无UI节点（如Linking导线）
     ui_node = nullptr;

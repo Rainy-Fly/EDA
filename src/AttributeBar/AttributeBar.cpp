@@ -159,6 +159,8 @@ void AttributeBar::add_editable_value(wxSizer* sizer, const wxString& label,
         if(tc){
             set_metadata_value(current_item->metadata, meta_key,
                                tc->GetValue().ToStdString());
+            //改属性也是改项目内容：通知菜单栏标记“未保存”
+            if(edited_callback) edited_callback();
         }
     });
     sizer->Add(lbl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);

@@ -3,8 +3,19 @@
 #include<cmath>
 #include<algorithm>
 
+//Windows 的 winnt.h 把 DELETE 定义成访问权限宏 (0x00010000L)，
+//与 EditTool::DELETE / ToolAction::DELETE 冲突（MSVC下会报语法错误）。
+//本文件用不到该宏，这里直接取消；头文件里的枚举声明另有 push_macro/undef/pop_macro 保护
+#ifdef DELETE
+    #undef DELETE
+#endif
+
 //每滚一格缩放的倍率：1.2 = 每格放大/缩小20%（过大的倍率会导致缩放幅度太大）
 const float MoveRatio=1.2f;
+
+//缩放范围限制（滚轮缩放与set_scale共用，避免两处写死的上下限漂移）
+static const float MinScale=0.01f;
+static const float MaxScale=100.0f;
 
 //wxPoint -> canvasPos 辅助转换
 static canvasPos to_canvas_pos(const wxPoint& p){
@@ -41,6 +52,8 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       middle_last_pos(0, 0),
       current_item(nullptr),
       current_item_callback(),
+      changed_callback(),
+      move_dirty(false),
       wire_placing(false),
       wire_points(),
       wire_mouse_pos(0, 0),
@@ -106,6 +119,79 @@ void Canvas::set_current_item(CanvasItem* item){
     if(current_item_callback) current_item_callback(item);
 }
 
+void Canvas::set_changed_callback(std::function<void()> callback){
+    changed_callback = std::move(callback);
+}
+
+void Canvas::notify_changed(){
+    if(changed_callback) changed_callback();
+}
+
+//================ 项目文件读写接口 ================
+
+//按id升序返回所有元件（含导线）：保存出的文件内容因此稳定
+//（同一张图每次保存结果一致，便于对比与版本管理）
+std::vector<CanvasItem*> Canvas::items() const{
+    std::vector<CanvasItem*> result(canvasItemCollection->begin(), canvasItemCollection->end());
+    std::sort(result.begin(), result.end(), [](const CanvasItem* a, const CanvasItem* b){
+        return a->id < b->id;
+    });
+    return result;
+}
+
+//清空画布：结束一切进行中的状态，然后逐个删除元件（含导线）。
+//刻意复用 delete_item：它会顺带清掉 dragging_item / select_follow_item / ghost 等
+//可能指向该元件的状态、先Destroy再delete，避免留下悬空指针或“鬼影”窗口
+void Canvas::clear_items(){
+    cancel_tool();               //结束放置/导线/编辑工具等一切进行中状态
+    set_current_item(nullptr);   //先断开选中，避免属性栏留着即将被删除的元件
+
+    const std::vector<CanvasItem*> all = items();   //先取快照，避免边遍历边改集合
+    for(CanvasItem* item : all){
+        delete_item(item);
+    }
+    Refresh();
+}
+
+//按查找名新建元件：走与手工放置相同的流程（ItemSVG工厂 + create_ui + 事件绑定 + 入集合）
+CanvasItem* Canvas::add_item(const std::string& lookup_name, int coords_x, int coords_y,
+                             int restored_id, const std::string& display_name){
+    if(lookup_name.empty()) return nullptr;
+    CanvasItem* item = ItemSVG(lookup_name);
+    if(!item) return nullptr;
+
+    item->coords_x = coords_x;
+    item->coords_y = coords_y;
+    if(!display_name.empty()) item->name = display_name;   //显示名以文件里记录的为准
+    if(restored_id >= 0){
+        item->id = restored_id;
+        CanvasItem::reserve_id(restored_id);   //保证后续新建元件的编号不与文件里的冲突
+    }
+
+    item->create_ui(this);
+    item->update_ui(scale, offset_coords);
+    bind_ui_events(item);
+    canvasItemCollection->insert(item);
+    if(toolbar) toolbar->Raise();
+    return item;
+}
+
+void Canvas::set_offset_coords(const wxPoint& coords){
+    if(coords == offset_coords) return;
+    offset_coords = coords;
+    reput();
+    Refresh();
+}
+
+void Canvas::set_scale(float new_scale){
+    if(new_scale < MinScale) new_scale = MinScale;
+    if(new_scale > MaxScale) new_scale = MaxScale;
+    if(new_scale == scale) return;
+    scale = new_scale;
+    reput();
+    Refresh();
+}
+
 //中键滚轮缩放：鼠标在屏幕的pos不变，画布的逻辑坐标（offset_coords）改变
 void Canvas::on_mouse_scroll(wxMouseEvent& event){
     const float rotation = event.GetWheelRotation() / (float)event.GetWheelDelta();
@@ -113,10 +199,8 @@ void Canvas::on_mouse_scroll(wxMouseEvent& event){
 
     const float old_scale = scale;
     float new_scale = old_scale * std::pow(MoveRatio, rotation);
-    const float min_scale = 0.01f;
-    const float max_scale = 100.0f;
-    if(new_scale < min_scale) new_scale = min_scale;
-    if(new_scale > max_scale) new_scale = max_scale;
+    if(new_scale < MinScale) new_scale = MinScale;
+    if(new_scale > MaxScale) new_scale = MaxScale;
     if(new_scale == old_scale) return;
 
     const float mx = (float)mouse_pos.x;
@@ -167,13 +251,20 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
             //导线：整体平移折点（当前位移加到各点，保持折线形状）
             if(!wire->points.empty()){
                 const wxPoint delta = coords - wire->points.front();
-                for(wxPoint& p : wire->points) p = p + delta;
+                if(delta.x != 0 || delta.y != 0){
+                    for(wxPoint& p : wire->points) p = p + delta;
+                    move_dirty = true;   //位置真的变了：关窗口/新建时要提示保存
+                }
             }
             Refresh();
         }else{
-            select_follow_item->coords_x = coords.x;
-            select_follow_item->coords_y = coords.y;
-            select_follow_item->update_ui(scale, offset_coords);
+            if(coords.x != select_follow_item->coords_x ||
+               coords.y != select_follow_item->coords_y){
+                select_follow_item->coords_x = coords.x;
+                select_follow_item->coords_y = coords.y;
+                select_follow_item->update_ui(scale, offset_coords);
+                move_dirty = true;
+            }
         }
         return;
     }
@@ -185,16 +276,22 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         if(Linking* wire = dynamic_cast<Linking*>(dragging_item)){
             if(!wire_drag_saved.empty()){
                 const wxPoint delta = coords - wire_drag_origin;
-                for(size_t i = 0; i < wire->points.size() && i < wire_drag_saved.size(); ++i){
-                    wire->points[i] = wire_drag_saved[i] + delta;
+                if(delta.x != 0 || delta.y != 0){
+                    for(size_t i = 0; i < wire->points.size() && i < wire_drag_saved.size(); ++i){
+                        wire->points[i] = wire_drag_saved[i] + delta;
+                    }
+                    move_dirty = true;
                 }
             }
             Refresh();   //导线由onPaint绘制
             return;
         }
-        dragging_item->coords_x = coords.x;
-        dragging_item->coords_y = coords.y;
-        dragging_item->update_ui(scale, offset_coords);
+        if(coords.x != dragging_item->coords_x || coords.y != dragging_item->coords_y){
+            dragging_item->coords_x = coords.x;
+            dragging_item->coords_y = coords.y;
+            dragging_item->update_ui(scale, offset_coords);
+            move_dirty = true;
+        }
         return;
     }
 
@@ -263,6 +360,9 @@ void Canvas::on_left_down(wxMouseEvent& event){
 }
 
 void Canvas::on_left_up(wxMouseEvent& event){
+    //元件/导线被真的拖动过才通知“内容已修改”（决定关闭/新建前要不要提示保存）
+    if(dragging_item && move_dirty) notify_changed();
+    move_dirty = false;
     dragging_item = nullptr;
     if(HasCapture()) ReleaseMouse();
 }
@@ -292,6 +392,7 @@ void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
     //点击元件后进入移动，并把它设为当前选中（通知属性栏）
     set_current_item(item);
     dragging_item = item;
+    move_dirty = false;   //开始新的拖动：先认为没有移动
     if(Linking* wire = dynamic_cast<Linking*>(item)){
         //导线整体拖动：记录抓取点与各折点原始坐标
         const wxPoint pos = mouse_position(event);
@@ -462,6 +563,7 @@ void Canvas::finish_wire(){
             }
             canvasItemCollection->insert(item);
             set_current_item(item);   //刚画的导线成为当前选中（属性栏显示导线元数据）
+            notify_changed();         //项目内容变了（供菜单栏标记“未保存”）
         }
         //点数不足2的导线不创建，直接丢弃
     }
@@ -486,6 +588,7 @@ void Canvas::delete_item(CanvasItem* item){
     if(ghost == item) ghost = nullptr;   //模式互斥，正常不会发生
     if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，事件中调用安全
     delete item;
+    notify_changed();   //删除也是内容修改
     Refresh();
 }
 
@@ -495,24 +598,31 @@ void Canvas::start_select_follow(CanvasItem* item){
     if(!item) return;
     set_current_item(item);
     select_follow_item = item;
+    move_dirty = false;   //本次跟随是否真的移动过，由下面的位移判断
     //立即吸附到当前鼠标位置
     const wxPoint pos = ScreenToClient(wxGetMousePosition());
     const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
     if(Linking* wire = dynamic_cast<Linking*>(item)){
         if(!wire->points.empty()){
             const wxPoint delta = coords - wire->points.front();
-            for(wxPoint& p : wire->points) p = p + delta;
+            if(delta.x != 0 || delta.y != 0){
+                for(wxPoint& p : wire->points) p = p + delta;
+                move_dirty = true;   //点击瞬间就把导线挪走了，这也是一次修改
+            }
         }
         Refresh();
     }else{
+        if(coords.x != item->coords_x || coords.y != item->coords_y) move_dirty = true;
         item->coords_x = coords.x;
         item->coords_y = coords.y;
         item->update_ui(scale, offset_coords);
     }
 }
 
-//取消跟随：元件停留在当前位置
+//取消跟随：元件停留在当前位置（若跟随期间真的移动过，记一次内容修改）
 void Canvas::stop_select_follow(){
+    if(select_follow_item && move_dirty) notify_changed();
+    move_dirty = false;
     select_follow_item = nullptr;
 }
 
@@ -589,6 +699,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
         cancel_tool();
         edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（一次性）
         set_current_item(item);
+        notify_changed();             //放置了新内容
         Refresh();
         return;
     }
@@ -603,6 +714,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     cancel_tool();  //结束放置：之后再点击该元件可移动它
     edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（对门类放置无影响，本来就为NONE）
     set_current_item(item);  //刚放置的元件成为当前选中（通知属性栏）
+    notify_changed();        //项目内容变了（供菜单栏标记“未保存”）
     Refresh();
 }
 

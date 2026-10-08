@@ -3,6 +3,13 @@
 #include"./ItemSVG.hpp"
 #include<wx/statline.h>
 
+//Windows 的 winnt.h 把 DELETE 定义成访问权限宏 (0x00010000L)，
+//与 ToolAction::DELETE 冲突（MSVC下会报语法错误）。本文件用不到该宏，这里直接取消。
+//头文件里的枚举声明另有 push_macro/undef/pop_macro 保护
+#ifdef DELETE
+    #undef DELETE
+#endif
+
 ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     : wxPanel(parent, wxID_ANY), canvas(cvs), selected(nullptr){
     SetBackgroundColour(wxColour(235, 235, 235));

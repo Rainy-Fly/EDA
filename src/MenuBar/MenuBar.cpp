@@ -2,12 +2,15 @@
 
 MenuBar::MenuBar(){
     //---- File（文件）----
+    // 标签里\t后面是快捷键，wxWidgets 会把它解析成真正的加速键（MSW下由菜单加速表实现）。
+    // 这三个功能的实际逻辑在 src/MenuBar/FileActions.cpp（挂在主窗口的 wxID_NEW/OPEN/SAVE/SAVEAS 上）
     wxMenu* file_menu = new wxMenu;
-    file_menu->Append(wxID_NEW,    wxString::FromUTF8("新建"));
-    file_menu->Append(wxID_OPEN,   wxString::FromUTF8("打开"));
-    file_menu->Append(wxID_SAVE,   wxString::FromUTF8("保存"));
+    file_menu->Append(wxID_NEW,    wxString::FromUTF8("新建(&N)\tCtrl+N"));
+    file_menu->Append(wxID_OPEN,   wxString::FromUTF8("打开(&O)...\tCtrl+O"));
+    file_menu->Append(wxID_SAVE,   wxString::FromUTF8("保存(&S)\tCtrl+S"));
+    file_menu->Append(wxID_SAVEAS, wxString::FromUTF8("另存为(&A)...\tCtrl+Shift+S"));
     file_menu->AppendSeparator();
-    file_menu->Append(wxID_EXIT,   wxString::FromUTF8("退出"));
+    file_menu->Append(wxID_EXIT,   wxString::FromUTF8("退出(&X)\tCtrl+Q"));
 
     //---- Edit（编辑）----
     wxMenu* edit_menu = new wxMenu;
