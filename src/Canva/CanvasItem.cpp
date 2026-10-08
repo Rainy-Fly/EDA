@@ -133,3 +133,89 @@ void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
 void Symbol::create_ui(wxWindow* parent){
     ui_node = new wxStaticBitmap(parent, wxID_ANY, wxBitmap());
 }
+
+// 引脚布局（见头文件注释；偏移均为GridStep的倍数，保证引脚在网格上）
+std::vector<Pin> item_pins(const CanvasItem& item){
+    std::vector<Pin> pins;
+    constexpr int PIN_X = 50;   //左右引脚距中心5格（逻辑坐标）
+
+    // 逻辑门：左输入/右输出
+    if(const LogicGateMetaData* g = dynamic_cast<const LogicGateMetaData*>(item.metadata)){
+        const int n = std::max(1, g->get_inputs());
+        for(int i = 0; i < n; ++i){
+            const int y = (2 * i - (n - 1)) * 10;
+            pins.push_back({"IN" + std::to_string(i + 1), wxPoint(-PIN_X, y)});
+        }
+        const int o = std::max(1, g->get_outputs());
+        for(int i = 0; i < o; ++i){
+            const int y = (o == 1) ? 0 : (2 * i - (o - 1)) * 10;
+            pins.push_back({(o == 1) ? "OUT" : "OUT" + std::to_string(i + 1),
+                            wxPoint(PIN_X, y)});
+        }
+        return pins;
+    }
+
+    const std::string type = item.metadata ? item.metadata->get_type() : item.name;
+    const std::string cat  = item.metadata ? item.metadata->get_category() : "";
+
+    // 晶体管：基极左，集电极/发射极右
+    if(type.find("Transistor") != std::string::npos ||
+       type.find("BJT") != std::string::npos ||
+       type.find("MOSFET") != std::string::npos ||
+       type.find("JFET") != std::string::npos ||
+       type.find("Darlington") != std::string::npos ||
+       type.find("Phototrans") != std::string::npos){
+        pins.push_back({"B", wxPoint(-PIN_X, 0)});
+        pins.push_back({"C", wxPoint(PIN_X, -20)});
+        pins.push_back({"E", wxPoint(PIN_X, 20)});
+        return pins;
+    }
+    // 运放/比较器：反相/同相输入 + 输出
+    if(type.find("OpAmp") != std::string::npos ||
+       type.find("Comparator") != std::string::npos){
+        pins.push_back({"IN-", wxPoint(-PIN_X, -20)});
+        pins.push_back({"IN+", wxPoint(-PIN_X, 20)});
+        pins.push_back({"OUT", wxPoint(PIN_X, 0)});
+        return pins;
+    }
+    // 地：上方引脚；电源：上下引脚
+    if(cat == "Ground"){
+        pins.push_back({"GND", wxPoint(0, -PIN_X)});
+        return pins;
+    }
+    if(cat == "Source"){
+        pins.push_back({"+", wxPoint(0, -PIN_X)});
+        pins.push_back({"-", wxPoint(0, PIN_X)});
+        return pins;
+    }
+    // 继电器：线圈(左) + 触点(右)
+    if(cat == "Relay"){
+        pins.push_back({"COIL", wxPoint(-PIN_X, -20)});
+        pins.push_back({"COIL", wxPoint(-PIN_X, 20)});
+        pins.push_back({"COM",  wxPoint(PIN_X, 0)});
+        pins.push_back({"NC",   wxPoint(PIN_X, 20)});
+        return pins;
+    }
+    // 默认：左右两引脚
+    pins.push_back({"A", wxPoint(-PIN_X, 0)});
+    pins.push_back({"B", wxPoint(PIN_X, 0)});
+    return pins;
+}
+
+// 正交展开：相邻锚点间插入拐角点，保证只有水平/垂直段
+std::vector<wxPoint> orthogonal_expand(const std::vector<wxPoint>& anchors){
+    std::vector<wxPoint> out;
+    if(anchors.empty()) return out;
+    out.push_back(anchors[0]);
+    for(size_t i = 1; i < anchors.size(); ++i){
+        const wxPoint& a = anchors[i - 1];
+        const wxPoint& b = anchors[i];
+        // 先走较长轴：|dx|>=|dy| 先横后竖，否则先竖后横
+        const wxPoint corner = (std::abs(b.x - a.x) >= std::abs(b.y - a.y))
+                                   ? wxPoint(b.x, a.y)
+                                   : wxPoint(a.x, b.y);
+        if(corner != a) out.push_back(corner);
+        if(b != corner) out.push_back(b);
+    }
+    return out;
+}

@@ -85,3 +85,21 @@ public:
     //导线不创建UI节点（ui_node=nullptr），由画布onPaint直接绘制
     std::vector<wxPoint> points;
 };
+
+// 引脚：相对元件锚点（图片中心）的逻辑网格坐标偏移。
+// 偏移为 GridStep(10) 的倍数，且锚点已吸附网格 ⇒ 引脚自动落在网格上。
+struct Pin{
+    std::string name;   //引脚名（"IN1"/"OUT"/"B"/"C"/...）
+    wxPoint offset;     //相对锚点的网格坐标偏移（如 (-50, -10)）
+};
+
+// 计算元件的引脚（启发式：与SVG符号的实际引脚不完全一致，仅保证网格对齐，
+// 供导线吸附与正交布线使用）：
+//   逻辑门：左输入/右输出，纵向均匀分布（来自元数据inputs/outputs）；
+//   晶体管：基极左、集电极/发射极右；运放/比较器：反相/同相输入+输出；
+//   地：上方引脚；电源：上下引脚；继电器：线圈+触点；其余：左右两引脚。
+std::vector<Pin> item_pins(const CanvasItem& item);
+
+// 把折线锚点序列展开为正交（水平/垂直）折线：相邻锚点之间插入一个拐角点。
+// 相邻两点在同一直线时插入退化为无（不产生重复点）。保证导线只有横竖段、无斜线。
+std::vector<wxPoint> orthogonal_expand(const std::vector<wxPoint>& anchors);

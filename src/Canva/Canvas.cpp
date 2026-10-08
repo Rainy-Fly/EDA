@@ -10,6 +10,9 @@ const float MoveRatio=1.2f;
 static const float MinScale=0.01f;
 static const float MaxScale=100.0f;
 
+//导线端点吸附引脚的距离阈值（窗口像素）
+const float PinSnapPx = 14.0f;
+
 //wxPoint -> canvasPos 辅助转换
 static canvasPos to_canvas_pos(const wxPoint& p){
     return std::make_tuple((float)p.x, (float)p.y);
@@ -223,9 +226,11 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         return;
     }
 
-    //导线绘制模式：橡皮筋预览跟随鼠标（吸附网格）
+    //导线绘制模式：橡皮筋预览跟随鼠标（网格吸附 + 靠近引脚时吸附引脚）
     if(wire_placing){
         wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        wxPoint pin;
+        if(snap_to_pin(pos, pin)) coords = pin;   //引脚优先于网格吸附
         if(coords != wire_mouse_pos){
             wire_mouse_pos = coords;
             Refresh();   //重绘预览线
@@ -335,6 +340,8 @@ void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
 void Canvas::on_wire_left_down(const wxMouseEvent& event){
     const wxPoint pos = mouse_position(event);
     wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+    wxPoint pin;
+    if(snap_to_pin(pos, pin)) coords = pin;   //靠近引脚时吸附到引脚（引脚在网格上）
     if(!wire_points.empty() && coords == wire_points.back()){
         return;   //双击会先来两次DOWN（位置相同），忽略重复点，由DCLICK完成
     }
@@ -479,12 +486,13 @@ void Canvas::finish_wire(){
     if(!wire_placing) return;
     wire_placing = false;
     if(wire_points.size() >= 2){
-        //去掉连续重复点后提交
+        //去掉连续重复点后按正交展开（相邻锚点间插入拐角，保证只有水平/垂直段）
         std::vector<wxPoint> clean;
         for(const wxPoint& p : wire_points){
             if(clean.empty() || clean.back() != p) clean.push_back(p);
         }
         if(clean.size() >= 2){
+            clean = orthogonal_expand(clean);
             CanvasItem* item = ItemSVG("导线");   //Linking，无UI节点，由onPaint绘制
             if(Linking* wire = dynamic_cast<Linking*>(item)){
                 wire->points = clean;
@@ -748,6 +756,43 @@ bool Canvas::wire_hit(Linking* wire, const wxPoint& pos){
     return false;
 }
 
+//绘制所有元件的引脚：小圆点，位置=锚点coords+引脚偏移（均为网格的倍数⇒在网格上）
+void Canvas::draw_pins(wxPaintDC& dc){
+    dc.SetBrush(wxBrush(wxColour(25, 25, 25)));
+    dc.SetPen(*wxTRANSPARENT_PEN);
+    for(CanvasItem* item : *canvasItemCollection){
+        if(dynamic_cast<Linking*>(item)) continue;   //导线无引脚
+        for(const Pin& pin : item_pins(*item)){
+            dc.DrawCircle(coords_to_pos_px(wxPoint(item->coords_x + pin.offset.x,
+                                                    item->coords_y + pin.offset.y)), 3);
+        }
+    }
+}
+
+//鼠标位置(pos_px, 窗口像素)靠近某元件引脚（<=PinSnapPx）时吸附：
+//返回true并把out_coords设为引脚所在网格坐标
+bool Canvas::snap_to_pin(const wxPoint& pos_px, wxPoint& out_coords){
+    bool found = false;
+    float best = PinSnapPx;
+    for(CanvasItem* item : *canvasItemCollection){
+        if(dynamic_cast<Linking*>(item)) continue;
+        for(const Pin& pin : item_pins(*item)){
+            const wxPoint pp = coords_to_pos_px(wxPoint(item->coords_x + pin.offset.x,
+                                                        item->coords_y + pin.offset.y));
+            const int dx = pp.x - pos_px.x;
+            const int dy = pp.y - pos_px.y;
+            const float d = std::sqrt((float)(dx * dx + dy * dy));
+            if(d <= best){
+                best = d;
+                out_coords = wxPoint(item->coords_x + pin.offset.x,
+                                     item->coords_y + pin.offset.y);
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
 void Canvas::reput_items(){
     //从canvasItemCollection中拿出每一个元件，重新绘制，coords不变，计算出pos把元件的图片放在相应位置
     for(CanvasItem* item : *canvasItemCollection){
@@ -776,14 +821,20 @@ void Canvas::draw_wires(wxPaintDC& dc){
                        selected ? wxColour(0, 120, 255) : wxColour(40, 40, 40), 2);
     }
 
-    //正在绘制的导线：已确定的折线 + 橡皮筋预览 + 端点圆点
+    //正在绘制的导线：已确定的折线（正交展开）+ 橡皮筋预览（正交拐角）+ 端点圆点
     if(wire_placing && !wire_points.empty()){
         if(wire_points.size() >= 2){
-            draw_wire_path(dc, wire_points, wxColour(0, 120, 255), 2);
+            draw_wire_path(dc, orthogonal_expand(wire_points), wxColour(0, 120, 255), 2);
         }
-        //橡皮筋：从最后一个折点到当前鼠标位置（虚线）
+        //橡皮筋：最后一个折点 -> 拐角 -> 鼠标（只走横竖段，无斜线）
+        const wxPoint last  = wire_points.back();
+        const wxPoint mouse = wire_mouse_pos;
+        const wxPoint corner = (std::abs(mouse.x - last.x) >= std::abs(mouse.y - last.y))
+                                   ? wxPoint(mouse.x, last.y)   //先横后竖
+                                   : wxPoint(last.x, mouse.y);  //先竖后横
         dc.SetPen(wxPen(wxColour(0, 150, 255), 2, wxPENSTYLE_SHORT_DASH));
-        dc.DrawLine(coords_to_pos_px(wire_points.back()), coords_to_pos_px(wire_mouse_pos));
+        if(corner != last) dc.DrawLine(coords_to_pos_px(last), coords_to_pos_px(corner));
+        if(mouse != corner) dc.DrawLine(coords_to_pos_px(corner), coords_to_pos_px(mouse));
         //端点圆点
         dc.SetBrush(wxBrush(wxColour(0, 150, 255)));
         dc.SetPen(*wxTRANSPARENT_PEN);
@@ -852,6 +903,9 @@ void Canvas::onPaint(wxPaintEvent& event){
     const int ay = (int)std::lround((0 - offset_coords.y) * scale);
     dc.DrawLine(ax, 0, ax, size.GetHeight());
     dc.DrawLine(0, ay, size.GetWidth(), ay);
+
+    //引脚（网格之上、导线之下：小圆点，网格对齐）
+    draw_pins(dc);
 
     //导线（在网格之上、元件子窗口之下绘制）
     draw_wires(dc);

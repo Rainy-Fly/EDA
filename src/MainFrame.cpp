@@ -1,4 +1,4 @@
-#include"./demoMainFrame.hpp"
+#include"./MainFrame.hpp"
 #include"./Canva/Canvas.hpp"
 #include"./Explorer/ExplorerPane.h"
 #include"./AttributeBar/AttributeBar.hpp"
@@ -6,12 +6,12 @@
 #include"./MenuBar/FileActions.hpp"
 
 //先摘掉属性栏的回调：它指向下面的FileActions，必须在成员析构前断开
-demoMainFrame::~demoMainFrame(){
+MainFrame::~MainFrame(){
     if(attribute_bar) attribute_bar->set_edited_callback(nullptr);
 }
 
-demoMainFrame::demoMainFrame()
-    : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8("TinyEDA Demo"),
+MainFrame::MainFrame()
+    : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8("TinyEDA "),
               wxDefaultPosition, wxSize(1280, 800)),
       splitter(nullptr),
       right_splitter(nullptr),

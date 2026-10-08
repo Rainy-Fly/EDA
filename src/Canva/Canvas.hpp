@@ -117,6 +117,8 @@ private:
     void draw_wire_path(wxPaintDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制
     bool wire_hit(Linking* wire, const wxPoint& pos); //点到线段命中检测（窗口px）
+    void draw_pins(wxPaintDC& dc); //绘制所有元件的引脚（小圆点，网格对齐）
+    bool snap_to_pin(const wxPoint& pos_px, wxPoint& out_coords); //鼠标附近吸附引脚
 
     //统一取鼠标在画布客户区内的坐标：
     //事件可能来自画布本身，也可能来自元件节点/虚影等子窗口转发，

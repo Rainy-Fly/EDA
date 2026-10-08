@@ -10,11 +10,11 @@ class FileActions;
 
 // 演示用主窗口：左资源树(ExplorerPane) + 右上画布(Canvas) + 右下属性栏(AttributeBar)，
 // 用于验证各模块功能可以正常运行（Canvas/Explorer的代码不被修改）。
-class demoMainFrame : public wxFrame{
+class MainFrame : public wxFrame{
 public:
-    demoMainFrame();
+    MainFrame();
     //必须在.cpp里定义：FileActions在此只是前向声明，unique_ptr的析构需要完整类型
-    ~demoMainFrame() override;
+    ~MainFrame() override;
 private:
     wxSplitterWindow* splitter;        //外层分栏：左Explorer / 右面板
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar

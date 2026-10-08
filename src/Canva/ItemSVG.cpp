@@ -95,10 +95,10 @@ std::vector<wxString> candidate_paths(ItemType type, const std::string& generic_
 }
 
 //按候选路径提取SVG为wxBitmapBundle；全部缺失返回空bundle（不报错）。
-//SVG默认尺寸取150×150（与assets里电子符号的viewBox一致），
-//矢量重绘时按该默认尺寸×画布缩放得到任意清晰度
+//默认尺寸取80×80（比电子符号库viewBox的150小，元件默认显示更小巧，
+//且配合±5格的引脚偏移，引脚落在符号本体外侧、与网格对齐）。
 const wxBitmapBundle extract_svg(ItemType type, const std::string& generic_file){
-    const wxSize default_size(150, 150);
+    const wxSize default_size(80, 80);
     for(const wxString& path : candidate_paths(type, generic_file)){
         if(!wxFileExists(path)) continue;
         wxBitmapBundle bundle = wxBitmapBundle::FromSVGFile(path, default_size);

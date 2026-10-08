@@ -1,12 +1,12 @@
-#include"./demoApp.hpp"
-#include"./demoMainFrame.hpp"
+#include"./App.hpp"
+#include"./MainFrame.hpp"
 
-bool demoApp::OnInit(){
+bool App::OnInit(){
     //注册PNG等图片格式处理器（wxWidgets默认不注册，否则LoadFile会静默失败）
     wxInitAllImageHandlers();
-    demoMainFrame* frame = new demoMainFrame();
+    MainFrame* frame = new MainFrame();
     frame->Show(true);
     return true;
 }
 
-wxIMPLEMENT_APP(demoApp);
+wxIMPLEMENT_APP(App);
