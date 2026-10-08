@@ -69,7 +69,10 @@ FetchContent_MakeAvailable(
 # =========================
 
 file(
-    GLOB_RECURSE SOURCES
+    # CONFIGURE_DEPENDS：让构建前自动重新扫描目录。
+    # 不加的话，GLOB 只在“配置”那一刻扫一次，之后新增/删除的 .cpp 不会被收进工程，
+    # 表现为链接时报找不到符号或功能静默缺失（必须手动再跑一次 cmake -S . -B build）
+    GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
 )
 

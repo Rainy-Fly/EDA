@@ -20,6 +20,35 @@ cmake --build build --config Debug --target TinyEDA
 
 产物：`build\Debug\TinyEDA.exe`
 
+### 拉取队友的更新之后
+
+```powershell
+git pull
+cmake -S . -B build        # 重新配置
+cmake --build build --config Debug --target TinyEDA
+```
+
+两条 `cmake` 命令各自的作用：
+
+| 命令 | 作用 |
+|---|---|
+| `cmake -S . -B build` | **配置**：生成/刷新构建系统（VS 的 sln/vcxproj）。它会把 `src` 下当时存在的 `.cpp` 收集成源文件清单 |
+| `cmake --build build --config Debug --target TinyEDA` | **编译**：`--config Debug` 是必须的（VS 是多配置生成器）；`--target TinyEDA` 只编主程序，避开 jsoncpp 自带测试工程那个必然失败的步骤（否则整条命令返回 exit code 1，看着像编译失败） |
+
+**为什么拉取后要重新配置**：CMakeLists 用
+`file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")` 收集源文件 —— `GLOB` 是在
+**配置阶段**扫描目录，而 `CONFIGURE_DEPENDS` 让构建前自动重扫，所以正常情况下**新增文件不需要手动配置**
+（已实测：往 `src/` 放一个新 `.cpp`，直接构建就会被收进工程）。
+
+不过这个机制在个别情况下不完全可靠，记住两条经验：
+
+- 构建报 **“无法打开源文件 xxx.cpp”**（通常是**删除**源文件之后）→ 再构建一次即可，或手动 `cmake -S . -B build`
+- 链接报 **找不到符号**、或新加的文件看起来没被编译 → 手动 `cmake -S . -B build` 之后再构建
+
+如果 `git pull` 报 `CMakeLists.txt` 冲突（你本地也改过同一个文件），先看 `git diff` 弄清两边各改了什么再合并，
+**不要直接丢弃本地改动**；推送后的版本已经包含 `WIN32`、`/utf-8`、`wx::xml` 这些必需项，
+如果你本地只是为了这些才改的 CMakeLists，冲突时取远端版本即可。
+
 ### 运行
 
 **推荐：双击仓库根目录的 `run_TinyEDA.bat`。** 它会先把工作目录切到仓库根，再启动 exe。
@@ -123,6 +152,11 @@ Copy-Item build\_deps\jsoncpp-build\src\lib_json\Debug\jsoncpp.dll build\Debug\ 
 
 > 约定：项目文件（`.xml`）的读写**只有 `src/DealProjectXML` 一处实现**，其它模块不要再各写一套；
 > 以后要保存新的内容，改那一处即可。用户配置文件的读写同理，只在 `src/Settings`。
+>
+> 新增源文件直接放进 `src/` 即可，CMake 会自动收进工程（靠
+> `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`）；**删除**源文件后第一次构建可能报
+> “无法打开源文件 xxx.cpp”，再构建一次即可（或手动 `cmake -S . -B build`）。
+> 新增文件若没被编译、或链接时报找不到符号，也手动跑一次 configure。
 
 ## 项目描述文件（.xml）定义
 
