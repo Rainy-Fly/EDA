@@ -6,19 +6,33 @@
 
 ### 环境要求
 
-- Windows + Visual Studio 2022（MSVC）
+- Windows + MSVC 工具链（下面示例命令假设用 **Visual Studio 17 2022 生成器**；
+  用 VS Code + CMake Tools 扩展、或 Ninja/MinGW 生成器都可以，见下面「构建」一节）
 - CMake ≥ 3.24
 - 第三方依赖由 CMake 的 `FetchContent` 自动拉取（wxWidgets 3.2.11、jsoncpp 1.9.6），
   首次配置需要能访问 GitHub
 
 ### 构建
 
+**方式一：命令行**（多配置生成器，如 Visual Studio 17 2022）
+
 ```powershell
 cmake -S . -B build
 cmake --build build --config Debug --target TinyEDA
 ```
 
-产物：`build\Debug\TinyEDA.exe`
+**方式二：VS Code + CMake Tools 扩展**
+
+打开仓库 → 在状态栏选 **kit**（编译器，如 `Visual Studio Community 2022 - amd64`）和
+**variant**（`Debug`）→ 按 **F7** 编译、**Shift+F5** 运行/调试。这种方式**不需要手敲
+`--config`**，扩展会按你选的 variant 自动带上。
+
+产物：`build\Debug\TinyEDA.exe`（用 Ninja/MinGW 等单配置生成器时是 `build\TinyEDA.exe`）
+
+> **`--config` 要不要写，取决于 CMake 生成器，跟用哪个编辑器无关**：
+> - 多配置生成器（`Visual Studio 17 2022`、`Ninja Multi-Config`）→ 必须 `--config Debug`
+> - 单配置生成器（`Ninja`、`MinGW Makefiles`、`NMake Makefiles`）→ 不用，配置时改用
+>   `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug`
 
 ### 拉取队友的更新之后
 
@@ -28,12 +42,14 @@ cmake -S . -B build        # 重新配置
 cmake --build build --config Debug --target TinyEDA
 ```
 
+（VS Code + CMake Tools 的话：`git pull` 之后直接 F7 即可，扩展会自己重新配置。）
+
 两条 `cmake` 命令各自的作用：
 
 | 命令 | 作用 |
 |---|---|
-| `cmake -S . -B build` | **配置**：生成/刷新构建系统（VS 的 sln/vcxproj）。它会把 `src` 下当时存在的 `.cpp` 收集成源文件清单 |
-| `cmake --build build --config Debug --target TinyEDA` | **编译**：`--config Debug` 是必须的（VS 是多配置生成器）；`--target TinyEDA` 只编主程序，避开 jsoncpp 自带测试工程那个必然失败的步骤（否则整条命令返回 exit code 1，看着像编译失败） |
+| `cmake -S . -B build` | **配置**：生成/刷新构建系统（VS 生成器下是 sln/vcxproj，Ninja 下是 build.ninja）。它会把 `src` 下当时存在的 `.cpp` 收集成源文件清单 |
+| `cmake --build build --config Debug --target TinyEDA` | **编译**：`--config Debug` 只在多配置生成器下需要；`--target TinyEDA` 只编主程序，避开 jsoncpp 自带测试工程那个必然失败的步骤（否则整条命令返回 exit code 1，看着像编译失败；单配置生成器同样可以加这个 `--target`） |
 
 **为什么拉取后要重新配置**：CMakeLists 用
 `file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")` 收集源文件 —— `GLOB` 是在
@@ -64,6 +80,17 @@ cmake --build build --config Debug --target TinyEDA
 
 不用脚本也可以：命令行 `cd <仓库根>` 后再 `.\build\Debug\TinyEDA.exe`，
 或建快捷方式并把「起始位置」设为仓库根 —— 但这两条路 DLL 要自己保证在位（见下）。
+
+**VS Code + CMake Tools 的 Shift+F5（运行/调试）**：默认的工作目录通常是 exe 所在目录
+（`build\Debug`），和直接双击 exe 是同一个坑。要么配置成仓库根，要么就用 `run_TinyEDA.bat`。
+配置方式（`.vscode/` 已在 `.gitignore` 里，属各人本地设置）：
+
+```jsonc
+// .vscode/settings.json
+{ "cmake.debugConfig": { "cwd": "${workspaceFolder}" } }
+```
+
+或者在 `launch.json` 里给对应的配置加 `"cwd": "${workspaceFolder}"`。
 
 **不建议直接双击 `build\Debug\TinyEDA.exe`**，两个原因：
 
