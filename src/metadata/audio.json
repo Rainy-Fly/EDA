@@ -1,0 +1,38 @@
+{
+  "file": "audio.json",
+  "description": "电子符号库分类：音频（Audio）",
+  "components": [
+    {
+      "id": 1003,
+      "name": "蜂鸣器",
+      "name_en": "Audio-COM-Buzzer",
+      "type": "Audio-COM-Buzzer",
+      "category": "Audio",
+      "description": "音频器件：发声或拾音"
+    },
+    {
+      "id": 1004,
+      "name": "扬声器",
+      "name_en": "Audio-COM-Loudspeaker",
+      "type": "Audio-COM-Loudspeaker",
+      "category": "Audio",
+      "description": "音频器件：发声或拾音"
+    },
+    {
+      "id": 1005,
+      "name": "麦克风(IEC)",
+      "name_en": "Audio-IEC-Microphone",
+      "type": "Audio-IEC-Microphone",
+      "category": "Audio",
+      "description": "音频器件：发声或拾音"
+    },
+    {
+      "id": 1006,
+      "name": "麦克风(IEEE)",
+      "name_en": "Audio-IEEE-Microphone",
+      "type": "Audio-IEEE-Microphone",
+      "category": "Audio",
+      "description": "音频器件：发声或拾音"
+    }
+  ]
+}

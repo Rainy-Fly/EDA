@@ -1,0 +1,62 @@
+{
+  "file": "switch.json",
+  "description": "电子符号库分类：开关（Switch）",
+  "components": [
+    {
+      "id": 1087,
+      "name": "双刀双掷开关",
+      "name_en": "Switch-COM-DPDT",
+      "type": "Switch-COM-DPDT",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1088,
+      "name": "双刀单掷开关",
+      "name_en": "Switch-COM-DPST",
+      "type": "Switch-COM-DPST",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1089,
+      "name": "常闭按钮开关",
+      "name_en": "Switch-COM-Pushbutton-NC",
+      "type": "Switch-COM-Pushbutton-NC",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1090,
+      "name": "常开按钮开关",
+      "name_en": "Switch-COM-Pushbutton-NO",
+      "type": "Switch-COM-Pushbutton-NO",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1091,
+      "name": "双回路按钮开关",
+      "name_en": "Switch-COM-Pushbutton-Two_Circuit",
+      "type": "Switch-COM-Pushbutton-Two_Circuit",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1092,
+      "name": "单刀双掷开关",
+      "name_en": "Switch-COM-SPDT",
+      "type": "Switch-COM-SPDT",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    },
+    {
+      "id": 1093,
+      "name": "单刀单掷开关",
+      "name_en": "Switch-COM-SPST",
+      "type": "Switch-COM-SPST",
+      "category": "Switch",
+      "description": "开关：通断控制"
+    }
+  ]
+}

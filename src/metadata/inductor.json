@@ -1,0 +1,46 @@
+{
+  "file": "inductor.json",
+  "description": "电子符号库分类：电感（Inductor）",
+  "components": [
+    {
+      "id": 1041,
+      "name": "空心电感",
+      "name_en": "Inductor-COM-Air",
+      "type": "Inductor-COM-Air",
+      "category": "Inductor",
+      "description": "电感：储能、滤波"
+    },
+    {
+      "id": 1042,
+      "name": "磁珠",
+      "name_en": "Inductor-COM-Ferrite-Bead",
+      "type": "Inductor-COM-Ferrite-Bead",
+      "category": "Inductor",
+      "description": "电感：储能、滤波"
+    },
+    {
+      "id": 1043,
+      "name": "磁芯电感",
+      "name_en": "Inductor-COM-Magnetic",
+      "type": "Inductor-COM-Magnetic",
+      "category": "Inductor",
+      "description": "电感：储能、滤波"
+    },
+    {
+      "id": 1044,
+      "name": "抽头电感",
+      "name_en": "Inductor-COM-Tapped",
+      "type": "Inductor-COM-Tapped",
+      "category": "Inductor",
+      "description": "电感：储能、滤波"
+    },
+    {
+      "id": 1045,
+      "name": "可变电感",
+      "name_en": "Inductor-COM-Variable",
+      "type": "Inductor-COM-Variable",
+      "category": "Inductor",
+      "description": "电感：储能、滤波"
+    }
+  ]
+}

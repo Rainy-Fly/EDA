@@ -1,0 +1,102 @@
+{
+  "file": "ic.json",
+  "description": "电子符号库分类：集成电路（IC）",
+  "components": [
+    {
+      "id": 1029,
+      "name": "比较器",
+      "name_en": "IC-COM-Comparator",
+      "type": "IC-COM-Comparator",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1030,
+      "name": "D触发器(时钟)",
+      "name_en": "IC-COM-FlipFlop-ClockedD",
+      "type": "IC-COM-FlipFlop-ClockedD",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1031,
+      "name": "JK触发器(时钟)",
+      "name_en": "IC-COM-FlipFlop-ClockedJK",
+      "type": "IC-COM-FlipFlop-ClockedJK",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1032,
+      "name": "T触发器(时钟)",
+      "name_en": "IC-COM-FlipFlop-ClockedT",
+      "type": "IC-COM-FlipFlop-ClockedT",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1033,
+      "name": "D锁存器(门控)",
+      "name_en": "IC-COM-FlipFlop-GatedD",
+      "type": "IC-COM-FlipFlop-GatedD",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1034,
+      "name": "SR锁存器(门控)",
+      "name_en": "IC-COM-FlipFlop-GatedSR",
+      "type": "IC-COM-FlipFlop-GatedSR",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1035,
+      "name": "SR锁存器(基本)",
+      "name_en": "IC-COM-FlipFlop-SimpleSR",
+      "type": "IC-COM-FlipFlop-SimpleSR",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1036,
+      "name": "缓冲器",
+      "name_en": "IC-COM-Logic-Buffer",
+      "type": "IC-COM-Logic-Buffer",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1037,
+      "name": "同或门",
+      "name_en": "IC-COM-Logic-XNOR",
+      "type": "IC-COM-Logic-XNOR",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1038,
+      "name": "运算放大器",
+      "name_en": "IC-COM-OpAmp",
+      "type": "IC-COM-OpAmp",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1039,
+      "name": "施密特触发器",
+      "name_en": "IC-COM-Schmitt",
+      "type": "IC-COM-Schmitt",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    },
+    {
+      "id": 1040,
+      "name": "反相施密特触发器",
+      "name_en": "IC-COM-Schmitt-Inverted",
+      "type": "IC-COM-Schmitt-Inverted",
+      "category": "IC",
+      "description": "集成电路/功能块符号"
+    }
+  ]
+}

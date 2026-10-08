@@ -1,0 +1,62 @@
+{
+  "file": "capacitor.json",
+  "description": "电子符号库分类：电容（Capacitor）",
+  "components": [
+    {
+      "id": 1007,
+      "name": "穿心电容",
+      "name_en": "Capacitor-COM-Feedthrough",
+      "type": "Capacitor-COM-Feedthrough",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1008,
+      "name": "无极性电容(IEC)",
+      "name_en": "Capacitor-IEC-NonPolarized",
+      "type": "Capacitor-IEC-NonPolarized",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1009,
+      "name": "极性电容(IEC)",
+      "name_en": "Capacitor-IEC-Polarized",
+      "type": "Capacitor-IEC-Polarized",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1010,
+      "name": "微调电阻(IEC)",
+      "name_en": "Capacitor-IEC-Trimmer",
+      "type": "Capacitor-IEC-Trimmer",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1011,
+      "name": "可变电容(IEC)",
+      "name_en": "Capacitor-IEC-Variable",
+      "type": "Capacitor-IEC-Variable",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1012,
+      "name": "无极性电容(IEEE)",
+      "name_en": "Capacitor-IEEE-NonPolarized",
+      "type": "Capacitor-IEEE-NonPolarized",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    },
+    {
+      "id": 1013,
+      "name": "极性电容(IEEE)",
+      "name_en": "Capacitor-IEEE-Polarized",
+      "type": "Capacitor-IEEE-Polarized",
+      "category": "Capacitor",
+      "description": "电容：储能、滤波、耦合"
+    }
+  ]
+}

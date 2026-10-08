@@ -1,0 +1,30 @@
+{
+  "file": "antenna.json",
+  "description": "电子符号库分类：天线（Antenna）",
+  "components": [
+    {
+      "id": 1000,
+      "name": "通用天线",
+      "name_en": "Antenna-COM-Aerial",
+      "type": "Antenna-COM-Aerial",
+      "category": "Antenna",
+      "description": "天线：发射或接收电磁波"
+    },
+    {
+      "id": 1001,
+      "name": "偶极天线",
+      "name_en": "Antenna-COM-Dipole",
+      "type": "Antenna-COM-Dipole",
+      "category": "Antenna",
+      "description": "天线：发射或接收电磁波"
+    },
+    {
+      "id": 1002,
+      "name": "环形天线",
+      "name_en": "Antenna-COM-Loop",
+      "type": "Antenna-COM-Loop",
+      "category": "Antenna",
+      "description": "天线：发射或接收电磁波"
+    }
+  ]
+}

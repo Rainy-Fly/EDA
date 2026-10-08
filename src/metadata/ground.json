@@ -1,0 +1,30 @@
+{
+  "file": "ground.json",
+  "description": "电子符号库分类：接地（Ground）",
+  "components": [
+    {
+      "id": 1026,
+      "name": "机壳地",
+      "name_en": "Ground-COM-Chassis",
+      "type": "Ground-COM-Chassis",
+      "category": "Ground",
+      "description": "接地：参考电位符号"
+    },
+    {
+      "id": 1027,
+      "name": "一般接地",
+      "name_en": "Ground-COM-General",
+      "type": "Ground-COM-General",
+      "category": "Ground",
+      "description": "接地：参考电位符号"
+    },
+    {
+      "id": 1028,
+      "name": "信号地",
+      "name_en": "Ground-COM-Signal",
+      "type": "Ground-COM-Signal",
+      "category": "Ground",
+      "description": "接地：参考电位符号"
+    }
+  ]
+}

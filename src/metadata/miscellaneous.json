@@ -1,0 +1,62 @@
+{
+  "file": "miscellaneous.json",
+  "description": "电子符号库分类：杂项（Miscellaneous）",
+  "components": [
+    {
+      "id": 1046,
+      "name": "模数转换器(ADC)",
+      "name_en": "Miscellaneous-COM-ADC",
+      "type": "Miscellaneous-COM-ADC",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1047,
+      "name": "晶振",
+      "name_en": "Miscellaneous-COM-Crystal_Oscillator",
+      "type": "Miscellaneous-COM-Crystal_Oscillator",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1048,
+      "name": "数模转换器(DAC)",
+      "name_en": "Miscellaneous-COM-DAC",
+      "type": "Miscellaneous-COM-DAC",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1049,
+      "name": "白炽灯",
+      "name_en": "Miscellaneous-COM-Lamp-Incandescent",
+      "type": "Miscellaneous-COM-Lamp-Incandescent",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1050,
+      "name": "指示灯",
+      "name_en": "Miscellaneous-COM-Lamp-Indicator",
+      "type": "Miscellaneous-COM-Lamp-Indicator",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1051,
+      "name": "光电耦合器",
+      "name_en": "Miscellaneous-COM-Optocoupler",
+      "type": "Miscellaneous-COM-Optocoupler",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    },
+    {
+      "id": 1052,
+      "name": "测试点",
+      "name_en": "Miscellaneous-COM-Probe_Point",
+      "type": "Miscellaneous-COM-Probe_Point",
+      "category": "Miscellaneous",
+      "description": "杂项器件"
+    }
+  ]
+}

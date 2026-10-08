@@ -1,0 +1,110 @@
+{
+  "file": "transistor.json",
+  "description": "电子符号库分类：晶体管（Transistor）",
+  "components": [
+    {
+      "id": 1097,
+      "name": "NPN双极型晶体管",
+      "name_en": "Transistor-COM-BJT-NPN",
+      "type": "Transistor-COM-BJT-NPN",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1098,
+      "name": "PNP双极型晶体管",
+      "name_en": "Transistor-COM-BJT-PNP",
+      "type": "Transistor-COM-BJT-PNP",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1099,
+      "name": "NPN达林顿管",
+      "name_en": "Transistor-COM-Darlington-NPN",
+      "type": "Transistor-COM-Darlington-NPN",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1100,
+      "name": "PNP达林顿管",
+      "name_en": "Transistor-COM-Darlington-PNP",
+      "type": "Transistor-COM-Darlington-PNP",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1101,
+      "name": "N沟道结型场效应管",
+      "name_en": "Transistor-COM-JFET-N",
+      "type": "Transistor-COM-JFET-N",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1102,
+      "name": "P沟道结型场效应管",
+      "name_en": "Transistor-COM-JFET-P",
+      "type": "Transistor-COM-JFET-P",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1103,
+      "name": "N沟道MOS管",
+      "name_en": "Transistor-COM-MOSFET-N",
+      "type": "Transistor-COM-MOSFET-N",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1104,
+      "name": "N沟道耗尽型MOS管",
+      "name_en": "Transistor-COM-MOSFET-N-Depletion",
+      "type": "Transistor-COM-MOSFET-N-Depletion",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1105,
+      "name": "N沟道增强型MOS管",
+      "name_en": "Transistor-COM-MOSFET-N-Enhancement",
+      "type": "Transistor-COM-MOSFET-N-Enhancement",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1106,
+      "name": "P沟道MOS管",
+      "name_en": "Transistor-COM-MOSFET-P",
+      "type": "Transistor-COM-MOSFET-P",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1107,
+      "name": "P沟道耗尽型MOS管",
+      "name_en": "Transistor-COM-MOSFET-P-Depletion",
+      "type": "Transistor-COM-MOSFET-P-Depletion",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1108,
+      "name": "P沟道增强型MOS管",
+      "name_en": "Transistor-COM-MOSFET-P-Enhancement",
+      "type": "Transistor-COM-MOSFET-P-Enhancement",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    },
+    {
+      "id": 1109,
+      "name": "光电晶体管",
+      "name_en": "Transistor-COM-Phototransitor",
+      "type": "Transistor-COM-Phototransitor",
+      "category": "Transistor",
+      "description": "晶体管：放大、开关"
+    }
+  ]
+}
