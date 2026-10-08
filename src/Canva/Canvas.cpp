@@ -476,6 +476,41 @@ void Canvas::cancel_wire(){
     wire_points.clear();
 }
 
+//----- 项目文件（DealProjectXML）支持 -----
+const std::unordered_set<CanvasItem*>& Canvas::get_items() const{
+    return *canvasItemCollection;
+}
+
+void Canvas::set_view(wxPoint offset, float s){
+    offset_coords = offset;
+    scale = s;
+    reput();
+    Refresh();
+}
+
+//插入元件：创建UI节点、绑定事件转发、按当前视口摆放（导线无UI节点，仅入集合由onPaint绘制）
+void Canvas::add_item(CanvasItem* item){
+    if(!item) return;
+    item->create_ui(this);
+    bind_ui_events(item);
+    item->update_ui(scale, offset_coords);
+    canvasItemCollection->insert(item);
+    Refresh();
+}
+
+//清空全部元件：结束绘制/编辑状态、销毁所有UI节点与实例
+void Canvas::clear_all_items(){
+    cancel_tool();   //结束放置/导线/编辑工具并清工具栏高亮
+    for(CanvasItem* item : *canvasItemCollection){
+        if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，安全
+        item->ui_node = nullptr;
+        delete item;
+    }
+    canvasItemCollection->clear();
+    set_current_item(nullptr);
+    Refresh();
+}
+
 //删除元件：从集合移除、销毁UI节点并释放（门/导线均可）
 void Canvas::delete_item(CanvasItem* item){
     if(!item) return;

@@ -91,5 +91,6 @@ target_link_libraries(
 
     wx::core
     wx::base
+    wx::xml
     jsoncpp_lib
 )

@@ -39,6 +39,15 @@ public:
     //点击选中/放置元件时回调该元件；点击空白或开始新放置时回调nullptr
     void set_current_item_callback(std::function<void(CanvasItem*)> callback);
 
+    //----- 项目文件（DealProjectXML）支持 -----
+    const std::unordered_set<CanvasItem*>& get_items() const; //全部元件（门/通用元件/导线）
+    wxPoint get_offset() const { return offset_coords; }      //视口：画布左上角逻辑坐标
+    float get_scale() const { return scale; }                 //缩放比例
+    int get_grid_step() const { return GridStep; }            //网格步长
+    void set_view(wxPoint offset, float s);                   //设置视口并重排
+    void add_item(CanvasItem* item);                          //插入元件（创建UI/绑定事件/摆放）
+    void clear_all_items();                                   //清空全部元件并复位绘制状态
+
     friend class ToolBar;   //工具栏需要转发滚轮事件给画布
 
 private:

@@ -76,6 +76,10 @@ MetaData* CanvasItem::load_config(ItemType type, const std::string& name){
     return load_metadata(name);
 }
 
+void CanvasItem::reserve_id(int id){
+    if(id >= next_id) next_id = id + 1;
+}
+
 void CanvasItem::create_ui(wxWindow* parent){
     //基类：无UI节点（如Linking导线）
     ui_node = nullptr;

@@ -49,6 +49,9 @@ public:
     //读取配置：从 src/metadata/ 下的JSON文件读取元件元数据（找不到返回nullptr不报错）
     static MetaData* load_config(ItemType type, const std::string& name);
 
+    //从项目文件恢复实例ID时调用：确保后续自增ID不会与已恢复的冲突
+    static void reserve_id(int id);
+
     //创建UI节点（需要父窗口；Linking等无UI节点的类型保持空指针）
     virtual void create_ui(wxWindow* parent);
 
