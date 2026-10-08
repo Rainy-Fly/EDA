@@ -8,7 +8,11 @@
 #include<wx/xml/xml.h>
 #include<ctime>
 
-#ifdef _WIN32
+// 本地时间兼容：localtime_r 是 POSIX 接口，只有 MSVC（及部分运行时）没有，
+// 这里把 localtime_r 映射到参数顺序相反的 localtime_s。
+// 用 _MSC_VER 而不是 _WIN32：MinGW/MinGW-w64 自身就提供 localtime_r，
+// 若按 _WIN32 一并替换，反而会去调用它不一定提供的 localtime_s
+#ifdef _MSC_VER
     #define localtime_r(timep, result) localtime_s(result, timep)
 #endif
 
@@ -64,12 +68,7 @@ wxXmlNode* add_point_child(wxXmlNode* parent, const wxPoint& pt){
 std::string now_iso(){
     std::time_t t = std::time(nullptr);
     std::tm tm{};
-    //localtime_r 是 POSIX 接口，MSVC 没有；MSVC 用参数顺序相反的 localtime_s
-#ifdef _MSC_VER
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
+    localtime_r(&t, &tm);   //Windows/MSVC 的兼容在文件顶部用宏处理
     char buf[32];
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm);
     return buf;
