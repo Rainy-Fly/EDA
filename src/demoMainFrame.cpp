@@ -2,6 +2,7 @@
 #include"./Canva/Canvas.hpp"
 #include"./Explorer/ExplorerPane.h"
 #include"./AttributeBar/AttributeBar.hpp"
+#include"./MenuBar/MenuBar.hpp"
 
 demoMainFrame::demoMainFrame()
     : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8("TinyEDA Demo"),
@@ -27,6 +28,13 @@ demoMainFrame::demoMainFrame()
     //联动：画布选中/放置/清空元件时，属性栏显示对应元件的元数据
     canvas->set_current_item_callback(
         [this](CanvasItem* item){ attribute_bar->set_item(item); });
+
+    //联动：资源树点击元件 -> 画布放置（与工具栏门类一致：虚影跟随、点击放置）
+    explorer->SetComponentSelectedCallback(
+        [this](const std::string& type){ canvas->select_tool_by_name(type); });
+
+    //菜单栏：File/Edit/Simulate（目前仅UI，无实际功能）
+    SetMenuBar(new MenuBar());
 
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(splitter, 1, wxEXPAND);

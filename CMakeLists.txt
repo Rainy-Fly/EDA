@@ -63,28 +63,10 @@ FetchContent_MakeAvailable(
 # 源文件
 # =========================
 
-option(
-    TEST
-    "build test files rather than src"
-    OFF
+file(
+    GLOB_RECURSE SOURCES
+    "src/*.cpp"
 )
-
-if(TEST)
-
-    file(
-        GLOB_RECURSE SOURCES
-        "tests/*.cpp"
-    )
-
-else()
-
-    file(
-        GLOB_RECURSE SOURCES
-        "src/*.cpp"
-    )
-
-endif()
-
 
 # =========================
 # TinyEDA

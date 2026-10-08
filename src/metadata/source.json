@@ -1,0 +1,86 @@
+{
+  "file": "source.json",
+  "description": "电子符号库分类：电源/信号源（Source）",
+  "components": [
+    {
+      "id": 1077,
+      "name": "交流源",
+      "name_en": "Source-COM-AC",
+      "type": "Source-COM-AC",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1078,
+      "name": "多节电池",
+      "name_en": "Source-COM-Battery-Multiple",
+      "type": "Source-COM-Battery-Multiple",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1079,
+      "name": "单节电池",
+      "name_en": "Source-COM-Battery-Single",
+      "type": "Source-COM-Battery-Single",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1080,
+      "name": "电流源",
+      "name_en": "Source-COM-Current",
+      "type": "Source-COM-Current",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1081,
+      "name": "受控电流源",
+      "name_en": "Source-COM-Current-Controlled",
+      "type": "Source-COM-Current-Controlled",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1082,
+      "name": "直流源",
+      "name_en": "Source-COM-DC",
+      "type": "Source-COM-DC",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1083,
+      "name": "受控直流源",
+      "name_en": "Source-COM-DC-Controlled",
+      "type": "Source-COM-DC-Controlled",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1084,
+      "name": "光伏电池",
+      "name_en": "Source-COM-Photovoltaic",
+      "type": "Source-COM-Photovoltaic",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1085,
+      "name": "方波源",
+      "name_en": "Source-COM-Square",
+      "type": "Source-COM-Square",
+      "category": "Source",
+      "description": "电源/信号源"
+    },
+    {
+      "id": 1086,
+      "name": "三角波源",
+      "name_en": "Source-COM-Triangle",
+      "type": "Source-COM-Triangle",
+      "category": "Source",
+      "description": "电源/信号源"
+    }
+  ]
+}

@@ -8,6 +8,7 @@
 
 #include<fstream>
 #include<set>
+#include<map>
 #include<unordered_map>
 #include<vector>
 
@@ -26,7 +27,7 @@ struct Definition{
 };
 
 // 元数据目录候选：优先“当前目录”，兜底“可执行文件所在目录/..”（build/.. => 仓库根）。
-// 与 ItemPNG 的图片路径解析策略一致，保证从任意目录运行都能找到元数据文件。
+// 与 ItemSVG 的路径解析策略一致，保证从任意目录运行都能找到元数据文件。
 std::vector<wxString> metadata_dirs(){
     std::set<wxString> dirs;
     const wxString rel = wxString::FromUTF8(MetaDataJsonPath);   //"src/metadata/"
@@ -137,4 +138,21 @@ MetaData* load_metadata(const std::string& key){
     auto it = reg.find(key);
     if(it == reg.end()) return nullptr;   //找不到：返回nullptr，不报错
     return build_metadata(it->second);    //每次返回独立副本，调用者拥有
+}
+
+//枚举所有元件定义：索引中同一元件被 name/name_en/type 三个键重复指向，
+//按id去重后每个元件只返回一份（按id排序保证稳定顺序）
+std::vector<MetaData*> load_all_metadata(){
+    std::vector<MetaData*> out;
+    const auto& reg = registry();
+    std::map<int, const Definition*> unique;   //id -> 定义（id唯一且已分配）
+    for(const auto& kv : reg){
+        if(unique.find(kv.second.id) == unique.end()){
+            unique[kv.second.id] = &kv.second;
+        }
+    }
+    for(const auto& kv : unique){
+        out.push_back(build_metadata(*kv.second));
+    }
+    return out;
 }

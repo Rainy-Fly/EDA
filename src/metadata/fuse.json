@@ -1,0 +1,30 @@
+{
+  "file": "fuse.json",
+  "description": "电子符号库分类：保险丝（Fuse）",
+  "components": [
+    {
+      "id": 1023,
+      "name": "保险丝(IEC)",
+      "name_en": "Fuse-IEC",
+      "type": "Fuse-IEC",
+      "category": "Fuse",
+      "description": "保险丝：过流保护"
+    },
+    {
+      "id": 1024,
+      "name": "保险丝(IEEE)",
+      "name_en": "Fuse-IEEE",
+      "type": "Fuse-IEEE",
+      "category": "Fuse",
+      "description": "保险丝：过流保护"
+    },
+    {
+      "id": 1025,
+      "name": "保险丝(IEEE-Alt)",
+      "name_en": "Fuse-IEEE-Alt",
+      "type": "Fuse-IEEE-Alt",
+      "category": "Fuse",
+      "description": "保险丝：过流保护"
+    }
+  ]
+}

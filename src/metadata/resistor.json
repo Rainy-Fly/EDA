@@ -1,0 +1,126 @@
+{
+  "file": "resistor.json",
+  "description": "电子符号库分类：电阻（Resistor）",
+  "components": [
+    {
+      "id": 1062,
+      "name": "忆阻器",
+      "name_en": "Resistor-COM-Memristor",
+      "type": "Resistor-COM-Memristor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1063,
+      "name": "光敏电阻(IEC)",
+      "name_en": "Resistor-IEC-Photoresistor",
+      "type": "Resistor-IEC-Photoresistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1064,
+      "name": "电位器(IEC)",
+      "name_en": "Resistor-IEC-Potentiometer",
+      "type": "Resistor-IEC-Potentiometer",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1065,
+      "name": "变阻器(IEC)",
+      "name_en": "Resistor-IEC-Rheostat",
+      "type": "Resistor-IEC-Rheostat",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1066,
+      "name": "标准电阻(IEC)",
+      "name_en": "Resistor-IEC-Standard",
+      "type": "Resistor-IEC-Standard",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1067,
+      "name": "热敏电阻(IEC)",
+      "name_en": "Resistor-IEC-Thermistor",
+      "type": "Resistor-IEC-Thermistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1068,
+      "name": "微调电阻(IEC)",
+      "name_en": "Resistor-IEC-Trimmer",
+      "type": "Resistor-IEC-Trimmer",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1069,
+      "name": "压敏电阻(IEC)",
+      "name_en": "Resistor-IEC-Varistor",
+      "type": "Resistor-IEC-Varistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1070,
+      "name": "光敏电阻(IEEE)",
+      "name_en": "Resistor-IEEE-Photoresistor",
+      "type": "Resistor-IEEE-Photoresistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1071,
+      "name": "电位器(IEEE)",
+      "name_en": "Resistor-IEEE-Potentiometer",
+      "type": "Resistor-IEEE-Potentiometer",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1072,
+      "name": "变阻器(IEEE)",
+      "name_en": "Resistor-IEEE-Rheostat",
+      "type": "Resistor-IEEE-Rheostat",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1073,
+      "name": "标准电阻(IEEE)",
+      "name_en": "Resistor-IEEE-Standard",
+      "type": "Resistor-IEEE-Standard",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1074,
+      "name": "热敏电阻(IEEE)",
+      "name_en": "Resistor-IEEE-Thermistor",
+      "type": "Resistor-IEEE-Thermistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1075,
+      "name": "微调电阻(IEEE)",
+      "name_en": "Resistor-IEEE-Trimmer",
+      "type": "Resistor-IEEE-Trimmer",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    },
+    {
+      "id": 1076,
+      "name": "压敏电阻(IEEE)",
+      "name_en": "Resistor-IEEE-Varistor",
+      "type": "Resistor-IEEE-Varistor",
+      "category": "Resistor",
+      "description": "电阻：限制电流、分压"
+    }
+  ]
+}

@@ -5,7 +5,7 @@
 
 int CanvasItem::next_id = 1;
 
-//显示尺寸上限（像素），避免极端缩放下把图片缩得过大
+//显示尺寸上限（像素），避免极端缩放下把元件画得过大
 static const int MaxDisplaySize = 2048;
 
 const char* item_type_name(ItemType type){
@@ -17,6 +17,7 @@ const char* item_type_name(ItemType type){
         case ItemType::XOR:  return "XOR";
         case ItemType::NOT:  return "NOT";
         case ItemType::WIRE: return "WIRE";
+        case ItemType::GENERIC: return "GENERIC";
     }
     return "";
 }
@@ -30,36 +31,46 @@ const char* item_type_label(ItemType type){
         case ItemType::XOR:  return "异或门";
         case ItemType::NOT:  return "非门";
         case ItemType::WIRE: return "导线";
+        case ItemType::GENERIC: return "通用元件";
     }
     return "";
 }
 
-//构造函数：持有图片引用（来自ItemPNG共享缓存，不拥有）与元数据
+//从SVG bundle按指定像素尺寸重绘，去掉scale factor（见头文件注释）
+wxBitmap render_svg(const wxBitmapBundle& svg, int width, int height){
+    if(!svg.IsOk()) return wxBitmap();
+    wxBitmap bmp = svg.GetBitmap(wxSize(width, height));
+    //wxImage没有scale factor，转wxImage再转回wxBitmap即归一化为物理像素显示
+    return wxBitmap(bmp.ConvertToImage());
+}
+
+//构造函数：持有SVG引用（来自ItemSVG共享缓存，不拥有）与元数据。
+//SVG是矢量图，放大缩小不会失真，由update_ui按目标尺寸直接重绘
 CanvasItem::CanvasItem(const std::string& name, ItemType type,
-                       const wxBitmap* image, MetaData* metadata)
+                       const wxBitmapBundle* svg, MetaData* metadata)
     : name(name),
       id(next_id++),
       coords_x(0),
       coords_y(0),
       type(type),
-      image(image),
+      svg(svg),
       ui_node(nullptr),
       metadata(metadata),
       ghost_mode(false){
-    //图片引用构造后不再改变；放大缩小时由update_ui从这张源图重新缩放
+    //SVG引用构造后不再改变；缩放时由update_ui用wxBitmapBundle按目标尺寸重绘
     rendered_width = 0;
     rendered_height = 0;
 }
 
 CanvasItem::~CanvasItem(){
-    //image来自ItemPNG的共享缓存，由缓存统一管理，这里不释放
+    //svg来自ItemSVG的共享缓存，由缓存统一管理，这里不释放
     delete metadata;
     //ui_node是画布面板的子窗口，由wxWidgets窗口树统一释放，这里不删除
 }
 
 //读取配置：从 src/metadata/ 下的JSON文件（见MetaDataJson）读取元件元数据。
 //优先按类型字符串（"NAND"/"WIRE"）查找，再按名字（中文/英文）兜底；
-//找不到返回nullptr（不报错，与图片缺失不报错一致）
+//找不到返回nullptr（不报错，与SVG缺失不报错一致）
 MetaData* CanvasItem::load_config(ItemType type, const std::string& name){
     if(MetaData* m = load_metadata(item_type_name(type))) return m;
     return load_metadata(name);
@@ -70,20 +81,39 @@ void CanvasItem::create_ui(wxWindow* parent){
     ui_node = nullptr;
 }
 
-void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
-    if(!ui_node || !image) return;
-    //大小：源图片尺寸 × 画布缩放（限制在[1, MaxDisplaySize]内，极端缩放不至于过大）
-    const int width  = std::clamp((int)std::lround(image->GetWidth()  * scale), 1, MaxDisplaySize);
-    const int height = std::clamp((int)std::lround(image->GetHeight() * scale), 1, MaxDisplaySize);
+//虚影半透明：把渲染出的位图alpha整体减半（保留SVG自身的透明区域）
+static wxBitmap apply_ghost_alpha(const wxBitmap& bmp){
+    wxImage img = bmp.ConvertToImage();
+    if(!img.HasAlpha()) img.InitAlpha();
+    unsigned char* alpha = img.GetAlpha();
+    if(alpha){
+        const size_t n = (size_t)img.GetWidth() * img.GetHeight();
+        for(size_t i = 0; i < n; ++i){
+            alpha[i] = (unsigned char)(alpha[i] * 0.5f);
+        }
+    }
+    return wxBitmap(img);
+}
 
-    //性能关键：仅当目标尺寸变化（滚轮缩放）时才从源图重渲染位图；
-    //鼠标移动（尺寸不变）时跳过重渲染，只更新位置，保证虚影/元件移动流畅
+void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
+    if(!ui_node || !svg || !svg->IsOk()) return;
+    //大小：SVG按“默认尺寸(150) × 画布缩放”重绘（矢量，任意缩放清晰）。
+    //wxBitmapBundle内部按尺寸缓存重绘结果，重复调用同尺寸时零成本
+    const wxSize pref = svg->GetPreferredBitmapSizeAtScale(scale);
+    const int width  = std::clamp(pref.x, 1, MaxDisplaySize);
+    const int height = std::clamp(pref.y, 1, MaxDisplaySize);
+
+    //性能关键：仅当目标尺寸变化（滚轮缩放）时才重绘位图；
+    //鼠标移动（尺寸不变）时跳过重绘，只更新位置，保证虚影/元件移动流畅
     if(width != rendered_width || height != rendered_height){
-        rendered_bitmap = scale_image(scale, width, height);
+        //render_svg统一去掉scale factor，否则GTK按逻辑尺寸绘制会抵消尺寸变化（图片不随缩放变化）
+        wxBitmap bmp = render_svg(*svg, width, height);
+        if(ghost_mode) bmp = apply_ghost_alpha(bmp);
+        rendered_bitmap = bmp;
         rendered_width  = width;
         rendered_height = height;
-        if(wxStaticBitmap* bmp = dynamic_cast<wxStaticBitmap*>(ui_node)){
-            bmp->SetBitmap(wxBitmapBundle::FromBitmap(rendered_bitmap));
+        if(wxStaticBitmap* node = dynamic_cast<wxStaticBitmap*>(ui_node)){
+            node->SetBitmap(wxBitmapBundle::FromBitmap(rendered_bitmap));
         }
         ui_node->SetSize(width, height);   //节点尺寸与位图尺寸一致，保证命中检测与显示一致
     }
@@ -93,27 +123,6 @@ void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
     const float pos_y = (coords_y - offset_coords.y) * scale;
     ui_node->Move((int)std::lround(pos_x - rendered_width  / 2.0f),
                   (int)std::lround(pos_y - rendered_height / 2.0f));
-}
-
-wxBitmap CanvasItem::scale_image(float scale, int width, int height) const{
-    if(!image) return wxBitmap();
-    wxImage img = image->ConvertToImage();
-    if(img.GetWidth() != width || img.GetHeight() != height){
-        //交互缩放用NORMAL质量：明显快于HIGH，视觉上可接受
-        img = img.Scale(width, height, wxIMAGE_QUALITY_NORMAL);
-    }
-    //虚影：叠加半透明（保留原图透明区域，仅降低不透明像素的alpha）
-    if(ghost_mode){
-        if(!img.HasAlpha()) img.InitAlpha();
-        unsigned char* alpha = img.GetAlpha();
-        if(alpha){
-            const size_t n = (size_t)img.GetWidth() * img.GetHeight();
-            for(size_t i = 0; i < n; ++i){
-                alpha[i] = (unsigned char)(alpha[i] * 0.5f);
-            }
-        }
-    }
-    return wxBitmap(img);
 }
 
 void Symbol::create_ui(wxWindow* parent){

@@ -1,0 +1,78 @@
+{
+  "file": "diode.json",
+  "description": "电子符号库分类：二极管（Diode）",
+  "components": [
+    {
+      "id": 1014,
+      "name": "发光二极管(LED)",
+      "name_en": "Diode-COM-LED",
+      "type": "Diode-COM-LED",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1015,
+      "name": "激光二极管",
+      "name_en": "Diode-COM-Laser",
+      "type": "Diode-COM-Laser",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1016,
+      "name": "光电二极管",
+      "name_en": "Diode-COM-Photodiode",
+      "type": "Diode-COM-Photodiode",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1017,
+      "name": "肖克利二极管",
+      "name_en": "Diode-COM-Shockley",
+      "type": "Diode-COM-Shockley",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1018,
+      "name": "肖特基二极管",
+      "name_en": "Diode-COM-Shottky",
+      "type": "Diode-COM-Shottky",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1019,
+      "name": "标准变压器",
+      "name_en": "Diode-COM-Standard",
+      "type": "Diode-COM-Standard",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1020,
+      "name": "隧道二极管",
+      "name_en": "Diode-COM-Tunnel",
+      "type": "Diode-COM-Tunnel",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1021,
+      "name": "变容二极管",
+      "name_en": "Diode-COM-Varicap",
+      "type": "Diode-COM-Varicap",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    },
+    {
+      "id": 1022,
+      "name": "齐纳二极管",
+      "name_en": "Diode-COM-Zener",
+      "type": "Diode-COM-Zener",
+      "category": "Diode",
+      "description": "二极管：单向导通"
+    }
+  ]
+}

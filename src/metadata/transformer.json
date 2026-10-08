@@ -1,0 +1,30 @@
+{
+  "file": "transformer.json",
+  "description": "电子符号库分类：变压器（Transformer）",
+  "components": [
+    {
+      "id": 1094,
+      "name": "中心抽头变压器",
+      "name_en": "Transformer-COM-Center",
+      "type": "Transformer-COM-Center",
+      "category": "Transformer",
+      "description": "变压器：电压变换、隔离"
+    },
+    {
+      "id": 1095,
+      "name": "双中心抽头变压器",
+      "name_en": "Transformer-COM-Center-Double",
+      "type": "Transformer-COM-Center-Double",
+      "category": "Transformer",
+      "description": "变压器：电压变换、隔离"
+    },
+    {
+      "id": 1096,
+      "name": "标准变压器",
+      "name_en": "Transformer-COM-Standard",
+      "type": "Transformer-COM-Standard",
+      "category": "Transformer",
+      "description": "变压器：电压变换、隔离"
+    }
+  ]
+}

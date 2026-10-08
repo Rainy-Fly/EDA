@@ -1,5 +1,5 @@
 #include"./Canvas.hpp"
-#include"./ItemPNG.hpp"
+#include"./ItemSVG.hpp"
 #include<cmath>
 #include<algorithm>
 
@@ -9,6 +9,23 @@ const float MoveRatio=1.2f;
 //wxPoint -> canvasPos 辅助转换
 static canvasPos to_canvas_pos(const wxPoint& p){
     return std::make_tuple((float)p.x, (float)p.y);
+}
+
+//点到线段的最短距离（窗口像素）
+float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint& b){
+    const float abx = (float)(b.x - a.x);
+    const float aby = (float)(b.y - a.y);
+    const float apx = (float)(pos.x - a.x);
+    const float apy = (float)(pos.y - a.y);
+    const float len2 = abx*abx + aby*aby;
+    float t = 0.0f;
+    if(len2 > 0.0f) t = (apx*abx + apy*aby) / len2;   //投影比例
+    t = std::clamp(t, 0.0f, 1.0f);                      //限制在线段内
+    const float cx = (float)a.x + t * abx;
+    const float cy = (float)a.y + t * aby;
+    const float dx = (float)pos.x - cx;
+    const float dy = (float)pos.y - cy;
+    return std::sqrt(dx*dx + dy*dy);
 }
 
 Canvas::Canvas(wxWindow* parent, wxWindowID id)
@@ -23,7 +40,14 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       middle_dragging(false),
       middle_last_pos(0, 0),
       current_item(nullptr),
-      current_item_callback(){
+      current_item_callback(),
+      wire_placing(false),
+      wire_points(),
+      wire_mouse_pos(0, 0),
+      wire_drag_origin(0, 0),
+      wire_drag_saved(),
+      edit_tool(EditTool::NONE),
+      select_follow_item(nullptr){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     Bind(wxEVT_PAINT,        &Canvas::onPaint, this);
     Bind(wxEVT_MOUSEWHEEL,   &Canvas::on_mouse_scroll, this);
@@ -32,8 +56,35 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
     Bind(wxEVT_MOTION,       &Canvas::on_mouse_move, this);
     Bind(wxEVT_LEFT_DOWN,    &Canvas::on_left_down, this);
     Bind(wxEVT_LEFT_UP,      &Canvas::on_left_up, this);
-    //吞掉双击事件，避免一次双击触发两次放置
-    Bind(wxEVT_LEFT_DCLICK,  [this](wxMouseEvent&){});
+    Bind(wxEVT_RIGHT_DOWN,   &Canvas::on_right_down, this);
+    //双击：门类放置时吞掉避免一次双击触发两次放置；导线模式下双击=完成绘制
+    Bind(wxEVT_LEFT_DCLICK,  [this](wxMouseEvent&){
+        if(wire_placing) finish_wire();
+    });
+    //Esc：取消/完成正在绘制的导线、退出编辑工具；Del：删除跟随/选中的元件
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& e){
+        const int code = e.GetKeyCode();
+        if(code == WXK_ESCAPE){
+            bool handled = false;
+            if(wire_placing){
+                if(wire_points.size() >= 2) finish_wire();
+                else{ cancel_wire(); if(toolbar) toolbar->clear_selection(); Refresh(); }
+                handled = true;
+            }else if(edit_tool != EditTool::NONE){
+                //退出编辑工具（选择跟随随之取消）
+                edit_tool = EditTool::NONE;
+                stop_select_follow();
+                if(toolbar) toolbar->clear_selection();
+                Refresh();
+                handled = true;
+            }
+            if(handled) return;
+        }else if(code == WXK_DELETE){
+            if(select_follow_item){ delete_item(select_follow_item); return; }
+            if(current_item){ delete_item(current_item); return; }
+        }
+        e.Skip();
+    });
     toolbar = new ToolBar(this, this);
 }
 
@@ -109,18 +160,66 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         return;
     }
 
-    //拖动元件：coords改变，窗口pos跟着变
+    //选择模式：被点击的元件跟随鼠标（吸附网格），无需按住按钮；右键取消，Del删除
+    if(select_follow_item){
+        wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        if(Linking* wire = dynamic_cast<Linking*>(select_follow_item)){
+            //导线：整体平移折点（当前位移加到各点，保持折线形状）
+            if(!wire->points.empty()){
+                const wxPoint delta = coords - wire->points.front();
+                for(wxPoint& p : wire->points) p = p + delta;
+            }
+            Refresh();
+        }else{
+            select_follow_item->coords_x = coords.x;
+            select_follow_item->coords_y = coords.y;
+            select_follow_item->update_ui(scale, offset_coords);
+        }
+        return;
+    }
+
+    //拖动元件/导线：coords改变，窗口pos跟着变
     if(dragging_item){
         wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        //导线：整体平移所有折点（抓取点与当前点的位移加到各点）
+        if(Linking* wire = dynamic_cast<Linking*>(dragging_item)){
+            if(!wire_drag_saved.empty()){
+                const wxPoint delta = coords - wire_drag_origin;
+                for(size_t i = 0; i < wire->points.size() && i < wire_drag_saved.size(); ++i){
+                    wire->points[i] = wire_drag_saved[i] + delta;
+                }
+            }
+            Refresh();   //导线由onPaint绘制
+            return;
+        }
         dragging_item->coords_x = coords.x;
         dragging_item->coords_y = coords.y;
         dragging_item->update_ui(scale, offset_coords);
         return;
     }
 
+    //导线绘制模式：橡皮筋预览跟随鼠标（吸附网格）
+    if(wire_placing){
+        wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        if(coords != wire_mouse_pos){
+            wire_mouse_pos = coords;
+            Refresh();   //重绘预览线
+        }
+        return;
+    }
+
     //放置模式：虚影跟随鼠标并吸附到网格
     if(placing && ghost){
         wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
+            //克隆的导线虚影：无UI节点，整体平移折点跟随鼠标（由onPaint预览绘制）
+            if(!wire_ghost->points.empty()){
+                const wxPoint delta = coords - wire_ghost->points.front();
+                for(wxPoint& p : wire_ghost->points) p = p + delta;
+            }
+            Refresh();
+            return;
+        }
         ghost->coords_x = coords.x;
         ghost->coords_y = coords.y;
         if(!ghost->ui_node->IsShown()) ghost->ui_node->Show(true);
@@ -132,8 +231,27 @@ void Canvas::on_left_down(wxMouseEvent& event){
     const wxPoint pos = mouse_position(event);
     //工具栏区域不响应放置
     if(toolbar && toolbar->GetRect().Contains(pos)) return;
+    if(wire_placing){
+        on_wire_left_down(event);   //导线模式：加点/完成
+        return;
+    }
     if(placing){
         place_at_mouse(event);
+        return;
+    }
+    //编辑工具：命中元件则执行对应动作，空白处只清除选中（工具保持激活）
+    if(edit_tool == EditTool::DELETE){
+        if(CanvasItem* hit = item_at(pos)) delete_item(hit);
+        else set_current_item(nullptr);
+        return;
+    }
+    if(edit_tool == EditTool::SELECT){
+        if(CanvasItem* hit = item_at(pos)) start_select_follow(hit);
+        else{ stop_select_follow(); set_current_item(nullptr); }
+        return;
+    }
+    if(edit_tool == EditTool::CLONE){
+        if(CanvasItem* hit = item_at(pos)) start_clone(hit);
         return;
     }
     //兜底命中检测（正常情况下元件节点上的点击已由节点事件转发处理）
@@ -150,14 +268,76 @@ void Canvas::on_left_up(wxMouseEvent& event){
 }
 
 void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
+    if(wire_placing){  //导线模式下点击任何位置（含元件）都是给导线加点
+        on_wire_left_down(event);
+        return;
+    }
     if(placing){  //放置模式下点击（虚影/元件）都视为放置
         place_at_mouse(event);
+        return;
+    }
+    //编辑工具（点击的是元件节点）
+    if(edit_tool == EditTool::DELETE){
+        delete_item(item);
+        return;
+    }
+    if(edit_tool == EditTool::SELECT){
+        start_select_follow(item);
+        return;
+    }
+    if(edit_tool == EditTool::CLONE){
+        start_clone(item);
         return;
     }
     //点击元件后进入移动，并把它设为当前选中（通知属性栏）
     set_current_item(item);
     dragging_item = item;
+    if(Linking* wire = dynamic_cast<Linking*>(item)){
+        //导线整体拖动：记录抓取点与各折点原始坐标
+        const wxPoint pos = mouse_position(event);
+        wire_drag_origin = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+        wire_drag_saved  = wire->points;
+    }
     if(!HasCapture()) CaptureMouse();
+}
+
+//导线绘制模式左键：把鼠标位置（吸附网格）加入折点序列；
+//连续重复点（双击产生两次DOWN）忽略；点击回起点（≥2点）视为完成
+void Canvas::on_wire_left_down(const wxMouseEvent& event){
+    const wxPoint pos = mouse_position(event);
+    wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+    if(!wire_points.empty() && coords == wire_points.back()){
+        return;   //双击会先来两次DOWN（位置相同），忽略重复点，由DCLICK完成
+    }
+    if(wire_points.size() >= 2 && coords == wire_points.front()){
+        finish_wire();   //点回起点：完成
+        return;
+    }
+    wire_points.push_back(coords);
+    wire_mouse_pos = coords;
+    Refresh();
+}
+
+//右键：完成或取消导线
+void Canvas::on_wire_right_down(wxMouseEvent& event){
+    (void)event;
+    if(!wire_placing) return;
+    if(wire_points.size() >= 2) finish_wire();
+    else{
+        cancel_wire();
+        if(toolbar) toolbar->clear_selection();
+        Refresh();
+    }
+}
+
+//画布右键总入口：选择跟随中→取消跟随（元件留在原位）；否则转导线右键
+void Canvas::on_right_down(wxMouseEvent& event){
+    if(select_follow_item){
+        stop_select_follow();
+        Refresh();
+        return;
+    }
+    on_wire_right_down(event);
 }
 
 //统一取鼠标在画布客户区内的坐标（事件可能来自子窗口，GetPosition相对事件窗口，不能用）
@@ -184,15 +364,46 @@ wxPoint Canvas::snap_coords(wxPoint coords){
                    (int)std::lround((float)coords.y / GridStep) * GridStep);
 }
 
+wxPoint Canvas::coords_to_pos_px(wxPoint coords){
+    auto [x, y] = coords_to_pos(coords);
+    return wxPoint((int)std::lround(x), (int)std::lround(y));
+}
+
 void Canvas::select_tool(const std::string& name, ItemType type){
     clear_ghost();
+    placing = false;
+    cancel_wire();          //结束上一个工具的进行中状态（不碰工具栏高亮，on_tool_click已设置）
+    edit_tool = EditTool::NONE;   //退出编辑工具（选择跟随随之取消）
+    stop_select_follow();
+    set_current_item(nullptr);
     if(type == ItemType::WIRE){
-        //导线：点击后先不做处理，以后再说
+        //导线：进入绘制模式——左键加点（点回起点/双击/右键/Esc完成），移动时橡皮筋预览
+        wire_placing = true;
+        wire_points.clear();
+        Refresh();
         return;
     }
-    set_current_item(nullptr);   //开始新放置：清空当前选中（尚未实例化的虚影不算元件）
+    begin_placement(name);
+}
+
+//从资源树(Explorer)按名字进入放置模式：与工具栏门类放置共用begin_placement，
+//唯一区别是不关联工具栏按钮（清除其高亮）；导线类元件无SVG虚影，忽略
+void Canvas::select_tool_by_name(const std::string& name){
+    clear_ghost();
+    placing = false;
+    cancel_wire();
+    edit_tool = EditTool::NONE;
+    stop_select_follow();
+    set_current_item(nullptr);
+    if(toolbar) toolbar->clear_selection();
+    if(!ItemSVG_bundle(name)) return;   //导线/总线等无SVG：忽略
+    begin_placement(name);
+}
+
+//按名字创建跟随鼠标的虚影（门/通用元件）。调用方需先清理上一个工具状态
+void Canvas::begin_placement(const std::string& name){
     placing = true;
-    ghost = ItemPNG(name);
+    ghost = ItemSVG(name);
     ghost->ghost_mode = true;   //半透明虚影
     ghost->create_ui(this);
     //关键：虚影节点也要绑定完整的事件转发（MOTION/MIDDLE/滚轮/LEFT）。
@@ -211,10 +422,150 @@ void Canvas::select_tool(const std::string& name, ItemType type){
     if(toolbar) toolbar->Raise();
 }
 
+//进入编辑工具模式（选择/删除/克隆），同时结束放置/导线等其它进行中状态
+void Canvas::select_action(ToolAction action){
+    clear_ghost();
+    placing = false;
+    cancel_wire();
+    stop_select_follow();
+    dragging_item = nullptr;
+    set_current_item(nullptr);
+    switch(action){
+        case ToolAction::SELECT: edit_tool = EditTool::SELECT; break;
+        case ToolAction::DELETE: edit_tool = EditTool::DELETE; break;
+        case ToolAction::CLONE:  edit_tool = EditTool::CLONE;  break;
+    }
+}
+
 void Canvas::cancel_tool(){
     placing = false;
+    cancel_wire();
+    stop_select_follow();
     clear_ghost();
     if(toolbar) toolbar->clear_selection();
+}
+
+//提交正在绘制的导线：折点≥2时创建Linking加入集合，结束绘制模式
+void Canvas::finish_wire(){
+    if(!wire_placing) return;
+    wire_placing = false;
+    if(wire_points.size() >= 2){
+        //去掉连续重复点后提交
+        std::vector<wxPoint> clean;
+        for(const wxPoint& p : wire_points){
+            if(clean.empty() || clean.back() != p) clean.push_back(p);
+        }
+        if(clean.size() >= 2){
+            CanvasItem* item = ItemSVG("导线");   //Linking，无UI节点，由onPaint绘制
+            if(Linking* wire = dynamic_cast<Linking*>(item)){
+                wire->points = clean;
+            }
+            canvasItemCollection->insert(item);
+            set_current_item(item);   //刚画的导线成为当前选中（属性栏显示导线元数据）
+        }
+        //点数不足2的导线不创建，直接丢弃
+    }
+    wire_points.clear();
+    if(toolbar) toolbar->clear_selection();
+    Refresh();
+}
+
+//丢弃正在绘制的导线并退出绘制模式（不碰工具栏高亮）
+void Canvas::cancel_wire(){
+    wire_placing = false;
+    wire_points.clear();
+}
+
+//删除元件：从集合移除、销毁UI节点并释放（门/导线均可）
+void Canvas::delete_item(CanvasItem* item){
+    if(!item) return;
+    canvasItemCollection->erase(item);
+    if(current_item == item) set_current_item(nullptr);   //通知属性栏清空
+    if(select_follow_item == item) select_follow_item = nullptr;
+    if(dragging_item == item) dragging_item = nullptr;
+    if(ghost == item) ghost = nullptr;   //模式互斥，正常不会发生
+    if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，事件中调用安全
+    delete item;
+    Refresh();
+}
+
+//选择模式：点击元件后开始跟随鼠标（“重新回到跟随移动状态”），吸附网格；
+//右键取消跟随，Del删除
+void Canvas::start_select_follow(CanvasItem* item){
+    if(!item) return;
+    set_current_item(item);
+    select_follow_item = item;
+    //立即吸附到当前鼠标位置
+    const wxPoint pos = ScreenToClient(wxGetMousePosition());
+    const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+    if(Linking* wire = dynamic_cast<Linking*>(item)){
+        if(!wire->points.empty()){
+            const wxPoint delta = coords - wire->points.front();
+            for(wxPoint& p : wire->points) p = p + delta;
+        }
+        Refresh();
+    }else{
+        item->coords_x = coords.x;
+        item->coords_y = coords.y;
+        item->update_ui(scale, offset_coords);
+    }
+}
+
+//取消跟随：元件停留在当前位置
+void Canvas::stop_select_follow(){
+    select_follow_item = nullptr;
+}
+
+//克隆模式：点击元件后复制一个跟随鼠标的虚影，再点击放置（复用放置/虚影机制）
+void Canvas::start_clone(CanvasItem* item){
+    if(!item) return;
+    CanvasItem* copy = clone_item(item);
+    if(!copy) return;
+    clear_ghost();
+    placing = true;
+    ghost = copy;
+    ghost->ghost_mode = true;
+    if(!ghost->ui_node) ghost->create_ui(this);   //导线(Linking)无UI节点
+    if(ghost->ui_node) bind_ui_events(ghost);
+    //立即放到当前鼠标位置（吸附网格）
+    const wxPoint pos = ScreenToClient(wxGetMousePosition());
+    const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+    if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
+        if(!wire_ghost->points.empty()){
+            const wxPoint delta = coords - wire_ghost->points.front();
+            for(wxPoint& p : wire_ghost->points) p = p + delta;
+        }
+        Refresh();
+    }else{
+        ghost->coords_x = coords.x;
+        ghost->coords_y = coords.y;
+        ghost->update_ui(scale, offset_coords);
+        ghost->ui_node->Show(true);
+    }
+    if(toolbar) toolbar->Raise();
+}
+
+//复制元件：同类型新实例（新ID、独立元数据副本、共享SVG缓存），
+//复制元数据（含属性栏修改过的值）与导线折点
+CanvasItem* Canvas::clone_item(const CanvasItem* item) const{
+    if(!item) return nullptr;
+    CanvasItem* copy = ItemSVG(item->name);
+    if(!copy) return nullptr;
+    if(const Linking* src = dynamic_cast<const Linking*>(item)){
+        if(Linking* dst = dynamic_cast<Linking*>(copy)) dst->points = src->points;
+    }
+    if(item->metadata && copy->metadata){
+        copy->metadata->params = item->metadata->params;
+        if(LogicGateMetaData* dst = dynamic_cast<LogicGateMetaData*>(copy->metadata)){
+            if(const LogicGateMetaData* src = dynamic_cast<const LogicGateMetaData*>(item->metadata)){
+                dst->set_inputs(src->get_inputs());
+                dst->set_outputs(src->get_outputs());
+                dst->set_data_bits(src->get_data_bits());
+            }
+        }
+        copy->metadata->set_description(item->metadata->get_description());
+    }
+    return copy;
 }
 
 void Canvas::clear_ghost(){
@@ -230,7 +581,18 @@ void Canvas::clear_ghost(){
 //直接采用虚影当前的coords（已吸附到网格），保证放置位置与虚影显示位置完全一致
 void Canvas::place_at_mouse(const wxMouseEvent& event){
     if(!placing || !ghost) return;
-    CanvasItem* item = ItemPNG(ghost->name);
+    //克隆的导线虚影：无UI节点，只复制折点
+    if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
+        CanvasItem* item = ItemSVG(ghost->name);
+        if(Linking* dst = dynamic_cast<Linking*>(item)) dst->points = wire_ghost->points;
+        canvasItemCollection->insert(item);
+        cancel_tool();
+        edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（一次性）
+        set_current_item(item);
+        Refresh();
+        return;
+    }
+    CanvasItem* item = ItemSVG(ghost->name);
     item->coords_x = ghost->coords_x;
     item->coords_y = ghost->coords_y;
     item->create_ui(this);
@@ -239,6 +601,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     canvasItemCollection->insert(item);
     if(toolbar) toolbar->Raise();
     cancel_tool();  //结束放置：之后再点击该元件可移动它
+    edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（对门类放置无影响，本来就为NONE）
     set_current_item(item);  //刚放置的元件成为当前选中（通知属性栏）
     Refresh();
 }
@@ -264,13 +627,44 @@ void Canvas::bind_ui_events(CanvasItem* item){
     item->ui_node->Bind(wxEVT_MIDDLE_UP, [this](wxMouseEvent& e){
         on_middle_up(e);
     });
+    item->ui_node->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& e){
+        on_right_down(e);   //选择跟随中取消跟随；导线模式下完成/取消
+    });
 }
 
 CanvasItem* Canvas::item_at(const wxPoint& pos){
+    //先命中导线（线段距离检测，导线没有UI节点）
+    for(CanvasItem* item : *canvasItemCollection){
+        if(Linking* wire = dynamic_cast<Linking*>(item)){
+            if(wire_hit(wire, pos)) return wire;
+        }
+    }
+    //再命中普通元件（节点矩形）
     for(CanvasItem* item : *canvasItemCollection){
         if(item->ui_node && item->ui_node->GetRect().Contains(pos)) return item;
     }
     return nullptr;
+}
+
+//导线命中检测：鼠标到任一段（或端点）的距离 < 阈值（窗口像素）
+bool Canvas::wire_hit(Linking* wire, const wxPoint& pos){
+    const auto& pts = wire->points;
+    if(pts.size() < 2) return false;
+    const float threshold = 7.0f;
+
+    //端点命中
+    for(const wxPoint& p : pts){
+        const wxPoint pp = coords_to_pos_px(p);
+        const int dx = pp.x - pos.x;
+        const int dy = pp.y - pos.y;
+        if((float)(dx*dx + dy*dy) <= threshold * threshold) return true;
+    }
+    //线段命中：点到线段距离
+    for(size_t i = 1; i < pts.size(); ++i){
+        if(point_segment_distance(pos, coords_to_pos_px(pts[i-1]),
+                                      coords_to_pos_px(pts[i])) <= threshold) return true;
+    }
+    return false;
 }
 
 void Canvas::reput_items(){
@@ -285,6 +679,61 @@ void Canvas::reput_items(){
 
 void Canvas::reput(){
     reput_items();
+}
+
+//在画布上绘制所有导线：已放置的导线（选中高亮）+ 正在绘制的预览
+void Canvas::draw_wires(wxPaintDC& dc){
+    //已放置的导线
+    for(CanvasItem* item : *canvasItemCollection){
+        Linking* wire = dynamic_cast<Linking*>(item);
+        if(!wire || wire->points.size() < 2) continue;
+        const bool selected = (item == current_item);
+        if(selected){
+            draw_wire_path(dc, wire->points, wxColour(0, 102, 204), 4);   //选中：粗蓝底
+        }
+        draw_wire_path(dc, wire->points,
+                       selected ? wxColour(0, 120, 255) : wxColour(40, 40, 40), 2);
+    }
+
+    //正在绘制的导线：已确定的折线 + 橡皮筋预览 + 端点圆点
+    if(wire_placing && !wire_points.empty()){
+        if(wire_points.size() >= 2){
+            draw_wire_path(dc, wire_points, wxColour(0, 120, 255), 2);
+        }
+        //橡皮筋：从最后一个折点到当前鼠标位置（虚线）
+        dc.SetPen(wxPen(wxColour(0, 150, 255), 2, wxPENSTYLE_SHORT_DASH));
+        dc.DrawLine(coords_to_pos_px(wire_points.back()), coords_to_pos_px(wire_mouse_pos));
+        //端点圆点
+        dc.SetBrush(wxBrush(wxColour(0, 150, 255)));
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        for(const wxPoint& p : wire_points){
+            dc.DrawCircle(coords_to_pos_px(p), 3);
+        }
+    }
+
+    //克隆的导线虚影预览（无UI节点，跟随鼠标时由onPaint绘制）
+    if(placing && ghost){
+        if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
+            if(wire_ghost->points.size() >= 2){
+                draw_wire_path(dc, wire_ghost->points, wxColour(0, 150, 255), 2);
+            }
+            dc.SetBrush(wxBrush(wxColour(0, 150, 255)));
+            dc.SetPen(*wxTRANSPARENT_PEN);
+            for(const wxPoint& p : wire_ghost->points){
+                dc.DrawCircle(coords_to_pos_px(p), 3);
+            }
+        }
+    }
+}
+
+//折线绘制：把coords折点序列画成窗口折线
+void Canvas::draw_wire_path(wxPaintDC& dc, const std::vector<wxPoint>& points,
+                            const wxColour& colour, int width){
+    if(points.size() < 2) return;
+    dc.SetPen(wxPen(colour, width));
+    for(size_t i = 1; i < points.size(); ++i){
+        dc.DrawLine(coords_to_pos_px(points[i-1]), coords_to_pos_px(points[i]));
+    }
 }
 
 void Canvas::onPaint(wxPaintEvent& event){
@@ -322,6 +771,9 @@ void Canvas::onPaint(wxPaintEvent& event){
     const int ay = (int)std::lround((0 - offset_coords.y) * scale);
     dc.DrawLine(ax, 0, ax, size.GetHeight());
     dc.DrawLine(0, ay, size.GetWidth(), ay);
+
+    //导线（在网格之上、元件子窗口之下绘制）
+    draw_wires(dc);
 
     reput();
 }

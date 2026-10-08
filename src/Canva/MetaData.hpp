@@ -27,6 +27,7 @@ public:
     const std::string& get_type() const        { return type; }
     const std::string& get_category() const    { return category; }
     const std::string& get_description() const { return description; }
+    void set_description(const std::string& d) { description = d; }   //属性栏可编辑描述
 
     // 通用参数（JSON中除标准字段外的其余键值对，如 DataBits/resistance/voltage 等）
     const std::map<std::string, std::string>& get_params() const { return params; }
