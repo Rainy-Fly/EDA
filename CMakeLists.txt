@@ -73,6 +73,12 @@ file(
     "src/*.cpp"
 )
 
+# 本机工作区里保留的文件（不进版本库、或已由远端删除）需要排除，否则会与其他文件重复定义符号：
+#   /ExplorerBak/  本地备份目录（里面是 ExplorerPane 的一份副本，与 src/Explorer/ 下的重复）
+#   /main\\.cpp$   本地测试用入口（与 demoApp.cpp 里的 wxIMPLEMENT_APP 重复）
+list(FILTER SOURCES EXCLUDE REGEX "/ExplorerBak/")
+list(FILTER SOURCES EXCLUDE REGEX "/main\\.cpp$")
+
 # =========================
 # TinyEDA
 # =========================
