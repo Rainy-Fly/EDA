@@ -26,7 +26,7 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
                                 wxLI_VERTICAL),
                0, wxLEFT | wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
     add_action_button(sizer, "选择", ToolAction::SELECT);
-    add_action_button(sizer, "删除", ToolAction::DELETE);
+    add_action_button(sizer, "删除", ToolAction::ERASE);
     add_action_button(sizer, "克隆", ToolAction::CLONE);
     SetSizer(sizer);
     Layout();
