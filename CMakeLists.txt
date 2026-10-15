@@ -8,6 +8,13 @@ project(
     LANGUAGES CXX
 )
 
+# Windows 下要往 exe 里嵌一个应用程序清单（src/TinyEDA.rc → src/TinyEDA.manifest），
+# 声明依赖 comctl32 v6：控件才用现代主题外观，wxButton::SetBitmap 依赖的
+# BCM_SETIMAGELIST 才被支持（否则左侧调色板的图标不显示）。所以要启用 RC 语言。
+if(WIN32)
+    enable_language(RC)
+endif()
+
 # =========================
 # C++ 标准
 # =========================
@@ -185,6 +192,16 @@ add_executable(
     WIN32
     ${SOURCES}
 )
+
+if(WIN32)
+
+    # 资源脚本：只往 exe 里嵌 comctl32 v6 清单（见 src/TinyEDA.rc / src/TinyEDA.manifest）。
+    # -I 指向 src/ 是让 rc 编译器能按名字找到清单文件（rc.exe 和 windres 都接受 -I）
+    target_sources(TinyEDA PRIVATE src/TinyEDA.rc)
+    set_source_files_properties(src/TinyEDA.rc PROPERTIES
+        COMPILE_FLAGS "-I\"${CMAKE_CURRENT_SOURCE_DIR}/src\"")
+
+endif()
 
 
 # =========================

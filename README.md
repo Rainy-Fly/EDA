@@ -207,11 +207,13 @@ curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、
 | `src/DealProjectXML/` | **项目文件（.xml）读写**。上层统一调用这里的 `SaveProject` / `LoadProject` / `CollectFromCanvas` / `ApplyToCanvas` / `ReadXml` / `WriteXml`，格式见下节 |
 | `src/Settings/` | 用户配置文件（settings.xml）的读写、项目根目录识别 |
 | `src/MenuBar/` | `MenuBar` 负责菜单结构；`FileActions` 实现新建/打开/保存/另存为/设置默认目录/退出与未保存确认；`OpenLocationDialog` 是「从哪开始找」的三选一对话框 |
-| `src/Canva/` | 画布：逻辑坐标系与缩放/平移，元件与导线的放置、选中、拖动、删除、克隆、网格与导线绘制；`CanvasItem`/`Symbol`/`Linking` 数据模型；`ItemSVG` 按类型串加载 SVG 与元数据（共享缓存） |
+| `src/Canva/` | 画布：逻辑坐标系与缩放/平移，元件与导线的放置、选中、拖动、删除、克隆、网格与导线绘制；`CanvasItem`/`Symbol`/`Linking` 数据模型；`ItemSVG` 按类型串加载 SVG 与元数据（共享缓存）；`ToolBar` 是左侧栏里的**元件调色板**（与非门…导线 + 选择/删除/克隆），位置由 `MainFrame` 摆放，画布只借它清按钮高亮；`assets/Tools/*.svg` 是调色板里导线/选择/删除/克隆的小图标（16px） |
 | `src/metadata/` | 元件元数据 JSON（每个元件一条定义，`type` 是主键）+ JSON 读取器 |
-| `src/Explorer/` | 左侧资源树：按类别列出所有元件，点击后进入放置模式 |
-| `src/AttributeBar/` | 右下属性栏：显示并编辑当前元件的元数据 |
-| `src/demoApp.cpp`、`src/demoMainFrame.*` | 演示用程序入口与主窗口（把上面几块拼起来） |
+| `src/Explorer/` | 左侧栏下半部分的资源树：按类别列出所有元件，点击后进入放置模式 |
+| `src/AttributeBar/` | 画布下方的属性栏：显示并编辑当前元件的元数据 |
+| `src/App.cpp`、`src/App.hpp` | 程序入口（`wxIMPLEMENT_APP`，注册图片格式处理器后创建主窗口） |
+| `src/MainFrame.*` | 主窗口布局（类似 Logisim）：左侧栏 = 元件调色板 + 资源树，中间 = 画布 + 属性栏，最右 = 可折叠的 AI 助手面板；底部状态栏三段：① 状态/提示 ② 光标逻辑坐标 ③ 缩放与网格（数字用**全角**、提示语不混半角字母 —— 状态栏是原生控件，中文与半角字符混排会被 GDI 的字体链接渲染得发虚发花） |
+| `src/TinyEDA.rc`、`src/TinyEDA.manifest` | **Windows 资源脚本**：往 exe 里嵌 comctl32 v6 清单。有了它控件才用现代主题外观，`wxButton::SetBitmap` 依赖的 `BCM_SETIMAGELIST` 才被支持（否则左侧调色板的图标不显示）。CMake 里 `enable_language(RC)` + `target_sources` 挂上，只在 `WIN32` 下生效 |
 
 > 约定：项目文件（`.xml`）的读写**只有 `src/DealProjectXML` 一处实现**，其它模块不要再各写一套；
 > 以后要保存新的内容，改那一处即可。用户配置文件的读写同理，只在 `src/Settings`。

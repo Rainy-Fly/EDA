@@ -41,6 +41,16 @@ public:
     //点击选中/放置元件时回调该元件；点击空白或开始新放置时回调nullptr
     void set_current_item_callback(std::function<void(CanvasItem*)> callback);
 
+    //注册“光标位置变化”回调（供状态栏显示坐标）；valid=false 表示光标离开画布
+    void set_cursor_callback(std::function<void(const wxPoint& coords, bool valid)> callback);
+    //注册“当前模式变化”回调（供状态栏显示状态提示）；提示内容没变时不回调
+    void set_status_callback(std::function<void(const wxString&)> callback);
+    //注册“视口变化”回调（供状态栏显示缩放比例/网格步长）；注册时立即同步一次
+    void set_view_callback(std::function<void(float scale, int grid_step)> callback);
+
+    //工具栏（元件调色板）现在由主窗口创建在左侧栏里，画布只借它的指针做按钮高亮清理
+    void set_toolbar(ToolBar* tb) { toolbar = tb; }
+
     //----- 项目文件（DealProjectXML）支持 -----
     const std::unordered_set<CanvasItem*>& get_items() const; //全部元件（门/通用元件/导线）
     wxPoint get_offset() const { return offset_coords; }      //视口：画布左上角逻辑坐标
@@ -56,14 +66,12 @@ public:
     //（供菜单栏标记“有未保存的修改”）
     void set_changed_callback(std::function<void()> callback);
 
-    friend class ToolBar;   //工具栏需要转发滚轮事件给画布
-
 private:
     wxPoint offset_coords; //此窗口左上角在画布坐标系的网格位置
     float scale; //窗口缩放比例 单位pos/coords比
     std::unordered_set<CanvasItem*>* canvasItemCollection; //元件集合
 
-    ToolBar* toolbar;      //放置在画布上的工具栏
+    ToolBar* toolbar;      //元件调色板（由主窗口创建在左侧栏；画布只用它清按钮高亮）
     bool placing;          //是否处于放置模式（门类元件虚影）
     CanvasItem* ghost;     //跟随鼠标的虚影
     CanvasItem* dragging_item;  //正在拖动的元件（门或导线）
@@ -72,6 +80,10 @@ private:
     CanvasItem* current_item;                //当前选中的元件（nullptr=未选择）
     std::function<void(CanvasItem*)> current_item_callback;  //当前元件变化回调
     std::function<void()> changed_callback;  //内容变化回调（放置/删除/移动/改属性后触发）
+    std::function<void(const wxPoint&, bool)> cursor_callback;  //光标逻辑坐标（状态栏坐标字段）
+    std::function<void(const wxString&)> status_callback;       //当前模式提示（状态栏状态字段）
+    std::function<void(float, int)> view_callback;              //缩放/网格（状态栏缩放到字段）
+    wxString last_status;                    //上一次发出去的提示（避免重复刷状态栏）
     bool move_dirty;                         //本次移动是否真的改变了位置（只点击不算修改）
 
     //----- 导线(wire)状态 -----
@@ -89,6 +101,8 @@ private:
     void set_current_item(CanvasItem* item);
     //触发内容变化回调（供菜单栏标记“未保存”）
     void notify_changed();
+    //把当前模式（放置/画线/编辑工具/跟随）转成一句提示发给 status_callback
+    void update_status();
 
     //删除元件（从集合移除并释放）
     void delete_item(CanvasItem* item);

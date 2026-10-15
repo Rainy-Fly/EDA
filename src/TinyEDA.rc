@@ -1,0 +1,5 @@
+// TinyEDA 的 Windows 资源脚本：只嵌入一个应用程序清单（src/TinyEDA.manifest），
+// 内容是"依赖 comctl32 v6"——这样控件才用现代主题，按钮图标（BCM_SETIMAGELIST）才能显示。
+// 1 = CREATEPROCESS_MANIFEST_RESOURCE_ID，24 = RT_MANIFEST。
+// 清单文件名按 -I 指定的目录（见 CMakeLists 里的 COMPILE_FLAGS）解析。
+1 24 "TinyEDA.manifest"

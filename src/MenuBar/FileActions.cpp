@@ -116,9 +116,9 @@ void FileActions::on_set_default_dir(wxCommandEvent& event){
         return;
     }
     if(frame){
-        frame->SetStatusText(wxString::FromUTF8("默认目录已设为: ") +
-                             wxString::FromUTF8(settings.default_dir.c_str()) +
-                             wxString::FromUTF8("（写入 ") + written + wxT("）"));
+        //状态栏是原生控件：中文里混半角路径/字符会被 GDI 的字体链接渲染得发虚发花，
+        //所以这里只报纯中文的状态，具体路径由标题栏/对话框体现
+        frame->SetStatusText(wxString::FromUTF8("默认目录已设置"));
     }
 }
 
@@ -194,7 +194,7 @@ bool FileActions::open_project(){
 
     remember_path(path);
     //刚打开的文件视为“未修改”，所以标题上没有*
-    mark_saved(path, wxString::FromUTF8("已打开: ") + path);
+    mark_saved(path, wxString::FromUTF8("已打开项目"));
     return true;
 }
 
@@ -234,7 +234,7 @@ bool FileActions::write_to(const wxString& path){
         return false;   //保存失败：modified保持true，用户不会以为已经存好了
     }
     remember_path(path);
-    mark_saved(path, wxString::FromUTF8("已保存: ") + path);
+    mark_saved(path, wxString::FromUTF8("项目已保存"));
     return true;
 }
 

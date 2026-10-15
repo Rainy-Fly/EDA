@@ -7,11 +7,17 @@ class Canvas;
 class ExplorerPane;
 class AttributeBar;
 class FileActions;
+class ToolBar;
 
 namespace Agent{ class AgentArea; class Show; }
 
-// 演示用主窗口：左资源树(ExplorerPane) + 右上画布(Canvas) + 右下属性栏(AttributeBar)，
-// 最右侧可折叠的 AI 助手面板（AgentArea，菜单“视图->AI助手面板”切换）。
+// 主窗口布局（类似 Logisim）：
+//   左侧栏   = 上：元件调色板(ToolBar：与非门…导线 + 选择/删除/克隆)
+//              下：资源树(ExplorerPane，按类别列出通用元件)
+//   中间上   = 画布(Canvas)
+//   中间下   = 属性栏(AttributeBar)
+//   最右侧   = 可折叠的 AI 助手面板（AgentArea，视图菜单/F12 切换）
+//   底部状态栏 = ① 状态/提示 ② 光标逻辑坐标 ③ 缩放比例与网格
 class MainFrame : public wxFrame{
 public:
     MainFrame();
@@ -20,9 +26,11 @@ public:
 private:
     void OnToggleAgent(wxCommandEvent& e);   //视图菜单：显示/隐藏 AI 助手面板
 
-    wxSplitterWindow* splitter;        //外层分栏：左Explorer / 右面板
+    wxSplitterWindow* splitter;        //外层分栏：左侧栏 / 右侧工作区
     wxSplitterWindow* work_splitter;   //中层分栏：画布区 / AI助手区（右侧可拉伸）
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar
+    wxPanel* left_panel;               //左侧栏容器：上元件调色板 + 下资源树
+    ToolBar* palette;                  //元件调色板（与或非门…导线 + 选择/删除/克隆）
     ExplorerPane* explorer;
     Canvas* canvas;
     AttributeBar* attribute_bar;

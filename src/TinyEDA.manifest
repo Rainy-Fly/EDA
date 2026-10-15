@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <!--
+    只为做一件事：声明依赖 comctl32 v6（现代主题控件）。
+    没有它，Windows 会用 comctl32 v5：
+      - 所有按钮/滚动条是旧版外观；
+      - wxButton::SetBitmap 依赖的 BCM_SETIMAGELIST 消息不被支持，
+        左侧元件调色板按钮上的图标（与非门/与门/... 的 SVG 图标）就显示不出来。
+    内容保持纯 ASCII，避免 rc 编译器/资源编码问题。
+  -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+          type="win32"
+          name="Microsoft.Windows.Common-Controls"
+          version="6.0.0.0"
+          processorArchitecture="*"
+          publicKeyToken="6595b64144ccf1df"
+          language="*"/>
+    </dependentAssembly>
+  </dependency>
+</assembly>

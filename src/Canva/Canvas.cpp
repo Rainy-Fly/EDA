@@ -52,6 +52,10 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       current_item(nullptr),
       current_item_callback(),
       changed_callback(),
+      cursor_callback(),
+      status_callback(),
+      view_callback(),
+      last_status(),
       move_dirty(false),
       wire_placing(false),
       wire_points(),
@@ -90,17 +94,33 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
                 Refresh();
                 handled = true;
             }
-            if(handled) return;
+            if(handled){ update_status(); return; }
         }else if(code == WXK_DELETE){
             if(select_follow_item){ delete_item(select_follow_item); return; }
             if(current_item){ delete_item(current_item); return; }
         }
         e.Skip();
     });
-    toolbar = new ToolBar(this, this);
+    //光标进出画布：进/出时同步状态栏坐标（离开时清空，避免一直显示上一次的位置）。
+    //工具栏（元件调色板）已经搬到左侧栏，画布上不再有覆盖物，所以不用再为它做特殊处理
+    Bind(wxEVT_ENTER_WINDOW, [this](wxMouseEvent& e){
+        if(cursor_callback)
+            cursor_callback(snap_coords(pos_to_coords(to_canvas_pos(mouse_position(e)))), true);
+        e.Skip();
+    });
+    Bind(wxEVT_LEAVE_WINDOW, [this](wxMouseEvent& e){
+        if(cursor_callback) cursor_callback(wxPoint(), false);
+        e.Skip();
+    });
 }
 
 Canvas::~Canvas(){
+    //析构期间不再回调上层：状态栏/属性栏可能已经在析构，回调过去就是悬空访问
+    current_item_callback = nullptr;
+    changed_callback = nullptr;
+    cursor_callback = nullptr;
+    status_callback = nullptr;
+    view_callback = nullptr;
     cancel_tool();
     for(CanvasItem* item : *canvasItemCollection) delete item;
     delete canvasItemCollection;
@@ -120,6 +140,49 @@ void Canvas::set_current_item(CanvasItem* item){
 
 void Canvas::set_changed_callback(std::function<void()> callback){
     changed_callback = std::move(callback);
+}
+
+void Canvas::set_cursor_callback(std::function<void(const wxPoint&, bool)> callback){
+    cursor_callback = std::move(callback);
+}
+
+void Canvas::set_status_callback(std::function<void(const wxString&)> callback){
+    status_callback = std::move(callback);
+    update_status();   //注册后立即同步一次，状态栏一开始就有内容
+}
+
+void Canvas::set_view_callback(std::function<void(float, int)> callback){
+    view_callback = std::move(callback);
+    if(view_callback) view_callback(scale, GridStep);   //注册后立即同步一次
+}
+
+//把当前模式翻译成一句提示交给状态栏（字段0）。
+//只在提示内容真的变化时才回调：这样文件菜单写的"已保存 xxx"之类不会被鼠标一动就刷掉。
+//注意：提示语里刻意不出现 "Esc"/"Del" 这类半角字母——状态栏是原生控件，GDI 对
+//「中文+半角字符」混排会按字符集分段换字体，中文段会渲染得发虚发花（实测过）
+void Canvas::update_status(){
+    if(!status_callback) return;
+    wxString text;
+    if(select_follow_item){
+        text = wxString::Format(wxString::FromUTF8("跟随移动 %s：移动鼠标调整位置，单击放下，按退出键取消"),
+                                wxString::FromUTF8(select_follow_item->name.c_str()));
+    }else if(placing && ghost){
+        text = wxString::Format(wxString::FromUTF8("放置 %s：在画布上单击放下，按退出键或右键取消"),
+                                wxString::FromUTF8(ghost->name.c_str()));
+    }else if(wire_placing){
+        text = wxString::FromUTF8("绘制导线：左键连续加点，点回起点/双击/右键完成，按退出键取消");
+    }else if(edit_tool == EditTool::SELECT){
+        text = wxString::FromUTF8("选择工具：单击元件即可让它跟随鼠标");
+    }else if(edit_tool == EditTool::ERASE){
+        text = wxString::FromUTF8("删除工具：单击元件即删除");
+    }else if(edit_tool == EditTool::CLONE){
+        text = wxString::FromUTF8("克隆工具：单击元件复制一个跟随鼠标的副本，再单击放下");
+    }else{
+        text = wxString::FromUTF8("就绪：从左侧挑元件或工具；中键拖动画布、滚轮缩放");
+    }
+    if(text == last_status) return;
+    last_status = text;
+    status_callback(text);
 }
 
 void Canvas::notify_changed(){
@@ -145,6 +208,7 @@ void Canvas::on_mouse_scroll(wxMouseEvent& event){
     offset_coords.x = (int)std::lround(new_offset_x);
     offset_coords.y = (int)std::lround(new_offset_y);
     scale = new_scale;
+    if(view_callback) view_callback(scale, GridStep);   //状态栏：缩放比例
 
     //性能关键：这里不做同步重渲染。Refresh()把重绘交给事件循环，
     //连续多次滚轮会合并成少数几次onPaint，由onPaint统一对元件重渲染图片，
@@ -166,6 +230,9 @@ void Canvas::on_middle_up(wxMouseEvent& event){
 //鼠标移动：按住中键拖动画布；拖动元件；放置模式下虚影跟随
 void Canvas::on_mouse_move(wxMouseEvent& event){
     wxPoint pos = mouse_position(event);
+
+    //状态栏坐标：光标的画布逻辑坐标（已吸附网格）——与放置元件/画导线/写进XML用的是同一个值
+    if(cursor_callback) cursor_callback(snap_coords(pos_to_coords(to_canvas_pos(pos))), true);
 
     //按住中键滑动：画布在逻辑坐标系中移动，元件的窗口pos跟着变
     if(middle_dragging){
@@ -262,8 +329,7 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
 
 void Canvas::on_left_down(wxMouseEvent& event){
     const wxPoint pos = mouse_position(event);
-    //工具栏区域不响应放置
-    if(toolbar && toolbar->GetRect().Contains(pos)) return;
+    //注意：工具栏（元件调色板）已搬到左侧栏，画布上不再需要"点在工具栏区域就不放置"的判断
 
     if(select_follow_item){
         stop_select_follow();   //内部会：若move_dirty则notify_changed，清空指针
@@ -443,6 +509,7 @@ void Canvas::select_tool(const std::string& name, ItemType type){
         wire_placing = true;
         wire_points.clear();
         Refresh();
+        update_status();
         return;
     }
     begin_placement(name);
@@ -458,7 +525,7 @@ void Canvas::select_tool_by_name(const std::string& name){
     stop_select_follow();
     set_current_item(nullptr);
     if(toolbar) toolbar->clear_selection();
-    if(!ItemSVG_bundle(name)){ Refresh(); return; }   //导线/总线等无SVG：忽略（清掉旧虚影的残影）
+    if(!ItemSVG_bundle(name)){ Refresh(); update_status(); return; }   //导线/总线等无SVG：忽略（清掉旧虚影的残影）
     begin_placement(name);
 }
 
@@ -475,8 +542,8 @@ void Canvas::begin_placement(const std::string& name){
     ghost->coords_x = coords.x;
     ghost->coords_y = coords.y;
     ghost->update_bitmap(scale);
-    if(toolbar) toolbar->Raise();
-    Refresh();   //让虚影立刻显示出来
+    Refresh();       //让虚影立刻显示出来
+    update_status(); //状态栏：提示"在画布上单击放下"
 }
 
 //进入编辑工具模式（选择/删除/克隆），同时结束放置/导线等其它进行中状态
@@ -493,6 +560,7 @@ void Canvas::select_action(ToolAction action){
         case ToolAction::CLONE:  edit_tool = EditTool::CLONE;  break;
     }
     Refresh();   //虚影是画布自绘的：clear_ghost后必须显式重画，否则残影留在屏幕上
+    update_status();
 }
 
 void Canvas::cancel_tool(){
@@ -501,6 +569,7 @@ void Canvas::cancel_tool(){
     stop_select_follow();
     clear_ghost();
     if(toolbar) toolbar->clear_selection();
+    update_status();
 }
 
 //提交正在绘制的导线：折点≥2时创建Linking加入集合，结束绘制模式
@@ -528,12 +597,14 @@ void Canvas::finish_wire(){
     wire_points.clear();
     if(toolbar) toolbar->clear_selection();
     Refresh();
+    update_status();
 }
 
 //丢弃正在绘制的导线并退出绘制模式（不碰工具栏高亮）
 void Canvas::cancel_wire(){
     wire_placing = false;
     wire_points.clear();
+    update_status();
 }
 
 //----- 项目文件（DealProjectXML）支持 -----
@@ -548,6 +619,7 @@ void Canvas::set_view(wxPoint offset, float s){
     offset_coords = offset;
     scale = s;
     reput();
+    if(view_callback) view_callback(scale, GridStep);   //状态栏：打开项目后同步缩放比例
     Refresh();
 }
 
@@ -624,6 +696,7 @@ void Canvas::start_select_follow(CanvasItem* item){
         item->coords_y = coords.y;
         Refresh();   //元件由画布自绘，位置变了要重画
     }
+    update_status();   //状态栏：提示"单击放下 / Esc 取消"
 }
 
 //取消跟随：元件停留在当前位置（若跟随期间真的移动过，记一次内容修改）
@@ -631,6 +704,7 @@ void Canvas::stop_select_follow(){
     if(select_follow_item && move_dirty) notify_changed();
     move_dirty = false;
     select_follow_item = nullptr;
+    update_status();
 }
 
 //克隆模式：点击元件后复制一个跟随鼠标的虚影，再点击放置（复用放置/虚影机制）
@@ -656,8 +730,8 @@ void Canvas::start_clone(CanvasItem* item){
         ghost->coords_y = coords.y;
         ghost->update_bitmap(scale);
     }
-    if(toolbar) toolbar->Raise();
     Refresh();
+    update_status();   //状态栏：提示"单击放下"
 }
 
 //复制元件：同类型新实例（新ID、独立元数据副本、共享SVG缓存），
@@ -703,6 +777,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
         set_current_item(item);
         notify_changed();             //放置了新内容
         Refresh();
+        update_status();
         return;
     }
     CanvasItem* item = ItemSVG(ghost->name);
@@ -710,12 +785,12 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     item->coords_y = ghost->coords_y;
     item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
-    if(toolbar) toolbar->Raise();
     cancel_tool();  //结束放置：之后再点击该元件可移动它
     edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（对门类放置无影响，本来就为NONE）
     set_current_item(item);  //刚放置的元件成为当前选中（通知属性栏）
     notify_changed();        //项目内容变了（供菜单栏标记“未保存”）
     Refresh();
+    update_status();         //结束放置：状态栏回到"就绪"
 }
 
 CanvasItem* Canvas::item_at(const wxPoint& pos){
