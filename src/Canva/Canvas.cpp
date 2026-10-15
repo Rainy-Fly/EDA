@@ -261,6 +261,14 @@ void Canvas::on_left_down(wxMouseEvent& event){
     const wxPoint pos = mouse_position(event);
     //工具栏区域不响应放置
     if(toolbar && toolbar->GetRect().Contains(pos)) return;
+
+    if(select_follow_item){
+        stop_select_follow();   //内部会：若move_dirty则notify_changed，清空指针
+        Refresh();
+        return;
+    }
+
+
     if(wire_placing){
         on_wire_left_down(event);   //导线模式：加点/完成
         return;
@@ -301,6 +309,13 @@ void Canvas::on_left_up(wxMouseEvent& event){
 }
 
 void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
+     if(select_follow_item){
+        stop_select_follow();
+        Refresh();
+        return;
+    }
+    
+    
     if(wire_placing){  //导线模式下点击任何位置（含元件）都是给导线加点
         on_wire_left_down(event);
         return;
@@ -369,8 +384,6 @@ void Canvas::on_wire_right_down(wxMouseEvent& event){
 //画布右键总入口：选择跟随中→取消跟随（元件留在原位）；否则转导线右键
 void Canvas::on_right_down(wxMouseEvent& event){
     if(select_follow_item){
-        stop_select_follow();
-        Refresh();
         return;
     }
     on_wire_right_down(event);

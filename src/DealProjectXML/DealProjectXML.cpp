@@ -8,11 +8,13 @@
 #include<wx/xml/xml.h>
 #include<ctime>
 
-// 本地时间兼容：localtime_r 是 POSIX 接口，只有 MSVC（及部分运行时）没有，
-// 这里把 localtime_r 映射到参数顺序相反的 localtime_s。
-// 用 _MSC_VER 而不是 _WIN32：MinGW/MinGW-w64 自身就提供 localtime_r，
-// 若按 _WIN32 一并替换，反而会去调用它不一定提供的 localtime_s
-#ifdef _MSC_VER
+// 本地时间兼容：localtime_r 是 POSIX 接口，MSVC 没有这个函数，
+// MinGW-w64 虽然有，但只在定义了 _POSIX_C_SOURCE 时才在 <time.h> 里声明它；
+// 本工程编译用的是严格模式（-std=c++20，见 CMakeLists 的 CMAKE_CXX_EXTENSIONS OFF），
+// 拿不到那个声明，会报 'localtime_r' was not declared in this scope。
+// 两种 Windows 工具链都无条件提供参数顺序相反的 localtime_s（MinGW-w64 的
+// time.h 里 localtime_s 没有 POSIX 保护宏），所以两个宏都映射过去。
+#if defined(_MSC_VER) || defined(__MINGW32__)
     #define localtime_r(timep, result) localtime_s(result, timep)
 #endif
 

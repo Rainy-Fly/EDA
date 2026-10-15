@@ -80,6 +80,74 @@ FetchContent_MakeAvailable(
 )
 
 
+# ---------- libcurl（Agent 的 HTTPS 通信，仅 Windows 需要自己拉源码编） ----------
+# Windows 上用的是独立安装的 MinGW-w64（C:\mingw64），它只带编译器：
+# 既没有 /usr/include/curl/curl.h，也没有 libcurl.a/dll.a。所以原来链接列表里的
+# `curl` 在 Linux 上靠系统装的 libcurl 能过，到 Windows 就直接
+# “fatal error: curl/curl.h: No such file or directory”。
+# 这里在 Windows 下用 FetchContent 拉 curl 源码自己编一个**静态** libcurl：
+# TLS 用 Windows 自带的 Schannel（走系统证书库），不需要 OpenSSL/zlib，
+# 也不用装 MSYS2/vcpkg，静态库还省掉了运行时要找 libcurl.dll 的麻烦。
+# Linux/macOS 保持原样：仍然用系统安装的 libcurl（-lcurl），不改动队友的构建方式。
+if(WIN32)
+
+    # 下面这些是给 curl 子工程看的**普通变量**（不写进 CMake 缓存）：
+    # 只编静态库，不要 curl 命令行工具、测试、示例、man 文档。
+    # 特意不用 CACHE ... FORCE：BUILD_SHARED_LIBS 是全局缓存变量，
+    # 一旦写进缓存，下一次 configure 时上面 wxWidgets/jsoncpp（默认跟着它走）
+    # 会跟着变成静态库，触发一次毫无必要的全量重编。
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
+    set(BUILD_CURL_EXE OFF)
+    set(BUILD_TESTING OFF)
+    set(BUILD_EXAMPLES OFF)
+    set(BUILD_LIBCURL_DOCS OFF)
+    set(BUILD_MISC_DOCS OFF)
+    set(ENABLE_CURL_MANUAL OFF)
+    set(CURL_USE_LIBPSL OFF)     # 本机没有 libpsl，关掉省得去找
+    set(CURL_USE_SCHANNEL ON)    # 用 Windows 原生 TLS，证书直接读系统证书库
+    set(CURL_WINDOWS_SSPI ON)
+
+    FetchContent_Declare(
+        curl
+
+        GIT_REPOSITORY
+            https://github.com/curl/curl.git
+
+        GIT_TAG
+            curl-8_23_0
+
+        GIT_SHALLOW
+            TRUE
+
+        # curl 仓库里没有子模块，置空可以跳过 clone 之后那次
+        # `git submodule update --recursive --init`（少拉起一个 shell 子进程）
+        GIT_SUBMODULES
+            ""
+    )
+
+    FetchContent_MakeAvailable(curl)
+
+    # curl 各版本导出的目标名不完全一致（CURL::libcurl / libcurl / libcurl_static），
+    # 取第一个存在的，避免换个版本就链接失败
+    if(TARGET CURL::libcurl)
+        set(TINYEDA_CURL_TARGET CURL::libcurl)
+    elseif(TARGET libcurl)
+        set(TINYEDA_CURL_TARGET libcurl)
+    elseif(TARGET libcurl_static)
+        set(TINYEDA_CURL_TARGET libcurl_static)
+    else()
+        set(TINYEDA_CURL_TARGET curl)
+    endif()
+
+else()
+
+    # Linux/macOS：系统包管理器装的 libcurl（原来就是这么链的）
+    set(TINYEDA_CURL_TARGET curl)
+
+endif()
+
+
 # =========================
 # 源文件
 # =========================
@@ -136,7 +204,9 @@ target_link_libraries(
     # 聊天界面用 wxHtmlWindow（Agent 面板），HTML 渲染在独立的 html 组件里
     wx::html
     jsoncpp_lib
-    curl      # Agent 的 HTTPS 通信（DeepSeek /chat/completions）
+    # Agent 的 HTTPS 通信（DeepSeek /chat/completions）：
+    # Windows 下是上面 FetchContent 编出来的静态 libcurl，Linux 下是系统 libcurl
+    ${TINYEDA_CURL_TARGET}
     md4c-html # AI 回复的 Markdown -> HTML 渲染（ChatPanel）
 )
 

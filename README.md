@@ -9,7 +9,8 @@
 - Windows + MSVC 工具链（下面示例命令假设用 **Visual Studio 17 2022 生成器**；
   用 VS Code + CMake Tools 扩展、或 Ninja/MinGW 生成器都可以，见下面「构建」一节）
 - CMake ≥ 3.24
-- 第三方依赖由 CMake 的 `FetchContent` 自动拉取（wxWidgets 3.2.11、jsoncpp 1.9.6），
+- 第三方依赖由 CMake 的 `FetchContent` 自动拉取（wxWidgets 3.2.11、jsoncpp 1.9.6、
+  md4c 0.5.3；Windows 下还有 curl，见「MinGW-w64 上必须注意的几点」），
   首次配置需要能访问 GitHub
 
 ### 构建
@@ -70,9 +71,11 @@ cmake --build build --config Debug --target TinyEDA
 **推荐：双击仓库根目录的 `run_TinyEDA.bat`。** 它做三件事：
 
 1. 把工作目录切到仓库根（必须，原因见下）
-2. exe 旁边缺 wxWidgets / jsoncpp 的 DLL 时**自动从 `build\_deps` 里补一份**
-   （重新 clone、或清理过构建目录之后很常见）
-3. 启动 `build\Debug\TinyEDA.exe`（没有 Debug 就用 Release）；如果**还没构建过**，
+2. exe 旁边缺 wxWidgets / jsoncpp / md4c 的 DLL 时**自动从 `build\_deps` 里补一份**
+   （重新 clone、或清理过构建目录之后很常见）；MSVC 的 `lib\vc_x64_dll` 与
+   MinGW-w64 的 `lib\gcc_x64_dll` 两种目录都会识别
+3. 启动 exe：多配置生成器找 `build\Debug\TinyEDA.exe`（其次 `Release`），
+   单配置生成器（MinGW/Ninja）找 `build\TinyEDA.exe`；如果**还没构建过**，
    会打印构建命令并停住，不会一闪而过
 
 > 该脚本是 **GBK 编码 + CRLF 换行**（中文 Windows 的 cmd 要求），改动它时请保持，
@@ -98,13 +101,25 @@ cmake --build build --config Debug --target TinyEDA
    `src/metadata/*.json` 与元件 SVG（`src/Canva/assets/Symbols/`、`src/assets/electronic-symbols/SVG/`）。
    直接双击时工作目录是 `build\Debug`，两处都找不到 —— 界面能开，但**没有元件图标、属性栏也没有元数据**
    （程序对这些缺失是静默容错的，不会报错，不容易发现）。
-2. **DLL 要在 exe 旁边**：wxWidgets 与 jsoncpp 是动态库，缺了会直接启动失败。
-   `run_TinyEDA.bat` 会自动补；手动补的话：
+2. **DLL 要在 exe 旁边**：wxWidgets、jsoncpp 与 md4c 都是动态库，缺了会直接启动失败
+   （缺 md4c 时是 Agent 聊天面板的 Markdown 渲染先出问题）。`run_TinyEDA.bat` 会自动补；
+   手动补的话按生成器二选一：
 
 ```powershell
+# MSVC 等多配置生成器（产物在 build\Debug）
 Copy-Item build\_deps\wxwidgets-build\lib\vc_x64_dll\*.dll build\Debug\ -Force
 Copy-Item build\_deps\jsoncpp-build\src\lib_json\Debug\jsoncpp.dll build\Debug\ -Force
+Copy-Item build\_deps\md4c-build\src\Debug\*md4c*.dll build\Debug\ -Force
+
+# MinGW/Ninja 等单配置生成器（产物在 build）
+Copy-Item build\_deps\wxwidgets-build\lib\gcc_x64_dll\*.dll build\ -Force
+Copy-Item build\_deps\jsoncpp-build\src\lib_json\libjsoncpp.dll build\ -Force
+Copy-Item build\_deps\md4c-build\src\libmd4c*.dll build\ -Force
 ```
+
+> MinGW 编出来的 exe 还依赖 `C:\mingw64\bin` 里的 `libstdc++-6.dll`、`libgcc_s_seh-1.dll`，
+> 所以双击脚本前要确认 `C:\mingw64\bin` 在 PATH 里（安装编译器时通常已经加好了）。
+> 注意 MSVC 与 MinGW 的 DLL 不能混用，切换生成器后建议换个干净的构建目录。
 
 ### MSVC 上必须注意的几点（已写进 CMakeLists）
 
@@ -114,12 +129,23 @@ Copy-Item build\_deps\jsoncpp-build\src\lib_json\Debug\jsoncpp.dll build\Debug\ 
 | `if(MSVC) add_compile_options(/utf-8)` | 源码是 UTF-8 无 BOM 且含大量中文字面量，MSVC 默认按本地代码页（GBK）解析 → 乱码/警告 |
 | 链接 `wx::xml` | `wxXmlDocument` 在独立的 xml 组件里，不链会有一堆 `LNK2019` |
 | 枚举名用 `ERASE` 而不是 `DELETE` | Windows 的 `winnt.h` 把 `DELETE` 定义成访问权限宏（`0x00010000L`），MSVC 下会报语法错误 |
-| `DealProjectXML.cpp` 里的 `localtime_r` 兼容宏 | MSVC 没有 POSIX 的 `localtime_r`（只有参数顺序相反的 `localtime_s`） |
+| `DealProjectXML.cpp` 里的 `localtime_r` 兼容宏 | MSVC 没有 POSIX 的 `localtime_r`（只有参数顺序相反的 `localtime_s`）；MinGW-w64 在严格模式下也不声明它，见下一节 |
 
 另外：不带 `--target` 直接跑 `cmake --build build`，会因为 jsoncpp 自带的测试工程
 `jsoncpp_test.exe` 找不到 `jsoncpp.dll` 而返回 exit code 1 —— 这与本项目无关。
 只编主程序请加 `--target TinyEDA`；想彻底消掉噪音可以在 CMakeLists 里加
 `set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)`。
+
+### MinGW-w64 上必须注意的几点（已写进 CMakeLists / 源码）
+
+| 项 | 不这么做会怎样 |
+|---|---|
+| Windows 下用 `FetchContent` 把 curl 源码拉下来编成**静态**库，TLS 用系统自带的 Schannel | MinGW-w64 只装了编译器：既没有 `/usr/include/curl/curl.h`，也没有 `libcurl.a`，链接列表里直接写 `curl` 会 `fatal error: curl/curl.h: No such file or directory`（Linux 上系统装了 libcurl，所以只有 Windows 会踩这个坑） |
+| `DealProjectXML.cpp` 的 `localtime_r` 兼容宏要覆盖 `__MINGW32__` | 编译用的是严格模式（`-std=c++20`，见 `CMAKE_CXX_EXTENSIONS OFF`），MinGW-w64 的 `<time.h>` 只在定义了 `_POSIX_C_SOURCE` 时才声明 `localtime_r`，会报 `'localtime_r' was not declared in this scope` |
+
+curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、zlib，也不用装 MSYS2/vcpkg；
+代价是首次配置要多拉一次 curl 源码、多编一分钟左右。Linux 上仍然链系统装的 libcurl
+（CMakeLists 里按平台分流），队友的构建方式没有变化。
 
 ## 功能
 
