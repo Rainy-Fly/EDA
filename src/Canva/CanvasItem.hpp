@@ -36,8 +36,7 @@ public:
     int coords_x;  //网格坐标x，用于吸附（锚点：图片中心对应的逻辑坐标）
     int coords_y;  // 网格坐标y,用于吸附
     ItemType type;
-    const wxBitmapBundle* svg; //源SVG引用：由ItemSVG从assets提取并共享缓存，构造后不变；放大缩小时由wxBitmapBundle按目标尺寸矢量重绘更新UI节点（本类不拥有，不释放）
-    wxWindow* ui_node;       //UI节点引用：画布上显示该元件的子窗口（如 wxStaticBitmap）
+    const wxBitmapBundle* svg; //源SVG引用：由ItemSVG从assets提取并共享缓存，构造后不变；放大缩小时由画布按scale重绘成位图（本类不拥有，不释放）
     MetaData* metadata;      //元数据：构造时经 load_config 从 src/metadata/*.json 读取（可能为空）
     bool ghost_mode;         //是否为虚影（放置时跟随鼠标的半透明元件）
 
@@ -52,20 +51,27 @@ public:
     //从项目文件恢复实例ID时调用：确保后续自增ID不会与已恢复的冲突
     static void reserve_id(int id);
 
-    //创建UI节点（需要父窗口；Linking等无UI节点的类型保持空指针）
-    virtual void create_ui(wxWindow* parent);
-
-    //依据画布scale与offset_coords，把SVG矢量重绘到目标大小，并把UI节点放在coords（锚点）对应位置：
+    //把SVG矢量按画布scale重绘成位图（尺寸与虚影状态都没变时直接用缓存，零成本）。
+    //元件不再持有子窗口：位图由画布onPaint统一绘制——这样SVG的透明区域才能真的透出
+    //画布背景。用wxStaticBitmap时MSW会先用窗口背景色刷一层底（画布没设过背景色 ⇒
+    //系统灰），透明像素会变成灰块。
     //  大小 = SVG默认尺寸(150) × scale（限制在[1, MaxDisplaySize]内）
-    //  位置 = (coords - offset_coords) × scale，图片中心对准该点
-    //性能拆分：仅在目标尺寸变化（缩放）时才重绘位图；单纯移动只更新位置（Move），
-    //避免鼠标移动时反复重绘导致的卡顿
-    virtual void update_ui(float scale, const wxPoint& offset_coords);
+    void update_bitmap(float scale);
+
+    //元件在画布客户区里的矩形：图片中心对准 (coords - offset_coords) × scale
+    wxRect display_rect(float scale, const wxPoint& offset_coords) const;
+
+    //命中检测：点是否落在元件显示矩形内（替代原来 item->ui_node->GetRect() 的判定）
+    bool hit_test(const wxPoint& pos, float scale, const wxPoint& offset_coords) const;
+
+    //已渲染好的位图（画布onPaint直接画它；尚未渲染时 IsOk()==false）
+    const wxBitmap& bitmap() const { return rendered_bitmap; }
 
 private:
     static int next_id;
     int rendered_width;         //当前已渲染位图的尺寸（=0表示尚未渲染）
     int rendered_height;
+    bool rendered_ghost;        //渲染缓存对应的ghost_mode（虚影状态变了要重画）
     wxBitmap rendered_bitmap;   //当前显示的位图（缓存，避免重复重绘）
 };
 
@@ -73,8 +79,7 @@ private:
 class Symbol:public CanvasItem{
 public:
     using CanvasItem::CanvasItem;
-    //UI节点为 wxStaticBitmap，显示缩放后的图片
-    void create_ui(wxWindow* parent) override;
+    //没有自己的窗口：位图由画布onPaint按scale绘制（见CanvasItem::update_bitmap）
 };
 
 // 连线/网络类	导线、总线、节点、网络标签、电源/地端口、页连接符
@@ -82,7 +87,7 @@ class Linking : public CanvasItem{
 public:
     using CanvasItem::CanvasItem;
     //连线端点/折点（逻辑坐标coords，已吸附网格）。
-    //导线不创建UI节点（ui_node=nullptr），由画布onPaint直接绘制
+    //导线没有位图，由画布onPaint直接绘制折线
     std::vector<wxPoint> points;
 };
 

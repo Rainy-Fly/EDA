@@ -15,7 +15,7 @@ float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint
 // 枚举值用 ERASE 而不是 DELETE：Windows 的 winnt.h 把 DELETE 定义成访问权限宏
 // (0x00010000L)，用 DELETE 作枚举名在 MSVC 下会报语法错误
 enum class EditTool{
-    NONE,    //无编辑工具（默认：点击拖动）
+    NONE,    //无编辑工具（默认：单击元件即跟随鼠标、再单击放下；按住左键可直接拖动）
     SELECT,  //选择：点击元件→跟随鼠标移动；右键取消跟随；Del删除
     ERASE,   //删除：点击元件即删除
     CLONE,   //克隆：点击元件→复制出跟随鼠标的虚影，再点击放置
@@ -47,7 +47,7 @@ public:
     float get_scale() const { return scale; }                 //缩放比例
     int get_grid_step() const { return GridStep; }            //网格步长
     void set_view(wxPoint offset, float s);                   //设置视口并重排
-    void add_item(CanvasItem* item);                          //插入元件（创建UI/绑定事件/摆放）
+    void add_item(CanvasItem* item);                          //插入元件（按当前scale渲染位图并加入集合）
     void clear_all_items();                                   //清空全部元件并复位绘制状态
     CanvasItem* find_item_by_id(int id);                      //按实例ID查找（供Agent工具等）
     void remove_item(CanvasItem* item);                       //移除并释放指定元件（供Agent工具等）
@@ -90,7 +90,7 @@ private:
     //触发内容变化回调（供菜单栏标记“未保存”）
     void notify_changed();
 
-    //删除元件（从集合移除、销毁UI节点并释放）
+    //删除元件（从集合移除并释放）
     void delete_item(CanvasItem* item);
     //选择模式：点击元件后开始跟随鼠标（吸附网格），右键取消，Del删除
     void start_select_follow(CanvasItem* item);
@@ -115,15 +115,17 @@ private:
     //导线
     void finish_wire();      //提交正在绘制的导线到集合并结束绘制模式
     void cancel_wire();      //丢弃正在绘制的导线并结束绘制模式
-    void draw_wires(wxPaintDC& dc);  //在画布上绘制所有导线+预览+选中高亮
-    void draw_wire_path(wxPaintDC& dc, const std::vector<wxPoint>& points,
+    void draw_wires(wxDC& dc);  //在画布上绘制所有导线+预览+选中高亮
+    void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制
+    void draw_items(wxDC& dc);  //绘制所有元件的位图（带alpha ⇒ 真透明；画在导线之上）
+    void draw_ghost(wxDC& dc);  //绘制放置/克隆中的虚影（最上层）
     bool wire_hit(Linking* wire, const wxPoint& pos); //点到线段命中检测（窗口px）
-    void draw_pins(wxPaintDC& dc); //绘制所有元件的引脚（小圆点，网格对齐）
+    void draw_pins(wxDC& dc); //绘制所有元件的引脚（小圆点，网格对齐）
     bool snap_to_pin(const wxPoint& pos_px, wxPoint& out_coords); //鼠标附近吸附引脚
 
     //统一取鼠标在画布客户区内的坐标：
-    //事件可能来自画布本身，也可能来自元件节点/虚影等子窗口转发，
+    //元件已不再是子窗口（位图由画布自绘），但事件仍可能来自工具栏等子窗口转发，
     //而event.GetPosition()是相对“事件窗口”的，因此统一用屏幕坐标换算，保证各来源一致
     wxPoint mouse_position(const wxMouseEvent& event) const;
 
@@ -142,6 +144,5 @@ private:
     void clear_ghost(); //销毁虚影
     void begin_placement(const std::string& name); //按名字创建跟随鼠标的虚影（进入放置模式）
     void place_at_mouse(const wxMouseEvent& event); //在鼠标位置实例化元件
-    void bind_ui_events(CanvasItem* item);         //显式转发元件节点上的鼠标事件（鼠标事件不自动传播）
     CanvasItem* item_at(const wxPoint& pos);       //命中检测
 };

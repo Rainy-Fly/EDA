@@ -42,6 +42,14 @@ void ToolBar::add_tool(wxSizer* sizer, const std::string& label, ItemType type){
     btn->Bind(wxEVT_BUTTON, [this, label, type, btn](wxCommandEvent&){
         on_tool_click(label, type, btn);
     });
+    //按下就进入放置模式（不等松开）：点一下图标虚影立刻跟着鼠标走，
+    //按住不放直接往画布上拖也照样跟 —— 这就是「单击跟随」。
+    //必须 event.Skip()：不 Skip 会截断原生按钮自己的按下处理，可能连松开时的
+    //BN_CLICKED 都不再发（松开那次只是把虚影按当前位置重建，无副作用）。
+    btn->Bind(wxEVT_LEFT_DOWN, [this, label, type, btn](wxMouseEvent& event){
+        on_tool_click(label, type, btn);
+        event.Skip();
+    });
     //按钮上的滚轮/移动事件也转发给Canvas（鼠标悬停在按钮上时虚影仍能跟随）
     btn->Bind(wxEVT_MOUSEWHEEL, [this](wxMouseEvent& e){ canvas->on_mouse_scroll(e); });
     btn->Bind(wxEVT_MOTION,     [this](wxMouseEvent& e){ canvas->on_mouse_move(e); });

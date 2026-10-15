@@ -45,7 +45,7 @@ wxBitmap render_svg(const wxBitmapBundle& svg, int width, int height){
 }
 
 //构造函数：持有SVG引用（来自ItemSVG共享缓存，不拥有）与元数据。
-//SVG是矢量图，放大缩小不会失真，由update_ui按目标尺寸直接重绘
+//SVG是矢量图，放大缩小不会失真，由画布按scale调用update_bitmap重绘位图
 CanvasItem::CanvasItem(const std::string& name, ItemType type,
                        const wxBitmapBundle* svg, MetaData* metadata)
     : name(name),
@@ -54,18 +54,17 @@ CanvasItem::CanvasItem(const std::string& name, ItemType type,
       coords_y(0),
       type(type),
       svg(svg),
-      ui_node(nullptr),
       metadata(metadata),
       ghost_mode(false){
-    //SVG引用构造后不再改变；缩放时由update_ui用wxBitmapBundle按目标尺寸重绘
+    //SVG引用构造后不再改变；缩放时由update_bitmap用wxBitmapBundle按目标尺寸重绘
     rendered_width = 0;
     rendered_height = 0;
+    rendered_ghost = false;
 }
 
 CanvasItem::~CanvasItem(){
     //svg来自ItemSVG的共享缓存，由缓存统一管理，这里不释放
     delete metadata;
-    //ui_node是画布面板的子窗口，由wxWidgets窗口树统一释放，这里不删除
 }
 
 //读取配置：从 src/metadata/ 下的JSON文件（见MetaDataJson）读取元件元数据。
@@ -79,11 +78,6 @@ MetaData* CanvasItem::load_config(ItemType type, const std::string& name){
 void CanvasItem::reserve_id(int id){
     //下一枚待分配编号至少要比已恢复的最大编号大1，否则新元件会与文件里的元件撞编号
     if(id >= next_id) next_id = id + 1;
-}
-
-void CanvasItem::create_ui(wxWindow* parent){
-    //基类：无UI节点（如Linking导线）
-    ui_node = nullptr;
 }
 
 //虚影半透明：把渲染出的位图alpha整体减半（保留SVG自身的透明区域）
@@ -100,38 +94,41 @@ static wxBitmap apply_ghost_alpha(const wxBitmap& bmp){
     return wxBitmap(img);
 }
 
-void CanvasItem::update_ui(float scale, const wxPoint& offset_coords){
-    if(!ui_node || !svg || !svg->IsOk()) return;
+//按画布scale重绘位图（矢量→目标像素）。
+//性能关键：尺寸与虚影状态都没变时直接复用缓存——鼠标移动（只有位置变）时这里是零成本
+void CanvasItem::update_bitmap(float scale){
+    if(!svg || !svg->IsOk()) return;
     //大小：SVG按“默认尺寸(150) × 画布缩放”重绘（矢量，任意缩放清晰）。
     //wxBitmapBundle内部按尺寸缓存重绘结果，重复调用同尺寸时零成本
     const wxSize pref = svg->GetPreferredBitmapSizeAtScale(scale);
     const int width  = std::clamp(pref.x, 1, MaxDisplaySize);
     const int height = std::clamp(pref.y, 1, MaxDisplaySize);
-
-    //性能关键：仅当目标尺寸变化（滚轮缩放）时才重绘位图；
-    //鼠标移动（尺寸不变）时跳过重绘，只更新位置，保证虚影/元件移动流畅
-    if(width != rendered_width || height != rendered_height){
-        //render_svg统一去掉scale factor，否则GTK按逻辑尺寸绘制会抵消尺寸变化（图片不随缩放变化）
-        wxBitmap bmp = render_svg(*svg, width, height);
-        if(ghost_mode) bmp = apply_ghost_alpha(bmp);
-        rendered_bitmap = bmp;
-        rendered_width  = width;
-        rendered_height = height;
-        if(wxStaticBitmap* node = dynamic_cast<wxStaticBitmap*>(ui_node)){
-            node->SetBitmap(wxBitmapBundle::FromBitmap(rendered_bitmap));
-        }
-        ui_node->SetSize(width, height);   //节点尺寸与位图尺寸一致，保证命中检测与显示一致
+    if(width == rendered_width && height == rendered_height &&
+       ghost_mode == rendered_ghost){
+        return;   //没变化：复用缓存
     }
-
-    //位置：coords（锚点）对应图片中心 => 窗口坐标pos（恒更新，代价极低）
-    const float pos_x = (coords_x - offset_coords.x) * scale;
-    const float pos_y = (coords_y - offset_coords.y) * scale;
-    ui_node->Move((int)std::lround(pos_x - rendered_width  / 2.0f),
-                  (int)std::lround(pos_y - rendered_height / 2.0f));
+    //render_svg统一去掉scale factor，否则GTK按逻辑尺寸绘制会抵消尺寸变化（图片不随缩放变化）
+    wxBitmap bmp = render_svg(*svg, width, height);
+    if(ghost_mode) bmp = apply_ghost_alpha(bmp);
+    rendered_bitmap = bmp;
+    rendered_width  = width;
+    rendered_height = height;
+    rendered_ghost  = ghost_mode;
 }
 
-void Symbol::create_ui(wxWindow* parent){
-    ui_node = new wxStaticBitmap(parent, wxID_ANY, wxBitmap());
+//元件在画布客户区里的矩形：图片中心对准 (coords - offset_coords) × scale。
+//画布就是按这个矩形把位图画上去的，命中检测也用它 —— 显示与点击范围完全一致
+wxRect CanvasItem::display_rect(float scale, const wxPoint& offset_coords) const{
+    const float pos_x = (coords_x - offset_coords.x) * scale;
+    const float pos_y = (coords_y - offset_coords.y) * scale;
+    return wxRect((int)std::lround(pos_x - rendered_width  / 2.0f),
+                  (int)std::lround(pos_y - rendered_height / 2.0f),
+                  rendered_width, rendered_height);
+}
+
+bool CanvasItem::hit_test(const wxPoint& pos, float scale, const wxPoint& offset_coords) const{
+    if(!rendered_bitmap.IsOk()) return false;   //还没渲染出来：不参与命中
+    return display_rect(scale, offset_coords).Contains(pos);
 }
 
 // 引脚布局（见头文件注释；偏移均为GridStep的倍数，保证引脚在网格上）

@@ -2,6 +2,9 @@
 #include"./ItemSVG.hpp"
 #include<cmath>
 #include<algorithm>
+//wxAutoBufferedPaintDC：双缓冲。元件改成画布自绘后，拖动/跟随鼠标时整块画布每帧重画，
+//不缓冲的话MSW上网格+元件会明显闪烁（与构造函数里的 SetBackgroundStyle(wxBG_STYLE_PAINT) 配套）
+#include<wx/dcbuffer.h>
 
 //每滚一格缩放的倍率：1.2 = 每格放大/缩小20%（过大的倍率会导致缩放幅度太大）
 const float MoveRatio=1.2f;
@@ -79,8 +82,8 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
                 if(wire_points.size() >= 2) finish_wire();
                 else{ cancel_wire(); if(toolbar) toolbar->clear_selection(); Refresh(); }
                 handled = true;
-            }else if(edit_tool != EditTool::NONE){
-                //退出编辑工具（选择跟随随之取消）
+            }else if(select_follow_item || edit_tool != EditTool::NONE){
+                //退出编辑工具，或结束「单击跟随」（元件留在当前位置）
                 edit_tool = EditTool::NONE;
                 stop_select_follow();
                 if(toolbar) toolbar->clear_selection();
@@ -193,8 +196,8 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
                coords.y != select_follow_item->coords_y){
                 select_follow_item->coords_x = coords.x;
                 select_follow_item->coords_y = coords.y;
-                select_follow_item->update_ui(scale, offset_coords);
                 move_dirty = true;
+                Refresh();   //元件由画布自绘（不再有子窗口），位置变了要重画
             }
         }
         return;
@@ -220,8 +223,8 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         if(coords.x != dragging_item->coords_x || coords.y != dragging_item->coords_y){
             dragging_item->coords_x = coords.x;
             dragging_item->coords_y = coords.y;
-            dragging_item->update_ui(scale, offset_coords);
             move_dirty = true;
+            Refresh();   //元件由画布自绘（不再有子窗口），位置变了要重画
         }
         return;
     }
@@ -252,8 +255,8 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         }
         ghost->coords_x = coords.x;
         ghost->coords_y = coords.y;
-        if(!ghost->ui_node->IsShown()) ghost->ui_node->Show(true);
-        ghost->update_ui(scale, offset_coords);
+        ghost->update_bitmap(scale);
+        Refresh();   //虚影由画布自绘（不再有子窗口），位置变了要重画
     }
 }
 
@@ -301,6 +304,16 @@ void Canvas::on_left_down(wxMouseEvent& event){
 }
 
 void Canvas::on_left_up(wxMouseEvent& event){
+    //单击（按下后没有真的拖动）＝让元件进入「跟随鼠标」状态：之后移动鼠标它跟着走，
+    //再点一下左键放下（与「选择」工具一致）。按住拖动仍然是直接拖动，老习惯不变。
+    //只对门/通用元件生效：导线单击仍然只是选中，免得整根线被拽到光标下
+    if(dragging_item && !move_dirty && !dynamic_cast<Linking*>(dragging_item)){
+        CanvasItem* item = dragging_item;
+        dragging_item = nullptr;
+        if(HasCapture()) ReleaseMouse();
+        start_select_follow(item);   //内部会set_current_item / 吸附到当前鼠标位置 / Refresh
+        return;
+    }
     //元件/导线被真的拖动过才通知“内容已修改”（决定关闭/新建前要不要提示保存）
     if(dragging_item && move_dirty) notify_changed();
     move_dirty = false;
@@ -445,7 +458,7 @@ void Canvas::select_tool_by_name(const std::string& name){
     stop_select_follow();
     set_current_item(nullptr);
     if(toolbar) toolbar->clear_selection();
-    if(!ItemSVG_bundle(name)) return;   //导线/总线等无SVG：忽略
+    if(!ItemSVG_bundle(name)){ Refresh(); return; }   //导线/总线等无SVG：忽略（清掉旧虚影的残影）
     begin_placement(name);
 }
 
@@ -454,21 +467,16 @@ void Canvas::begin_placement(const std::string& name){
     placing = true;
     ghost = ItemSVG(name);
     ghost->ghost_mode = true;   //半透明虚影
-    ghost->create_ui(this);
-    //关键：虚影节点也要绑定完整的事件转发（MOTION/MIDDLE/滚轮/LEFT）。
-    //否则鼠标悬停在虚影上时，移动事件被虚影窗口吞掉且不向父窗口传播，
-    //虚影会冻结不动、只能等光标逃出范围后跳变追赶（表现为卡顿+非网格跳变）。
-    bind_ui_events(ghost);
-    //立刻把虚影放到当前鼠标位置（吸附网格）并显示，无需先移动鼠标
-    {
-        const wxPoint pos = ScreenToClient(wxGetMousePosition());
-        const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
-        ghost->coords_x = coords.x;
-        ghost->coords_y = coords.y;
-        ghost->update_ui(scale, offset_coords);
-        ghost->ui_node->Show(true);
-    }
+    //虚影没有自己的窗口：位图由onPaint画在最上层，鼠标事件全部直接在画布上处理，
+    //不会再出现「事件被虚影窗口吞掉 → 虚影冻结、光标逃出后才跳变追赶」的老问题
+    //立刻把虚影放到当前鼠标位置（吸附网格）并渲染，无需先移动鼠标
+    const wxPoint pos = ScreenToClient(wxGetMousePosition());
+    const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
+    ghost->coords_x = coords.x;
+    ghost->coords_y = coords.y;
+    ghost->update_bitmap(scale);
     if(toolbar) toolbar->Raise();
+    Refresh();   //让虚影立刻显示出来
 }
 
 //进入编辑工具模式（选择/删除/克隆），同时结束放置/导线等其它进行中状态
@@ -484,6 +492,7 @@ void Canvas::select_action(ToolAction action){
         case ToolAction::ERASE: edit_tool = EditTool::ERASE; break;
         case ToolAction::CLONE:  edit_tool = EditTool::CLONE;  break;
     }
+    Refresh();   //虚影是画布自绘的：clear_ghost后必须显式重画，否则残影留在屏幕上
 }
 
 void Canvas::cancel_tool(){
@@ -545,9 +554,7 @@ void Canvas::set_view(wxPoint offset, float s){
 //插入元件：创建UI节点、绑定事件转发、按当前视口摆放（导线无UI节点，仅入集合由onPaint绘制）
 void Canvas::add_item(CanvasItem* item){
     if(!item) return;
-    item->create_ui(this);
-    bind_ui_events(item);
-    item->update_ui(scale, offset_coords);
+    item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
     Refresh();
 }
@@ -559,9 +566,7 @@ void Canvas::clear_all_items(){
     dragging_item = nullptr;
     wire_drag_saved.clear();
     for(CanvasItem* item : *canvasItemCollection){
-        if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，安全
-        item->ui_node = nullptr;
-        delete item;
+        delete item;   //没有子窗口要销毁，位图随对象一起释放
     }
     canvasItemCollection->clear();
     set_current_item(nullptr);
@@ -581,7 +586,7 @@ void Canvas::remove_item(CanvasItem* item){
     delete_item(item);
 }
 
-//删除元件：从集合移除、销毁UI节点并释放（门/导线均可）
+//删除元件：从集合移除并释放（门/导线均可）
 void Canvas::delete_item(CanvasItem* item){
     if(!item) return;
     canvasItemCollection->erase(item);
@@ -589,7 +594,6 @@ void Canvas::delete_item(CanvasItem* item){
     if(select_follow_item == item) select_follow_item = nullptr;
     if(dragging_item == item) dragging_item = nullptr;
     if(ghost == item) ghost = nullptr;   //模式互斥，正常不会发生
-    if(item->ui_node) item->ui_node->Destroy();   //wx延迟销毁，事件中调用安全
     delete item;
     notify_changed();   //删除也是内容修改
     Refresh();
@@ -618,7 +622,7 @@ void Canvas::start_select_follow(CanvasItem* item){
         if(coords.x != item->coords_x || coords.y != item->coords_y) move_dirty = true;
         item->coords_x = coords.x;
         item->coords_y = coords.y;
-        item->update_ui(scale, offset_coords);
+        Refresh();   //元件由画布自绘，位置变了要重画
     }
 }
 
@@ -638,8 +642,7 @@ void Canvas::start_clone(CanvasItem* item){
     placing = true;
     ghost = copy;
     ghost->ghost_mode = true;
-    if(!ghost->ui_node) ghost->create_ui(this);   //导线(Linking)无UI节点
-    if(ghost->ui_node) bind_ui_events(ghost);
+    //同样没有子窗口：导线虚影没有位图（由draw_wires预览），门类虚影由draw_ghost画
     //立即放到当前鼠标位置（吸附网格）
     const wxPoint pos = ScreenToClient(wxGetMousePosition());
     const wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
@@ -648,14 +651,13 @@ void Canvas::start_clone(CanvasItem* item){
             const wxPoint delta = coords - wire_ghost->points.front();
             for(wxPoint& p : wire_ghost->points) p = p + delta;
         }
-        Refresh();
     }else{
         ghost->coords_x = coords.x;
         ghost->coords_y = coords.y;
-        ghost->update_ui(scale, offset_coords);
-        ghost->ui_node->Show(true);
+        ghost->update_bitmap(scale);
     }
     if(toolbar) toolbar->Raise();
+    Refresh();
 }
 
 //复制元件：同类型新实例（新ID、独立元数据副本、共享SVG缓存），
@@ -682,12 +684,9 @@ CanvasItem* Canvas::clone_item(const CanvasItem* item) const{
 }
 
 void Canvas::clear_ghost(){
-    if(ghost){
-        if(ghost->ui_node) ghost->ui_node->Destroy();
-        ghost->ui_node = nullptr;
-        delete ghost;
-        ghost = nullptr;
-    }
+    //没有子窗口要销毁：位图随对象一起释放，画布下一次重画就看不到它了
+    delete ghost;
+    ghost = nullptr;
 }
 
 //在鼠标位置实例化元件（用虚影的名字），然后结束放置模式。
@@ -709,9 +708,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     CanvasItem* item = ItemSVG(ghost->name);
     item->coords_x = ghost->coords_x;
     item->coords_y = ghost->coords_y;
-    item->create_ui(this);
-    item->update_ui(scale, offset_coords);
-    bind_ui_events(item);
+    item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
     if(toolbar) toolbar->Raise();
     cancel_tool();  //结束放置：之后再点击该元件可移动它
@@ -721,32 +718,6 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     Refresh();
 }
 
-//wxWidgets的鼠标事件不会自动传播到父窗口，这里显式把元件节点上的鼠标事件转发给Canvas
-void Canvas::bind_ui_events(CanvasItem* item){
-    if(!item->ui_node) return;
-    item->ui_node->Bind(wxEVT_LEFT_DOWN, [this, item](wxMouseEvent& e){
-        on_item_left_down(item, e);
-    });
-    item->ui_node->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e){
-        on_left_up(e);
-    });
-    item->ui_node->Bind(wxEVT_MOTION, [this](wxMouseEvent& e){
-        on_mouse_move(e);
-    });
-    item->ui_node->Bind(wxEVT_MOUSEWHEEL, [this](wxMouseEvent& e){
-        on_mouse_scroll(e);
-    });
-    item->ui_node->Bind(wxEVT_MIDDLE_DOWN, [this](wxMouseEvent& e){
-        on_middle_down(e);
-    });
-    item->ui_node->Bind(wxEVT_MIDDLE_UP, [this](wxMouseEvent& e){
-        on_middle_up(e);
-    });
-    item->ui_node->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& e){
-        on_right_down(e);   //选择跟随中取消跟随；导线模式下完成/取消
-    });
-}
-
 CanvasItem* Canvas::item_at(const wxPoint& pos){
     //先命中导线（线段距离检测，导线没有UI节点）
     for(CanvasItem* item : *canvasItemCollection){
@@ -754,9 +725,10 @@ CanvasItem* Canvas::item_at(const wxPoint& pos){
             if(wire_hit(wire, pos)) return wire;
         }
     }
-    //再命中普通元件（节点矩形）
+    //再命中普通元件（显示矩形，和画布画出来的位置完全一致）
     for(CanvasItem* item : *canvasItemCollection){
-        if(item->ui_node && item->ui_node->GetRect().Contains(pos)) return item;
+        if(dynamic_cast<Linking*>(item)) continue;   //导线没有位图，上面已按线段判定
+        if(item->hit_test(pos, scale, offset_coords)) return item;
     }
     return nullptr;
 }
@@ -783,7 +755,7 @@ bool Canvas::wire_hit(Linking* wire, const wxPoint& pos){
 }
 
 //绘制所有元件的引脚：小圆点，位置=锚点coords+引脚偏移（均为网格的倍数⇒在网格上）
-void Canvas::draw_pins(wxPaintDC& dc){
+void Canvas::draw_pins(wxDC& dc){
     dc.SetBrush(wxBrush(wxColour(25, 25, 25)));
     dc.SetPen(*wxTRANSPARENT_PEN);
     for(CanvasItem* item : *canvasItemCollection){
@@ -820,13 +792,12 @@ bool Canvas::snap_to_pin(const wxPoint& pos_px, wxPoint& out_coords){
 }
 
 void Canvas::reput_items(){
-    //从canvasItemCollection中拿出每一个元件，重新绘制，coords不变，计算出pos把元件的图片放在相应位置
+    //按当前scale刷新各元件的位图缓存（尺寸没变时不重绘，等于零成本）；
+    //位置不在这里算——画布绘制时用 display_rect(scale, offset_coords) 现算
     for(CanvasItem* item : *canvasItemCollection){
-        item->update_ui(scale, offset_coords);
+        item->update_bitmap(scale);
     }
-    if(ghost && ghost->ui_node){
-        ghost->update_ui(scale, offset_coords);
-    }
+    if(ghost) ghost->update_bitmap(scale);
 }
 
 void Canvas::reput(){
@@ -834,7 +805,7 @@ void Canvas::reput(){
 }
 
 //在画布上绘制所有导线：已放置的导线（选中高亮）+ 正在绘制的预览
-void Canvas::draw_wires(wxPaintDC& dc){
+void Canvas::draw_wires(wxDC& dc){
     //已放置的导线
     for(CanvasItem* item : *canvasItemCollection){
         Linking* wire = dynamic_cast<Linking*>(item);
@@ -885,7 +856,7 @@ void Canvas::draw_wires(wxPaintDC& dc){
 }
 
 //折线绘制：把coords折点序列画成窗口折线
-void Canvas::draw_wire_path(wxPaintDC& dc, const std::vector<wxPoint>& points,
+void Canvas::draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                             const wxColour& colour, int width){
     if(points.size() < 2) return;
     dc.SetPen(wxPen(colour, width));
@@ -894,8 +865,31 @@ void Canvas::draw_wire_path(wxPaintDC& dc, const std::vector<wxPoint>& points,
     }
 }
 
+//绘制所有元件：位图画到各自的display_rect里。
+//带alpha的位图在MSW下走AlphaBlend（wxMSWDCImpl::DoDrawBitmap对HasAlpha的位图调AlphaBlt），
+//所以SVG的透明区域直接透出白底与网格——不再有wxStaticBitmap那层灰色底
+void Canvas::draw_items(wxDC& dc){
+    for(CanvasItem* item : *canvasItemCollection){
+        if(dynamic_cast<Linking*>(item)) continue;   //导线没有位图，由draw_wires画
+        const wxBitmap& bmp = item->bitmap();
+        if(!bmp.IsOk()) continue;
+        const wxRect r = item->display_rect(scale, offset_coords);
+        dc.DrawBitmap(bmp, r.x, r.y, true);
+    }
+}
+
+//绘制放置/克隆中的虚影（apply_ghost_alpha已经把它处理成半透明），画在元件之上
+void Canvas::draw_ghost(wxDC& dc){
+    if(!ghost) return;
+    if(dynamic_cast<Linking*>(ghost)) return;        //导线虚影由draw_wires画
+    const wxBitmap& bmp = ghost->bitmap();
+    if(!bmp.IsOk()) return;
+    const wxRect r = ghost->display_rect(scale, offset_coords);
+    dc.DrawBitmap(bmp, r.x, r.y, true);
+}
+
 void Canvas::onPaint(wxPaintEvent& event){
-    wxPaintDC dc(this);
+    wxAutoBufferedPaintDC dc(this);   //双缓冲：拖动/跟随时整块重画也不闪
     const wxSize size = GetClientSize();
 
     //背景
@@ -933,8 +927,11 @@ void Canvas::onPaint(wxPaintEvent& event){
     //引脚（网格之上、导线之下：小圆点，网格对齐）
     draw_pins(dc);
 
-    //导线（在网格之上、元件子窗口之下绘制）
+    //导线（在网格之上、元件之下绘制）
     draw_wires(dc);
 
-    reput();
+    //元件与虚影：画布自绘（不再有子窗口）。缩放后先按当前scale刷新位图缓存
+    reput_items();
+    draw_items(dc);
+    draw_ghost(dc);
 }

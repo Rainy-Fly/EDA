@@ -181,7 +181,7 @@ void RegisterCanvasTools(ToolRegistry& reg, Canvas* canvas){
         }
         item->coords_x = snap(num_to_int(args["x"]));
         item->coords_y = snap(num_to_int(args["y"]));
-        item->update_ui(canvas->get_scale(), canvas->get_offset());
+        item->update_bitmap(canvas->get_scale());   //按当前scale重绘位图（画布自绘，位置在绘制时算）
         canvas->Refresh();
         out["ok"] = true;
         return out.toStyledString();
