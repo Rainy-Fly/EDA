@@ -246,3 +246,17 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/xml_selftest.cpp")
     )
 
 endif()
+
+# 网表 JSON 的独立契约自检：不依赖 GUI 或项目 XML 实现。
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(
+        netlist_selftest
+        src/Netlist/NetlistJson.cpp
+        src/Netlist/NetlistValidator.cpp
+        src/Netlist/NetlistBuilder.cpp
+        tests/netlist_selftest.cpp
+    )
+    target_link_libraries(netlist_selftest PRIVATE jsoncpp_lib)
+    add_test(NAME netlist_selftest COMMAND netlist_selftest)
+endif()

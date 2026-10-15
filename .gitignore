@@ -1,6 +1,9 @@
 # CMake build directory
 build/
 tests/
+!tests/
+tests/*
+!tests/netlist_selftest.cpp
 # Compiled binaries
 bin/
 
@@ -21,3 +24,5 @@ Makefile
 # scripts
 compile_and_run.sh
 run_TinyEDA.bat
+
+local/*
