@@ -1,4 +1,5 @@
 #pragma once
+#include<map>
 #include<memory>
 #include<string>
 #include<vector>
@@ -54,6 +55,10 @@ public:
     bool componentHasValue(int componentId) const;
     LogicValue componentValue(int componentId) const;
 
+    //诊断报告（UTF-8 多行文本）：运行状态、每个元件的引脚→网络→电平（含"无驱动/悬空"）、
+    //全部诊断码。供「模拟 → 仿真诊断...」窗口直接显示。
+    std::string report_text() const;
+
 private:
     LogicValue value_of_net(const std::string& net) const;
     bool net_has_value(const std::string& net) const;
@@ -62,6 +67,8 @@ private:
     SimulationModel model_;
     SimulationResult last_;
     std::vector<SimulationDiagnostic> diagnostics_;
+    std::map<int, std::string> names_;   //元件ID → 显示名（报告用）
+    std::map<int, std::string> types_;   //元件ID → 类型串（报告用）
     bool enabled_ = true;
     bool hasModel_ = false;
 };

@@ -301,6 +301,80 @@ void test_empty_and_pause(){
     }
 }
 
+// ---- 用例9：输入端子 / 输出端子 ----
+
+SimComponent in_terminal(int id, int x, int y, const std::string& state = "0"){
+    return comp(id, "IN_TERMINAL", "Simulation", {pin("A", "output", x, y)},
+                {{"State", state}});
+}
+SimComponent out_terminal(int id, int x, int y){
+    return comp(id, "OUT_TERMINAL", "Simulation", {pin("A", "input", x, y)});
+}
+
+// 两个输入端子 → AND → 输出端子
+SimProject terminals_and_gate(const std::string& a, const std::string& b){
+    SimProject project;
+    project.components.push_back(in_terminal(1, 0, 0, a));
+    project.components.push_back(in_terminal(2, 0, 80, b));
+    project.components.push_back(comp(3, "AND", "LogicGate",
+        {pin("IN1", "input", 60, 0), pin("IN2", "input", 60, 80),
+         pin("OUT", "output", 120, 40)}));
+    project.components.push_back(out_terminal(4, 140, 40));
+    project.wires.push_back(wire(10, P(0, 0), P(60, 0), pin_end(1, "A"), pin_end(3, "IN1")));
+    project.wires.push_back(wire(11, P(0, 80), P(60, 80), pin_end(2, "A"), pin_end(3, "IN2")));
+    project.wires.push_back(wire(12, P(120, 40), P(140, 40), pin_end(3, "OUT"), pin_end(4, "A")));
+    return project;
+}
+
+void test_terminals(){
+    {   // 1 AND 1 = 1
+        SimProject project = terminals_and_gate("1", "1");
+        SimulationSession session;
+        check(session.rebuild(project), "端子+AND：有可仿真内容");
+        check(session.errorCount() == 0, "端子+AND：没有 error 诊断");
+        check(session.isSwitch(1), "输入端子按可点击开关处理");
+        check(session.componentValue(1) == LogicValue::One, "输入端子1 = 1");
+        check(session.componentValue(3) == LogicValue::One, "1 AND 1 => 门输出 1");
+        check(session.componentValue(4) == LogicValue::One, "输出端子读到 1");
+        check(session.wireValue(12) == LogicValue::One, "输出导线 = 1");
+        // 改第一个端子为 0：输出跟着变 0
+        project.components[0].params["State"] = "0";
+        check(session.rebuild(project), "改输入端子后重建成功");
+        check(session.componentValue(3) == LogicValue::Zero, "0 AND 1 => 门输出 0");
+        check(session.componentValue(4) == LogicValue::Zero, "输出端子读到 0");
+        check(session.wireValue(12) == LogicValue::Zero, "输出导线 = 0");
+    }
+    {   // 门输入悬空 => X（不是 0）：明确固化语义
+        SimProject project;
+        project.components.push_back(in_terminal(1, 0, 0, "1"));
+        project.components.push_back(comp(3, "AND", "LogicGate",
+            {pin("IN1", "input", 60, 0), pin("IN2", "input", 60, 80),
+             pin("OUT", "output", 120, 40)}));
+        project.components.push_back(out_terminal(4, 140, 40));
+        project.wires.push_back(wire(10, P(0, 0), P(60, 0), pin_end(1, "A"), pin_end(3, "IN1")));
+        project.wires.push_back(wire(12, P(120, 40), P(140, 40), pin_end(3, "OUT"), pin_end(4, "A")));
+
+        SimulationSession session;
+        check(session.rebuild(project), "单输入 AND：建模型成功");
+        check(session.componentValue(3) == LogicValue::Unknown,
+              "另一个输入悬空 => 门输出 X（不是 0）");
+        check(session.componentValue(4) == LogicValue::Unknown, "输出端子读到 X");
+        const std::string report = session.report_text();
+        check(report.find("无驱动") != std::string::npos, "诊断报告标出无驱动");
+        check(report.find("仿真诊断") != std::string::npos, "诊断报告有标题");
+    }
+    {   // 输入/输出端子都没接线
+        SimProject project;
+        project.components.push_back(in_terminal(1, 0, 0, "1"));
+        project.components.push_back(out_terminal(2, 200, 0));
+        const SimulationModel model = build_simulation_model(project);
+        int terminalWarnings = 0;
+        for(const SimulationDiagnostic& diagnostic : model.diagnostics)
+            if(diagnostic.code == "SIMULATION_TERMINAL_UNCONNECTED") ++terminalWarnings;
+        check(terminalWarnings >= 2, "未接线的输入/输出端子各给一条 warning");
+    }
+}
+
 } // namespace
 
 int main(){
@@ -312,6 +386,7 @@ int main(){
     test_unsupported();
     test_multiple_drivers_and_noconnect();
     test_empty_and_pause();
+    test_terminals();
 
     if(failures == 0){
         std::cout << "Simulation adapter self-test passed (" << checks << " checks).\n";

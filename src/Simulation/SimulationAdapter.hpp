@@ -37,6 +37,8 @@ struct SimulationBinding{
     std::map<int, SimRole> role;                                //元件ID → 角色
     //该元件"状态所对应的网络"：门=输出网络；开关/常量=驱动网络；灯/探针=观察网络
     std::map<int, std::string> deviceNet;
+    //网络 → 驱动它的元件ID（诊断用：区分"有驱动"和"悬空没驱动"）
+    std::map<std::string, int> netDriver;
     //开关当前值（来自实例参数 State，缺省 0）
     std::map<int, LogicValue> switchValue;
 };

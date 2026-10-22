@@ -91,9 +91,12 @@ bool is_lamp_type(const std::string& type){
            type == "Diode-COM-LED";
 }
 bool is_probe_type(const std::string& type){
-    return type == "Miscellaneous-COM-Probe_Point";
+    return type == "Miscellaneous-COM-Probe_Point" || type == "OUT_TERMINAL";
 }
+bool is_input_terminal(const std::string& type){ return type == "IN_TERMINAL"; }
+bool is_output_terminal(const std::string& type){ return type == "OUT_TERMINAL"; }
 bool is_switch_component(const SimComponent& component){
+    if(is_input_terminal(component.type)) return true;   //输入端子也是"单端可点击驱动源"
     return component.category == "Switch" || component.type.rfind("Switch-COM-", 0) == 0;
 }
 
@@ -263,6 +266,7 @@ SimulationModel build_simulation_model(const SimProject& project){
             return false;
         }
         driverOf[net] = componentId;
+        model.binding.netDriver[net] = componentId;   //诊断：这个网络有驱动源
         declare(net);
         return true;
     };
@@ -336,6 +340,16 @@ SimulationModel build_simulation_model(const SimProject& project){
                     "开关两个引脚都接了线，只把它当单端输入使用（取第一个引脚）。", {simId}));
             }
             const std::string net = it->second;
+            //只连到它自己 = 没接线：仍然可点击，但诊断里明确说明
+            if(nets.terminals[net] <= 1){
+                model.diagnostics.push_back(make_warning(
+                    is_input_terminal(component->type)
+                        ? "SIMULATION_TERMINAL_UNCONNECTED"
+                        : "SIMULATION_COMPONENT_UNCONNECTED",
+                    (is_input_terminal(component->type) ? "输入端子" : "开关") +
+                        std::string("没有接线（只连到自己），点击不会影响任何网络：") +
+                        component->name, {simId}));
+            }
             const LogicValue value = parse_state(component->params);
             model.binding.role[id] = SimRole::InputSwitch;
             model.binding.deviceNet[id] = net;
@@ -390,6 +404,15 @@ SimulationModel build_simulation_model(const SimProject& project){
                 model.diagnostics.push_back(make_warning(
                     "SIMULATION_OUTPUT_AMBIGUOUS_PIN",
                     "输出元件两个引脚都接了线，只观察第一个引脚。", {simId}));
+            }
+            //输出端子只连到自己：显示 X，并在诊断里说明"没有接线"
+            if(nets.terminals[it->second] <= 1){
+                model.diagnostics.push_back(make_warning(
+                    is_output_terminal(component->type)
+                        ? "SIMULATION_TERMINAL_UNCONNECTED"
+                        : "SIMULATION_COMPONENT_UNCONNECTED",
+                    (is_output_terminal(component->type) ? "输出端子" : "输出元件") +
+                        std::string("没有接线（只连到自己）：") + component->name, {simId}));
             }
             model.circuit.probes.push_back(SimulationProbe(simId, it->second));
             declare(it->second);
