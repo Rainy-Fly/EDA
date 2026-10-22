@@ -27,6 +27,9 @@ MenuBar::MenuBar(){
     wxMenu* simulate_menu = new wxMenu;
     simulate_menu->Append(ID_RUN_PAUSE, wxString::FromUTF8("运行 / 暂停"));
     simulate_menu->Append(ID_TICK,      wxString::FromUTF8("单步时钟"));
+    simulate_menu->AppendSeparator();
+    //诊断：列出每个元件的引脚→网络→电平、悬空网络、多驱动冲突等
+    simulate_menu->Append(ID_SIM_DIAGNOSTICS, wxString::FromUTF8("仿真诊断(&D)..."));
 
     //---- View（视图）----
     wxMenu* view_menu = new wxMenu;

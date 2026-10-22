@@ -41,6 +41,10 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     add_tool(tools, "异或门", ItemType::XOR);
     add_tool(tools, "非门",   ItemType::NOT);
     add_tool(tools, "导线",   ItemType::WIRE);
+    //仿真输入/输出端子（小方框）：输入端子单击切换 0/1，输出端子显示所接网络电平。
+    //它们是通用元件（类型串 IN_TERMINAL / OUT_TERMINAL 来自 src/metadata/terminals.json）
+    add_tool(tools, "输入端子", ItemType::GENERIC);
+    add_tool(tools, "输出端子", ItemType::GENERIC);
     outer->Add(tools, 0, wxLEFT | wxRIGHT | wxTOP, 6);
 
     //动作工具与元件工具用一条横线分隔

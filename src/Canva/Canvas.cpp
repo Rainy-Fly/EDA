@@ -1,5 +1,6 @@
 #include"./Canvas.hpp"
 #include"./ItemSVG.hpp"
+#include"../Simulation/SimulationSession.hpp"
 #include<cmath>
 #include<algorithm>
 //wxAutoBufferedPaintDC：双缓冲。元件改成画布自绘后，拖动/跟随鼠标时整块画布每帧重画，
@@ -55,6 +56,8 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       current_item(nullptr),
       current_item_callback(),
       changed_callback(),
+      simulation_dirty_callback(),
+      simulation(nullptr),
       cursor_callback(),
       status_callback(),
       view_callback(),
@@ -68,6 +71,10 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       edit_tool(EditTool::NONE),
       select_follow_item(nullptr){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    //元件状态徽标（0/1/X）用小号粗体：小尺寸下也不至于压住符号
+    badge_font = GetFont();
+    badge_font.SetPointSize(7);
+    badge_font.SetWeight(wxFONTWEIGHT_BOLD);
     Bind(wxEVT_PAINT,        &Canvas::onPaint, this);
     Bind(wxEVT_MOUSEWHEEL,   &Canvas::on_mouse_scroll, this);
     Bind(wxEVT_MIDDLE_DOWN,  &Canvas::on_middle_down, this);
@@ -124,6 +131,8 @@ Canvas::~Canvas(){
     //析构期间不再回调上层：状态栏/属性栏可能已经在析构，回调过去就是悬空访问
     current_item_callback = nullptr;
     changed_callback = nullptr;
+    simulation_dirty_callback = nullptr;
+    simulation = nullptr;
     cursor_callback = nullptr;
     status_callback = nullptr;
     view_callback = nullptr;
@@ -146,6 +155,20 @@ void Canvas::set_current_item(CanvasItem* item){
 
 void Canvas::set_changed_callback(std::function<void()> callback){
     changed_callback = std::move(callback);
+}
+
+void Canvas::set_simulation(Simulation::SimulationSession* session){
+    simulation = session;
+    Refresh();
+}
+
+void Canvas::set_simulation_dirty_callback(std::function<void()> callback){
+    simulation_dirty_callback = std::move(callback);
+}
+
+void Canvas::refresh_simulation_display(){
+    Refresh();
+    update_status();
 }
 
 void Canvas::set_cursor_callback(std::function<void(const wxPoint&, bool)> callback){
@@ -185,6 +208,10 @@ void Canvas::update_status(){
         text = wxString::FromUTF8("克隆工具：单击元件复制一个跟随鼠标的副本，再单击放下");
     }else{
         text = wxString::FromUTF8("就绪：从左侧挑元件或工具；中键拖动画布、滚轮缩放");
+        //仿真开启时提示"怎么改输入"。数字用全角：状态栏是原生控件，
+        //中文里混半角数字/字母会被 GDI 的字体链接渲染得发虚（实测过）
+        if(simulation && simulation->enabled() && simulation->hasModel())
+            text += wxString::FromUTF8("；仿真运行中：单击开关切换 ０/１");
     }
     if(text == last_status) return;
     last_status = text;
@@ -193,6 +220,8 @@ void Canvas::update_status(){
 
 void Canvas::notify_changed(){
     if(changed_callback) changed_callback();
+    //仿真重建走独立回调：不会覆盖 FileActions 挂在 changed_callback 上的"未保存"标记
+    if(simulation_dirty_callback) simulation_dirty_callback();
 }
 
 //中键滚轮缩放：鼠标在屏幕的pos不变，画布的逻辑坐标（offset_coords）改变
@@ -376,6 +405,15 @@ void Canvas::on_left_down(wxMouseEvent& event){
 }
 
 void Canvas::on_left_up(wxMouseEvent& event){
+    //单击（按下后没有真的拖动）落在"输入开关"上：切换 0/1 并重算（类似 Logisim），
+    //不进入"跟随鼠标"状态；按住拖动仍然是移动元件，老习惯不变
+    if(dragging_item && !move_dirty && item_is_switch(dragging_item) && simulation){
+        CanvasItem* item = dragging_item;
+        dragging_item = nullptr;
+        if(HasCapture()) ReleaseMouse();
+        toggle_switch(item);
+        return;
+    }
     //单击（按下后没有真的拖动）＝让元件进入「跟随鼠标」状态：之后移动鼠标它跟着走，
     //再点一下左键放下（与「选择」工具一致）。按住拖动仍然是直接拖动，老习惯不变。
     //只对门/通用元件生效：导线单击仍然只是选中，免得整根线被拽到光标下
@@ -635,6 +673,8 @@ void Canvas::add_item(CanvasItem* item){
     item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
     Refresh();
+    //加载项目时走这条路（批量 add_item）：主窗口会去抖后统一重建一次仿真
+    if(simulation_dirty_callback) simulation_dirty_callback();
 }
 
 //清空全部元件：结束绘制/编辑状态、销毁所有UI节点与实例
@@ -653,6 +693,7 @@ void Canvas::clear_all_items(){
     libraries.clear();
     set_current_item(nullptr);
     Refresh();
+    if(simulation_dirty_callback) simulation_dirty_callback();   //新建项目：仿真也要清空
 }
 
 //按实例ID查找元件（供 Agent 工具按id操作）；找不到返回nullptr
@@ -867,16 +908,48 @@ bool Canvas::wire_hit(Linking* wire, const wxPoint& pos){
 }
 
 //绘制所有元件的引脚：小圆点，位置=锚点coords+引脚偏移（均为网格的倍数⇒在网格上）
+//仿真开启时按引脚所在网络的电平着色（1=亮绿、0=深绿、X=蓝），直观看出每个脚的电平
 void Canvas::draw_pins(wxDC& dc){
-    dc.SetBrush(wxBrush(wxColour(25, 25, 25)));
     dc.SetPen(*wxTRANSPARENT_PEN);
     for(CanvasItem* item : *canvasItemCollection){
         if(dynamic_cast<Linking*>(item)) continue;   //导线无引脚
         for(const Pin& pin : item_pins(*item)){
+            dc.SetBrush(wxBrush(pin_colour(item, pin.id)));
             dc.DrawCircle(coords_to_pos_px(wxPoint(item->coords_x + pin.offset.x,
                                                     item->coords_y + pin.offset.y)), 3);
         }
     }
+}
+
+//引脚颜色：仿真有值时按 1/0/X 着色，否则用默认深灰
+wxColour Canvas::pin_colour(const CanvasItem* item, const std::string& pinId) const{
+    if(!simulation || !item || !simulation->pinHasValue(item->id, pinId))
+        return wxColour(25, 25, 25);
+    switch(simulation->pinValue(item->id, pinId)){
+        case Simulation::LogicValue::One:  return wxColour(0, 190, 80);
+        case Simulation::LogicValue::Zero: return wxColour(20, 110, 60);
+        default: break;
+    }
+    return wxColour(80, 110, 210);
+}
+
+//元件是不是"输入开关"：按元数据类别判断。
+//用元数据而不是仿真会话，是为了新放置的元件（仿真还没重建）也能正确识别并响应点击
+bool Canvas::item_is_switch(const CanvasItem* item) const{
+    if(!item || !item->metadata) return false;
+    if(item->metadata->get_type() == "IN_TERMINAL") return true;   //输入端子也是可点击的 0/1 源
+    if(item->metadata->get_category() == "Switch") return true;
+    return item->metadata->get_type().rfind("Switch-COM-", 0) == 0;
+}
+
+//单击开关：State 在 0/1 之间切换，存进实例参数（随项目一起保存），然后通知重建仿真
+void Canvas::toggle_switch(CanvasItem* item){
+    if(!item || !item->metadata) return;
+    std::string& state = item->metadata->params["State"];
+    state = (state == "1") ? "0" : "1";
+    notify_changed();
+    Refresh();
+    update_status();
 }
 
 //鼠标位置(pos_px, 窗口像素)靠近某元件引脚（<=PinSnapPx）时吸附：
@@ -926,8 +999,37 @@ void Canvas::draw_wires(wxDC& dc){
         if(selected){
             draw_wire_path(dc, wire->points, wxColour(0, 102, 204), 4);   //选中：粗蓝底
         }
+
+        //仿真电平着色（类似 Logisim）：1=亮绿粗线(+淡绿外发光)、0=中灰粗线、X=蓝、
+        //未参与仿真=深灰细线。0 特意用中灰而不是深绿：深绿和亮绿肉眼几乎分不出来，
+        //容易被当成"已经变 1 了"（其实还是 0）
+        wxColour colour(40, 40, 40);
+        int width = 2;
+        bool has_value = false;
+        Simulation::LogicValue value = Simulation::LogicValue::Unknown;
+        if(simulation && simulation->wireHasValue(wire->id)){
+            has_value = true;
+            value = simulation->wireValue(wire->id);
+        }
+        if(has_value){
+            width = 3;
+            switch(value){
+                case Simulation::LogicValue::One:
+                    //高电平：先铺一层淡绿外发光，再画主线（选中时不铺，保持蓝色高亮）
+                    if(!selected) draw_wire_path(dc, wire->points, wxColour(175, 240, 205), 7);
+                    colour = wxColour(0, 200, 90);
+                    break;
+                case Simulation::LogicValue::Zero:
+                    colour = wxColour(120, 120, 120);
+                    break;
+                default:
+                    colour = wxColour(80, 110, 210);
+                    break;
+            }
+        }
         draw_wire_path(dc, wire->points,
-                       selected ? wxColour(0, 120, 255) : wxColour(40, 40, 40), 2);
+                       selected ? wxColour(0, 120, 255) : colour,
+                       selected ? 2 : width);
     }
 
     //正在绘制的导线：已确定的折线（正交展开）+ 橡皮筋预览（正交拐角）+ 端点圆点
@@ -990,6 +1092,119 @@ void Canvas::draw_items(wxDC& dc){
     }
 }
 
+//仿真状态覆盖层：等所有位图都画完之后再统一画一遍。
+//为什么单独一遍：徽标/方框数值如果夹在位图中间画，后面画的相邻元件位图会把它盖掉，
+//看起来就像"某个元件显示的是别人的值"——这正是之前"线变绿了但门显示 0"最可能的来源之一
+void Canvas::draw_state_overlay(wxDC& dc){
+    if(!simulation || !simulation->hasModel()) return;
+    for(CanvasItem* item : *canvasItemCollection){
+        if(dynamic_cast<Linking*>(item)) continue;
+        const wxRect r = item->display_rect(scale, offset_coords);
+        if(r.width <= 0 || r.height <= 0) continue;
+        draw_item_state(dc, item, r);
+    }
+}
+
+//元件状态标注（Logisim 风格）：
+//   - 端子：方框内直接显示 0/1/X（输入端子再描一圈"可点击"提示）
+//   - 门/开关/灯：右上角小徽标显示该元件的值（门=输出、开关=状态、灯/探针=观察电平）
+//   - 灯在值为 1 时画一圈黄色光晕
+//   - 不参与仿真的元件在左上角画一个灰色 ✕
+void Canvas::draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect){
+    if(!simulation || !simulation->hasModel()) return;
+    const int id = item->id;
+    const std::string type = item->metadata ? item->metadata->get_type() : std::string();
+    const bool input_terminal = (type == "IN_TERMINAL");
+    const bool output_terminal = (type == "OUT_TERMINAL");
+
+    //不支持的元件：灰色 ✕（只标记真实存在、且确实被判为不支持的元件）
+    if(!simulation->isSupported(id)){
+        dc.SetPen(wxPen(wxColour(150, 150, 150), 2));
+        const int s = 5;
+        const int x = rect.x + 3;
+        const int y = rect.y + 3;
+        dc.DrawLine(x, y, x + s, y + s);
+        dc.DrawLine(x + s, y, x, y + s);
+        return;
+    }
+
+    const bool has_value = simulation->componentHasValue(id);
+    const Simulation::LogicValue value = has_value ? simulation->componentValue(id)
+                                                   : Simulation::LogicValue::Unknown;
+
+    //---- 端子：数值直接写在方框里 ----
+    if(input_terminal || output_terminal){
+        wxColour fill(235, 235, 235);
+        wxColour ink(70, 70, 70);
+        switch(value){
+            case Simulation::LogicValue::One:
+                fill = wxColour(198, 246, 214);
+                ink  = wxColour(0, 120, 50);
+                break;
+            case Simulation::LogicValue::Zero:
+                fill = wxColour(228, 228, 228);
+                ink  = wxColour(60, 60, 60);
+                break;
+            default:
+                fill = wxColour(212, 224, 250);
+                ink  = wxColour(40, 70, 170);
+                break;
+        }
+        const int inset = std::max(4, rect.width / 8);
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(wxBrush(fill));
+        dc.DrawRectangle(rect.x + inset, rect.y + inset,
+                         rect.width - inset * 2, rect.height - inset * 2);
+        //输入端子是"可点击"的：再描一圈边框（值为 1 时用绿色，提示当前是 1）
+        if(input_terminal){
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            dc.SetPen(wxPen(value == Simulation::LogicValue::One
+                                ? wxColour(0, 170, 80) : wxColour(150, 150, 150), 2));
+            dc.DrawRectangle(rect.x + inset, rect.y + inset,
+                             rect.width - inset * 2, rect.height - inset * 2);
+        }
+        wxFont font = badge_font;
+        font.SetPointSize(std::max(10, rect.height / 5));
+        dc.SetFont(font);
+        dc.SetTextForeground(ink);
+        const wxString text = wxString::FromUTF8(Simulation::to_string(value));
+        const wxSize extent = dc.GetTextExtent(text);
+        dc.DrawText(text, rect.x + (rect.width - extent.GetWidth()) / 2,
+                    rect.y + (rect.height - extent.GetHeight()) / 2);
+        return;
+    }
+
+    if(!has_value) return;
+
+    if(simulation->isLamp(id) && value == Simulation::LogicValue::One){
+        const int cx = rect.x + rect.width / 2;
+        const int cy = rect.y + rect.height / 2;
+        const int radius = std::max(6, std::min(rect.width, rect.height) / 2 + 3);
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.SetPen(wxPen(wxColour(255, 200, 0), 3));
+        dc.DrawCircle(cx, cy, radius);
+    }
+
+    const wxString text = wxString::FromUTF8(Simulation::to_string(value));
+    dc.SetFont(badge_font);
+    const wxSize extent = dc.GetTextExtent(text);
+    const int boxW = std::max(14, extent.GetWidth() + 8);
+    const int boxH = 15;
+    const int x = rect.x + rect.width - boxW + 2;
+    const int y = rect.y - 5;
+
+    wxColour background(90, 90, 90);
+    if(value == Simulation::LogicValue::One)       background = wxColour(0, 170, 80);
+    else if(value == Simulation::LogicValue::Unknown) background = wxColour(70, 110, 210);
+
+    dc.SetPen(*wxTRANSPARENT_PEN);
+    dc.SetBrush(wxBrush(background));
+    dc.DrawRoundedRectangle(x, y, boxW, boxH, 4);
+    dc.SetTextForeground(*wxWHITE);
+    dc.DrawText(text, x + (boxW - extent.GetWidth()) / 2,
+                y + (boxH - extent.GetHeight()) / 2);
+}
+
 //绘制放置/克隆中的虚影（apply_ghost_alpha已经把它处理成半透明），画在元件之上
 void Canvas::draw_ghost(wxDC& dc){
     if(!ghost) return;
@@ -1045,5 +1260,6 @@ void Canvas::onPaint(wxPaintEvent& event){
     //元件与虚影：画布自绘（不再有子窗口）。缩放后先按当前scale刷新位图缓存
     reput_items();
     draw_items(dc);
+    draw_state_overlay(dc);   //第二遍：端子数值/状态徽标/灯亮光晕（不会被位图盖住）
     draw_ghost(dc);
 }
