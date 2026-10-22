@@ -133,11 +133,15 @@ bool CanvasItem::hit_test(const wxPoint& pos, float scale, const wxPoint& offset
 
 // 引脚布局（见头文件注释；偏移均为GridStep的倍数，保证引脚在网格上）
 std::vector<Pin> item_pins(const CanvasItem& item){
+    return item_pins_for(item.metadata, item.name);
+}
+
+std::vector<Pin> item_pins_for(const MetaData* metadata, const std::string& name){
     std::vector<Pin> pins;
     constexpr int PIN_X = 50;   //左右引脚距中心5格（逻辑坐标）
 
     // 逻辑门：左输入/右输出
-    if(const LogicGateMetaData* g = dynamic_cast<const LogicGateMetaData*>(item.metadata)){
+    if(const LogicGateMetaData* g = dynamic_cast<const LogicGateMetaData*>(metadata)){
         const int n = std::max(1, g->get_inputs());
         for(int i = 0; i < n; ++i){
             const int y = (2 * i - (n - 1)) * 10;
@@ -152,8 +156,8 @@ std::vector<Pin> item_pins(const CanvasItem& item){
         return pins;
     }
 
-    const std::string type = item.metadata ? item.metadata->get_type() : item.name;
-    const std::string cat  = item.metadata ? item.metadata->get_category() : "";
+    const std::string type = metadata ? metadata->get_type() : name;
+    const std::string cat  = metadata ? metadata->get_category() : "";
 
     // 晶体管：基极左，集电极/发射极右
     if(type.find("Transistor") != std::string::npos ||

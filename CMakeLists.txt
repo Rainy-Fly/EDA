@@ -272,6 +272,8 @@ if(BUILD_TESTING)
         src/Netlist/NetlistJson.cpp
         src/Netlist/NetlistValidator.cpp
         src/Netlist/NetlistBuilder.cpp
+        src/Netlist/PcbNetlistBuilder.cpp
+        src/Netlist/KiCadNetlistExporter.cpp
         tests/netlist_selftest.cpp
     )
     target_link_libraries(netlist_selftest PRIVATE jsoncpp_lib)

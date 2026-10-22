@@ -105,6 +105,10 @@ struct Pin{
 //   地：上方引脚；电源：上下引脚；继电器：线圈+触点；其余：左右两引脚。
 std::vector<Pin> item_pins(const CanvasItem& item);
 
+// 与 item_pins 相同的引脚布局规则，但不构造 CanvasItem（不消耗全局 id），
+// 供网表导出等只读逻辑复用。
+std::vector<Pin> item_pins_for(const MetaData* metadata, const std::string& name);
+
 // 把折线锚点序列展开为正交（水平/垂直）折线：相邻锚点之间插入一个拐角点。
 // 相邻两点在同一直线时插入退化为无（不产生重复点）。保证导线只有横竖段、无斜线。
 std::vector<wxPoint> orthogonal_expand(const std::vector<wxPoint>& anchors);

@@ -10,6 +10,10 @@
       "category": "Passive",
       "description": "电阻：限制电流、分压",
       "DataBits": 1,
+      "reference_prefix": "R",
+      "value": "10k",
+      "footprint": "Resistor_SMD:R_0603_1608Metric",
+      "pin_numbers": "A=1;B=2",
       "params": {
         "resistance": "10k",
         "tolerance": "5%",
@@ -24,6 +28,10 @@
       "category": "Passive",
       "description": "电容：储能、滤波、耦合",
       "DataBits": 1,
+      "reference_prefix": "C",
+      "value": "100nF",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "pin_numbers": "A=1;B=2",
       "params": {
         "capacitance": "100nF",
         "voltage": "50V"
@@ -37,6 +45,10 @@
       "category": "Passive",
       "description": "电感：储能、滤波",
       "DataBits": 1,
+      "reference_prefix": "L",
+      "value": "10uH",
+      "footprint": "Inductor_SMD:L_0603_1608Metric",
+      "pin_numbers": "A=1;B=2",
       "params": {
         "inductance": "10uH"
       }

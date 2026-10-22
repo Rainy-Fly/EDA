@@ -6,6 +6,7 @@ enum{
     ID_RUN_PAUSE = wxID_HIGHEST + 1,   //运行 / 暂停
     ID_TICK,                           //单步时钟
     ID_SET_DEFAULT_DIR,                //文件 - 设置默认目录（存在配置文件里）
+    ID_EXPORT_KICAD_NETLIST,           //文件 - 导出 KiCad 网表
     ID_SHOW_AGENT,                     //视图 - 显示/隐藏 AI 助手面板
 };
 

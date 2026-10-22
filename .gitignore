@@ -17,12 +17,15 @@ Makefile
 .vscode/
 
 # addional images
-./src/assets/electronic-symbols/JPG-ICO/
-./src/assets/electronic-symbols/JPG/
-./src/assets/electronic-symbols/SVG/
+/src/assets/electronic-symbols/JPG-ICO/
+/src/assets/electronic-symbols/JPG/
+/src/assets/electronic-symbols/PNG/
 
 # scripts
 compile_and_run.sh
 run_TinyEDA.bat
 
 local/*
+
+*.md
+!README.md

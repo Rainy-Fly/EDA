@@ -2,6 +2,13 @@
 #include"./OpenLocationDialog.hpp"
 #include"./MenuBar.hpp"          //ID_SET_DEFAULT_DIR
 #include"../Canva/Canvas.hpp"
+#include"../Netlist/PcbProjectAdapter.hpp"
+#include"../Netlist/PcbNetlistBuilder.hpp"
+#include"../Netlist/KiCadNetlistExporter.hpp"
+
+#include<algorithm>
+#include<sstream>
+#include<vector>
 
 #include<wx/filedlg.h>      //wxFileDialog
 #include<wx/dirdlg.h>       //wxDirDialog
@@ -25,6 +32,26 @@ std::string to_utf8(const wxString& s){
 // 文件对话框的过滤器：只认 .xml，同时留一个“所有文件”兜底
 wxString project_wildcard(){
     return wxString::FromUTF8("TinyEDA 项目文件 (*.xml)|*.xml|所有文件 (*.*)|*.*");
+}
+
+// 把网表校验/写入诊断整理成可读文本。
+wxString format_diagnostics(const std::vector<NetlistData::Diagnostic>& diagnostics){
+    std::ostringstream out;
+    for(const NetlistData::Diagnostic& diagnostic : diagnostics){
+        out << (diagnostic.severity == "error" ? "[错误] " : "[警告] ")
+            << diagnostic.code << ": " << diagnostic.message;
+        if(!diagnostic.objectIds.empty()){
+            out << "（对象: ";
+            for(std::size_t i = 0; i < diagnostic.objectIds.size(); ++i){
+                if(i) out << ", ";
+                out << diagnostic.objectIds[i];
+            }
+            out << "）";
+        }
+        if(!diagnostic.pinId.empty()) out << "（引脚: " << diagnostic.pinId << "）";
+        out << "\n";
+    }
+    return wxString::FromUTF8(out.str());
 }
 
 } // namespace
@@ -94,6 +121,69 @@ void FileActions::on_save(wxCommandEvent& event){
 void FileActions::on_save_as(wxCommandEvent& event){
     (void)event;
     save_project_as();
+}
+
+//导出 KiCad PCB 网表：画布 -> 只读快照 -> PcbNetlist -> .net 文件。
+//网表生成与序列化都不在本函数内实现，失败时把具体诊断显示给用户。
+void FileActions::on_export_kicad_netlist(wxCommandEvent& event){
+    (void)event;
+    if(!canvas) return;
+
+    const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
+    const NetlistData::PcbProjectSnapshot snapshot =
+        NetlistData::BuildPcbSnapshotFromProject(project);
+    const NetlistData::PcbNetlistBuildResult build =
+        NetlistData::PcbNetlistBuilder::build(snapshot);
+
+    if(!build.ok() || !build.value){
+        wxMessageBox(wxString::FromUTF8("无法导出 KiCad 网表：\n\n") +
+                         format_diagnostics(build.diagnostics),
+                     wxString::FromUTF8("导出 KiCad 网表"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+
+    const bool hasWarnings = std::any_of(
+        build.diagnostics.begin(), build.diagnostics.end(),
+        [](const NetlistData::Diagnostic& diagnostic){
+            return diagnostic.severity == "warning";
+        });
+    if(hasWarnings){
+        const int answer = wxMessageBox(
+            wxString::FromUTF8("导出前检查发现以下警告：\n\n") +
+                format_diagnostics(build.diagnostics) +
+                wxString::FromUTF8("\n是否继续导出？"),
+            wxString::FromUTF8("导出 KiCad 网表"), wxYES_NO | wxICON_WARNING, frame);
+        if(answer != wxYES) return;
+    }
+
+    //默认文件名：当前项目名 + .net
+    const wxString suggested = current_path.empty()
+        ? wxString(wxT("project.net"))
+        : wxFileName(current_path).GetName() + wxT(".net");
+    wxFileDialog dlg(frame, wxString::FromUTF8("导出 KiCad 网表"), start_dir(), suggested,
+                     wxString::FromUTF8("KiCad 网表 (*.net)|*.net|所有文件 (*.*)|*.*"),
+                     wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if(dlg.ShowModal() != wxID_OK) return;
+
+    wxString path = dlg.GetPath();
+    if(!path.Lower().EndsWith(wxT(".net"))) path += wxT(".net");
+
+    NetlistData::KiCadNetlistExportOptions options;
+    if(!current_path.empty()) options.sourcePath = to_utf8(current_path);
+
+    NetlistData::KiCadNetlistWriteResult written;
+    {
+        //底层用 std::ofstream；wxLogNull 避免 wxWidgets 额外弹原始错误框
+        wxLogNull no_log;
+        written = NetlistData::KiCadNetlistExporter::write(*build.value, to_utf8(path), options);
+    }
+    if(!written.ok()){
+        wxMessageBox(wxString::FromUTF8("写入网表文件失败：\n\n") +
+                         format_diagnostics(written.diagnostics),
+                     wxString::FromUTF8("导出失败"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+    if(frame) frame->SetStatusText(wxString::FromUTF8("KiCad 网表已导出"));
 }
 
 //设置默认目录：选一个目录存进配置文件，“打开项目”里的“从默认目录打开”就用它
