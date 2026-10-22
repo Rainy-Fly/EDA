@@ -32,6 +32,9 @@ struct CanvasLibrary{
 //点到线段的最短距离（窗口像素），用于导线命中检测
 float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint& b);
 
+//仿真会话（src/Simulation；画布只借指针读取值来着色，不拥有它）
+namespace Simulation{ class SimulationSession; }
+
 // 画布编辑工具（选择/删除/克隆，作用于已放置的元件）
 // 枚举值用 ERASE 而不是 DELETE：Windows 的 winnt.h 把 DELETE 定义成访问权限宏
 // (0x00010000L)，用 DELETE 作枚举名在 MSVC 下会报语法错误
@@ -87,6 +90,16 @@ public:
     //（供菜单栏标记“有未保存的修改”）
     void set_changed_callback(std::function<void()> callback);
 
+    //----- 仿真联动（类似 Logisim：元件状态与导线电平直接画在画布上）-----
+    //注入仿真会话（不转移所有权；主窗口负责生命周期，析构前需设回 nullptr）
+    void set_simulation(Simulation::SimulationSession* session);
+    //内容/加载变化时通知主窗口重建仿真。
+    //与 changed_callback 独立：FileActions 已经占用 changed_callback 标记“未保存”，
+    //这里再挂一个不会把它覆盖掉
+    void set_simulation_dirty_callback(std::function<void()> callback);
+    //主窗口重建完仿真后调用：整块重绘 + 刷新状态栏提示
+    void refresh_simulation_display();
+
     // 项目级电气注解（由 DealProjectXML 读写；当前无交互式创建入口）
     std::vector<CanvasJunction> junctions;
     std::vector<CanvasLabel> labels;
@@ -107,6 +120,9 @@ private:
     CanvasItem* current_item;                //当前选中的元件（nullptr=未选择）
     std::function<void(CanvasItem*)> current_item_callback;  //当前元件变化回调
     std::function<void()> changed_callback;  //内容变化回调（放置/删除/移动/改属性后触发）
+    std::function<void()> simulation_dirty_callback;  //内容变化回调（供主窗口重建仿真）
+    Simulation::SimulationSession* simulation;        //仿真会话（不拥有）
+    wxFont badge_font;                                //元件状态徽标字体
     std::function<void(const wxPoint&, bool)> cursor_callback;  //光标逻辑坐标（状态栏坐标字段）
     std::function<void(const wxString&)> status_callback;       //当前模式提示（状态栏状态字段）
     std::function<void(float, int)> view_callback;              //缩放/网格（状态栏缩放到字段）
@@ -160,9 +176,17 @@ private:
     void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制
     void draw_items(wxDC& dc);  //绘制所有元件的位图（带alpha ⇒ 真透明；画在导线之上）
+    void draw_state_overlay(wxDC& dc);   //第二遍：端子方框数值/状态徽标/灯亮光晕/不支持标记
+    void draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect); //单个元件的状态标注
     void draw_ghost(wxDC& dc);  //绘制放置/克隆中的虚影（最上层）
     bool wire_hit(Linking* wire, const wxPoint& pos); //点到线段命中检测（窗口px）
     void draw_pins(wxDC& dc); //绘制所有元件的引脚（小圆点，网格对齐）
+    //元件是不是"输入开关"：按元数据类别判断（新放置、仿真还没重建时也能正确识别）
+    bool item_is_switch(const CanvasItem* item) const;
+    //单击开关：State 0<->1（写进实例参数，随项目一起保存），并通知重建
+    void toggle_switch(CanvasItem* item);
+    //引脚颜色：仿真有值时按 1/0/X 着色，否则用默认深灰
+    wxColour pin_colour(const CanvasItem* item, const std::string& pinId) const;
     bool snap_to_pin(const wxPoint& pos_px, wxPoint& out_coords); //鼠标附近吸附引脚
 
     //统一取鼠标在画布客户区内的坐标：

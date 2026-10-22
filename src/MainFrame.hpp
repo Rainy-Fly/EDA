@@ -1,6 +1,7 @@
 #pragma once
 #include<wx/wx.h>
 #include<wx/splitter.h>
+#include<wx/timer.h>
 #include<memory>
 
 class Canvas;
@@ -9,6 +10,7 @@ class AttributeBar;
 class FileActions;
 class ToolBar;
 
+namespace Simulation{ class SimulationSession; }
 namespace Agent{ class AgentArea; class Show; }
 
 // 主窗口布局（类似 Logisim）：
@@ -26,6 +28,15 @@ public:
 private:
     void OnToggleAgent(wxCommandEvent& e);   //视图菜单：显示/隐藏 AI 助手面板
 
+    //---- 仿真（模拟菜单）----
+    void OnRunPause(wxCommandEvent& e);      //模拟 - 运行/暂停
+    void OnTick(wxCommandEvent& e);          //模拟 - 单步时钟
+    void OnSimulationDiagnostics(wxCommandEvent& e);  //模拟 - 仿真诊断（列出元件/网络电平）
+    void OnSimulationTimer(wxTimerEvent& e); //去抖：内容变化后延迟重建仿真
+    void ScheduleSimulationRebuild();        //安排一次重建（80ms 去抖，批量加载只算一次）
+    void RebuildSimulation();                //采集画布 → 适配 → 求值 → 刷新
+    void UpdateSimulationStatus();           //状态栏第4段：运行状态/网络数/错误数
+
     wxSplitterWindow* splitter;        //外层分栏：左侧栏 / 右侧工作区
     wxSplitterWindow* work_splitter;   //中层分栏：画布区 / AI助手区（右侧可拉伸）
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar
@@ -35,6 +46,9 @@ private:
     Canvas* canvas;
     AttributeBar* attribute_bar;
     Agent::AgentArea* agent_area;      //AI助手（对话+设置）
+    //仿真会话（画布只借指针着色；这里拥有它，必须在canvas之前创建、之后销毁）
+    std::unique_ptr<Simulation::SimulationSession> simulation;
+    wxTimer simulation_timer;          //内容变化后的去抖定时器
     //文件菜单功能（新建/打开/保存/另存为/退出）；菜单结构由MenuBar提供。
     //声明在最后 => 最先析构，保证它比canvas/attribute_bar先消失，不会留下悬空回调
     std::unique_ptr<FileActions> file_actions;
