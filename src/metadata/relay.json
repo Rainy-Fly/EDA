@@ -62,7 +62,8 @@
           "y": -20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-C_Schrack-RYII_RM3.2mm"
     },
     {
       "id": 1054,
@@ -114,7 +115,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     },
     {
       "id": 1055,
@@ -166,7 +168,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     },
     {
       "id": 1056,
@@ -228,7 +231,8 @@
           "y": -20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-C_Schrack-RYII_RM3.2mm"
     },
     {
       "id": 1057,
@@ -280,7 +284,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     },
     {
       "id": 1058,
@@ -332,7 +337,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     },
     {
       "id": 1059,
@@ -394,7 +400,8 @@
           "y": -20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-C_Schrack-RYII_RM3.2mm"
     },
     {
       "id": 1060,
@@ -446,7 +453,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     },
     {
       "id": 1061,
@@ -498,7 +506,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Relay_THT:Relay_1-Form-A_Schrack-RYII_RM5mm"
     }
   ],
   "schema_version": "2.0",

@@ -32,7 +32,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Fuse:Fuse_1206_3216Metric"
     },
     {
       "id": 1024,
@@ -64,7 +65,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Fuse:Fuse_1206_3216Metric"
     },
     {
       "id": 1025,
@@ -96,7 +98,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Fuse:Fuse_1206_3216Metric"
     }
   ],
   "schema_version": "2.0",

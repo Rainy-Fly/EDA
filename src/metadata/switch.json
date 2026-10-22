@@ -72,7 +72,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:SW_CK_JS202011AQN_DPDT_Angled"
     },
     {
       "id": 1088,
@@ -124,7 +125,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:SW_CK_JS202011AQN_DPDT_Angled"
     },
     {
       "id": 1089,
@@ -156,7 +158,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:Push_E-Switch_KS01Q01"
     },
     {
       "id": 1090,
@@ -188,7 +191,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:Push_E-Switch_KS01Q01"
     },
     {
       "id": 1091,
@@ -240,7 +244,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:Push_E-Switch_KS01Q01"
     },
     {
       "id": 1092,
@@ -282,7 +287,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:SW_CK_JS202011CQN_DPDT_Straight"
     },
     {
       "id": 1093,
@@ -314,7 +320,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Button_Switch_THT:Push_E-Switch_KS01Q01"
     }
   ],
   "schema_version": "2.0",

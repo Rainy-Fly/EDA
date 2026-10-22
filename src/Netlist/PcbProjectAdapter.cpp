@@ -86,6 +86,8 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
     snapshot.projectName = project.info.name;
 
     std::unordered_set<std::string> usedPinIds;
+    // 显式端点引用需要按“实例 ID + 引脚 ID”找到更新后的绝对坐标。
+    std::map<std::pair<int, std::string>, PcbPoint> pinPositions;
     for (const auto& componentData : project.components) {
         PcbSnapshotComponent component;
         component.instanceId = std::to_string(componentData.id);
@@ -164,11 +166,79 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
                                                         componentData.mirror);
             snapshotPin.position = PcbPoint{componentData.x + offset.x,
                                             componentData.y + offset.y};
+            if (const MetaDataPin* defined = metadata->find_pin(pin.id)) {
+                if (!defined->electrical_type.empty())
+                    snapshotPin.electricalType = defined->electrical_type;
+                else if (!defined->direction.empty())
+                    snapshotPin.electricalType = defined->direction;
+            }
+            pinPositions[{componentData.id, pin.id}] = snapshotPin.position;
             component.pins.push_back(std::move(snapshotPin));
         }
 
         snapshot.components.push_back(std::move(component));
     }
+
+    // ---- 显式 junction / label 注解 ----
+    std::map<std::string, PcbPoint> junctionPositions;
+    for (const auto& junctionData : project.junctions) {
+        PcbSnapshotJunction junction;
+        junction.id = junctionData.id;
+        junction.position = PcbPoint{junctionData.x, junctionData.y};
+        junctionPositions[junction.id] = junction.position;
+        snapshot.junctions.push_back(std::move(junction));
+    }
+    std::map<std::string, PcbPoint> labelPositions;
+    for (const auto& labelData : project.labels) {
+        PcbSnapshotLabel label;
+        label.id = labelData.id;
+        label.text = labelData.text;
+        label.scope = labelData.scope;
+        label.position = PcbPoint{labelData.x, labelData.y};
+        labelPositions[label.id] = label.position;
+        snapshot.labels.push_back(std::move(label));
+    }
+
+    // 把显式端点写入快照，并用引用对象的当前坐标校正几何端点。
+    // 这样元件移动后保存的项目仍按电气引用生成正确网表。
+    auto fill_endpoint = [&](const DealProjectXML::WireEndpointData& source,
+                             const PcbPoint& fallback,
+                             PcbSnapshotEndpoint* target,
+                             const std::string& wireId){
+        target->kind = source.kind;
+        if(source.kind == "pin"){
+            target->componentId = std::to_string(source.component_id);
+            target->pinId = source.pin_id;
+        }else if(source.kind == "junction"){
+            target->junctionId = source.junction_id;
+        }else if(source.kind == "label"){
+            target->labelId = source.label_id;
+        }
+
+        PcbPoint resolved = fallback;
+        bool snapped = false;
+        if(source.kind == "pin"){
+            const auto it = pinPositions.find({source.component_id, source.pin_id});
+            if(it != pinPositions.end()){ resolved = it->second; snapped = true; }
+        }else if(source.kind == "junction"){
+            const auto it = junctionPositions.find(source.junction_id);
+            if(it != junctionPositions.end()){ resolved = it->second; snapped = true; }
+        }else if(source.kind == "label"){
+            const auto it = labelPositions.find(source.label_id);
+            if(it != labelPositions.end()){ resolved = it->second; snapped = true; }
+        }
+        target->point = resolved;
+        if(snapped && !(resolved == fallback)){
+            Diagnostic diagnostic;
+            diagnostic.severity = "warning";
+            diagnostic.code = "PCB_NETLIST_ENDPOINT_GEOMETRY_SNAPPED";
+            diagnostic.message =
+                "Wire endpoint geometry did not match its electrical reference; "
+                "the referenced pin/junction/label position was used.";
+            diagnostic.objectIds.push_back(wireId);
+            snapshot.diagnostics.push_back(std::move(diagnostic));
+        }
+    };
 
     for (const auto& wireData : project.wires) {
         PcbSnapshotWire wire;
@@ -177,6 +247,12 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
         wire.points.reserve(wireData.points.size());
         for (const wxPoint& point : wireData.points) {
             wire.points.push_back(PcbPoint{point.x, point.y});
+        }
+        if(wire.points.size() >= 2){
+            fill_endpoint(wireData.start, wire.points.front(), &wire.start, wire.id);
+            fill_endpoint(wireData.end, wire.points.back(), &wire.end, wire.id);
+            wire.points.front() = wire.start.point;
+            wire.points.back() = wire.end.point;
         }
         snapshot.wires.push_back(std::move(wire));
     }

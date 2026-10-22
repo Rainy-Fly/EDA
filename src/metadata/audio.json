@@ -32,7 +32,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
     },
     {
       "id": 1004,
@@ -64,7 +65,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
     },
     {
       "id": 1005,
@@ -96,7 +98,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
     },
     {
       "id": 1006,
@@ -128,7 +131,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
     }
   ],
   "schema_version": "2.0",

@@ -62,7 +62,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Transformer_THT:Transformer_37x44"
     },
     {
       "id": 1095,
@@ -134,7 +135,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Transformer_THT:Transformer_37x44"
     },
     {
       "id": 1096,
@@ -186,7 +188,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Transformer_THT:Transformer_37x44"
     }
   ],
   "schema_version": "2.0",

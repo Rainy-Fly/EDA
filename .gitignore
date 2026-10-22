@@ -4,6 +4,9 @@ tests/
 !tests/
 tests/*
 !tests/netlist_selftest.cpp
+!tests/projectxml_selftest.cpp
+!tests/metadata_selftest.cpp
+!tests/kicad_export_demo.cpp
 # Compiled binaries
 bin/
 

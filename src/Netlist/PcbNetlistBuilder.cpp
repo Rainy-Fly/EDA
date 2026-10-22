@@ -112,6 +112,28 @@ std::string coord_key(const PcbPoint& point) {
     return "coord:" + std::to_string(point.x) + ':' + std::to_string(point.y);
 }
 
+std::string junction_key(const std::string& id) {
+    return "junction:" + id;
+}
+
+std::string label_key(const std::string& scope, const std::string& text) {
+    return "label:" + scope + ':' + text;
+}
+
+bool explicit_endpoint(const PcbSnapshotEndpoint& endpoint) {
+    return endpoint.kind == "pin" || endpoint.kind == "junction" || endpoint.kind == "label";
+}
+
+// 只接受 KiCad 认可的电类型；未知/空值统一为 passive，避免输出非法枚举。
+std::string normalized_pintype(const std::string& type) {
+    static const std::set<std::string> allowed = {
+        "input", "output", "bidirectional", "tri_state", "passive", "free",
+        "unspecified", "power_in", "power_out", "open_collector", "open_emitter",
+        "no_connect",
+    };
+    return allowed.count(type) ? type : "passive";
+}
+
 // 点是否严格落在线段内部（不含端点）。
 bool point_inside_segment(const PcbPoint& point, const PcbPoint& a, const PcbPoint& b) {
     if (a == b) return false;
@@ -266,7 +288,7 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
         }
     }
 
-    // ---- 连通性：只认导线首尾端点与引脚坐标的精确重合 ----
+    // ---- 连通性：优先使用 2.0 显式端点引用，旧格式回退到坐标 ----
     NodeIndex nodes;
     std::map<std::pair<std::string, std::string>, std::size_t> pinNodes;
     std::map<std::string, std::size_t> pinAtCoordinate;
@@ -280,6 +302,92 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
         }
     }
 
+    // junction：显式锚点按 ID 建节点；同在锚点坐标的旧格式线端也汇入。
+    std::unordered_map<std::string, std::size_t> junctionNodes;
+    std::set<std::string> referencedJunctions;
+    for (const auto& junction : project.junctions) {
+        if (junction.id.empty()) {
+            sink.error("PCB_NETLIST_JUNCTION_ID_EMPTY", "Junction id is empty.");
+            continue;
+        }
+        if (!junctionNodes.emplace(junction.id, nodes.get(junction_key(junction.id))).second) {
+            sink.error("PCB_NETLIST_JUNCTION_ID_DUPLICATE",
+                       "Junction id is duplicated.", junction.id);
+            continue;
+        }
+        nodes.set.unite(junctionNodes[junction.id], nodes.get(coord_key(junction.position)));
+    }
+
+    // label：同 scope 同名文本属于同一网络；节点按文本建，不按标签 ID。
+    std::unordered_map<std::string, std::string> labelsById; // id -> scope/text 节点键
+    std::unordered_map<std::string, std::size_t> labelNodes;
+    std::set<std::string> referencedLabels;
+    for (const auto& label : project.labels) {
+        if (label.id.empty()) {
+            sink.error("PCB_NETLIST_LABEL_ID_EMPTY", "Label id is empty.");
+            continue;
+        }
+        if (label.text.empty()) {
+            sink.error("PCB_NETLIST_LABEL_TEXT_EMPTY",
+                       "Label text is empty; the label cannot name a net.", label.id);
+            continue;
+        }
+        const std::string key = label_key(label.scope, label.text);
+        if (!labelsById.emplace(label.id, key).second) {
+            sink.error("PCB_NETLIST_LABEL_ID_DUPLICATE",
+                       "Label id is duplicated.", label.id);
+            continue;
+        }
+        const std::size_t labelNode = nodes.get(key);
+        labelNodes.emplace(key, labelNode);
+        // 标签锚点坐标也作为几何回退结点，兼容旧格式线端。
+        nodes.set.unite(labelNode, nodes.get(coord_key(label.position)));
+    }
+
+    // 解析导线某一端的电气节点；引用无效时回退到几何坐标并报告诊断。
+    auto endpoint_node = [&](const PcbSnapshotEndpoint& endpoint,
+                             const PcbPoint& fallback,
+                             const std::string& wireId) -> std::size_t {
+        if (endpoint.kind == "pin") {
+            const auto it = pinNodes.find({endpoint.componentId, endpoint.pinId});
+            if (it == pinNodes.end()) {
+                sink.error("PCB_NETLIST_ENDPOINT_PIN_MISSING",
+                           "Wire endpoint references a pin that does not exist.",
+                           wireId, endpoint.pinId);
+                return nodes.get(coord_key(fallback));
+            }
+            return it->second;
+        }
+        if (endpoint.kind == "junction") {
+            referencedJunctions.insert(endpoint.junctionId);
+            const auto it = junctionNodes.find(endpoint.junctionId);
+            if (it == junctionNodes.end()) {
+                sink.error("PCB_NETLIST_ENDPOINT_JUNCTION_MISSING",
+                           "Wire endpoint references a junction that does not exist.",
+                           wireId);
+                return nodes.get(coord_key(fallback));
+            }
+            return it->second;
+        }
+        if (endpoint.kind == "label") {
+            referencedLabels.insert(endpoint.labelId);
+            const auto it = labelsById.find(endpoint.labelId);
+            if (it == labelsById.end()) {
+                sink.error("PCB_NETLIST_ENDPOINT_LABEL_MISSING",
+                           "Wire endpoint references a label that does not exist.",
+                           wireId);
+                return nodes.get(coord_key(fallback));
+            }
+            return nodes.get(it->second);
+        }
+        if (!endpoint.kind.empty() && endpoint.kind != "free") {
+            sink.error("PCB_NETLIST_ENDPOINT_KIND_UNKNOWN",
+                       "Wire endpoint uses an unknown kind; geometry fallback is used.",
+                       wireId);
+        }
+        return nodes.get(coord_key(fallback));
+    };
+
     struct ActiveWire {
         const PcbSnapshotWire* wire = nullptr;
         std::size_t start = 0;
@@ -288,10 +396,29 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
     std::vector<ActiveWire> wires;
     for (const auto& wire : project.wires) {
         if (is_bus(wire) || wire.points.size() < 2) continue;
-        const std::size_t start = nodes.get(coord_key(wire.points.front()));
-        const std::size_t end = nodes.get(coord_key(wire.points.back()));
+        const std::size_t start = endpoint_node(wire.start, wire.points.front(), wire.id);
+        const std::size_t end = endpoint_node(wire.end, wire.points.back(), wire.id);
+        if (start == end) {
+            sink.warning("PCB_NETLIST_WIRE_ZERO_LENGTH",
+                         "Wire electrically joins the same node twice and is ignored.",
+                         wire.id);
+            continue;
+        }
         nodes.set.unite(start, end);
         wires.push_back(ActiveWire{&wire, start, end});
+    }
+
+    for (const auto& junction : project.junctions) {
+        if (junctionNodes.count(junction.id) && !referencedJunctions.count(junction.id)) {
+            sink.warning("PCB_NETLIST_JUNCTION_WITHOUT_WIRE",
+                         "Junction is not referenced by any wire endpoint.", junction.id);
+        }
+    }
+    for (const auto& label : project.labels) {
+        if (labelsById.count(label.id) && !referencedLabels.count(label.id)) {
+            sink.warning("PCB_NETLIST_LABEL_WITHOUT_WIRE",
+                         "Label is not referenced by any wire endpoint.", label.id);
+        }
     }
 
     for (const auto& component : components) {
@@ -318,7 +445,13 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
         }
     }
     for (const auto& active : wires) {
-        for (const PcbPoint& endpoint : {active.wire->points.front(), active.wire->points.back()}) {
+        const std::pair<const PcbSnapshotEndpoint*, PcbPoint> ends[] = {
+            {&active.wire->start, active.wire->points.front()},
+            {&active.wire->end, active.wire->points.back()},
+        };
+        for (const auto& [endpointRef, endpoint] : ends) {
+            // 显式引用的端点已经按引用建立了电气连接，几何碰触警告不再适用。
+            if (explicit_endpoint(*endpointRef)) continue;
             for (const auto& other : wires) {
                 if (other.wire->id == active.wire->id) continue;
                 const auto& points = other.wire->points;
@@ -343,6 +476,7 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
             PcbNode node;
             node.reference = component.reference;
             node.pinNumber = pin.number;
+            node.pinType = normalized_pintype(pin.electricalType);
             terminals[root].push_back(std::move(node));
         }
     }
@@ -359,11 +493,31 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
         }
     }
 
+    // ---- 网络命名：显式标签优先（power > hier > local），否则用 KiCad 约定名 ----
+    struct LabelName {
+        std::string text;
+        int rank = 2;
+    };
+    std::map<std::size_t, LabelName> labelNamesByRoot;
+    for (const auto& label : project.labels) {
+        const auto keyIt = labelsById.find(label.id);
+        if (keyIt == labelsById.end()) continue;
+        const auto nodeIt = labelNodes.find(keyIt->second);
+        if (nodeIt == labelNodes.end()) continue;
+        const std::size_t root = nodes.set.find(nodeIt->second);
+        if (!terminals.contains(root)) continue;
+        const int rank = label.scope == "power" ? 0 : (label.scope == "hier" ? 1 : 2);
+        auto it = labelNamesByRoot.find(root);
+        if (it == labelNamesByRoot.end() || rank < it->second.rank ||
+            (rank == it->second.rank && label.text < it->second.text)) {
+            labelNamesByRoot[root] = LabelName{label.text, rank};
+        }
+    }
+
     // ---- 生成网络 ----
     std::vector<PcbNet> nets;
     std::set<std::string> usedNames;
     for (auto& [root, nodesOfNet] : terminals) {
-        (void)root;
         std::sort(nodesOfNet.begin(), nodesOfNet.end(), [](const PcbNode& left, const PcbNode& right) {
             if (left.reference != right.reference) return left.reference < right.reference;
             return left.pinNumber < right.pinNumber;
@@ -375,7 +529,11 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
             continue;
         }
         PcbNet net;
-        const std::string base = "Net-(" + nodesOfNet.front().reference + "-Pad" + nodesOfNet.front().pinNumber + ")";
+        const auto labelIt = labelNamesByRoot.find(root);
+        const std::string base = labelIt != labelNamesByRoot.end()
+                                     ? labelIt->second.text
+                                     : "Net-(" + nodesOfNet.front().reference + "-Pad" +
+                                           nodesOfNet.front().pinNumber + ")";
         net.name = base;
         unsigned int suffix = 1;
         while (!usedNames.insert(net.name).second) {

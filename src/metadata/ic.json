@@ -62,7 +62,8 @@
           "y": 50,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     },
     {
       "id": 1030,
@@ -114,7 +115,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1031,
@@ -176,7 +178,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1032,
@@ -228,7 +231,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1033,
@@ -280,7 +284,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1034,
@@ -342,7 +347,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1035,
@@ -394,7 +400,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 1036,
@@ -426,7 +433,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     },
     {
       "id": 1037,
@@ -468,7 +476,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     },
     {
       "id": 1038,
@@ -530,7 +539,8 @@
           "y": 50,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     },
     {
       "id": 1039,
@@ -562,7 +572,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     },
     {
       "id": 1040,
@@ -594,7 +605,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-8_W7.62mm"
     }
   ],
   "schema_version": "2.0",

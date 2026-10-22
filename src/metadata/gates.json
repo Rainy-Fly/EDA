@@ -45,7 +45,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 2,
@@ -90,7 +91,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 3,
@@ -135,7 +137,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 4,
@@ -180,7 +183,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 5,
@@ -225,7 +229,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     },
     {
       "id": 6,
@@ -260,7 +265,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     }
   ],
   "schema_version": "2.0",

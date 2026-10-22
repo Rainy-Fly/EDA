@@ -251,6 +251,89 @@ void test_pcb_connectivity_rules() {
         "bus objects are excluded with a diagnostic");
 }
 
+void test_pcb_explicit_endpoints() {
+  using namespace NetlistData;
+
+  // 两条导线通过 junction ID 相连；端点几何坐标故意与锚点不一致。
+  PcbProjectSnapshot junction;
+  junction.components = {pcb_single_pin("1", "A1", 0, 0),
+                         pcb_single_pin("2", "B1", 100, 0)};
+  junction.junctions.push_back({"j1", {50, 0}});
+  PcbSnapshotWire w1;
+  w1.id = "w1";
+  w1.points = {{0, 0}, {10, 10}};
+  w1.start.kind = "pin";
+  w1.start.componentId = "1";
+  w1.start.pinId = "1";
+  w1.end.kind = "junction";
+  w1.end.junctionId = "j1";
+  PcbSnapshotWire w2;
+  w2.id = "w2";
+  w2.points = {{20, 20}, {100, 0}};
+  w2.start.kind = "junction";
+  w2.start.junctionId = "j1";
+  w2.end.kind = "pin";
+  w2.end.componentId = "2";
+  w2.end.pinId = "1";
+  junction.wires = {w1, w2};
+  auto junctionResult = PcbNetlistBuilder::build(junction);
+  check(junctionResult.ok() && junctionResult.value->nets.size() == 1 &&
+        junctionResult.value->nets[0].nodes.size() == 2,
+        "explicit junction references connect wires regardless of geometry");
+
+  // 两个同名 power 标签分处不同位置，仍属于同一网络，并用标签名命名。
+  PcbProjectSnapshot label;
+  label.components = {pcb_single_pin("1", "A1", 0, 0),
+                      pcb_single_pin("2", "B1", 100, 0)};
+  label.labels.push_back({"l1", "VCC", "power", {0, 0}});
+  label.labels.push_back({"l2", "VCC", "power", {100, 0}});
+  PcbSnapshotWire lw1;
+  lw1.id = "lw1";
+  lw1.points = {{0, 0}, {10, 0}};
+  lw1.start.kind = "pin";
+  lw1.start.componentId = "1";
+  lw1.start.pinId = "1";
+  lw1.end.kind = "label";
+  lw1.end.labelId = "l1";
+  PcbSnapshotWire lw2;
+  lw2.id = "lw2";
+  lw2.points = {{90, 0}, {100, 0}};
+  lw2.start.kind = "label";
+  lw2.start.labelId = "l2";
+  lw2.end.kind = "pin";
+  lw2.end.componentId = "2";
+  lw2.end.pinId = "1";
+  label.wires = {lw1, lw2};
+  auto labelResult = PcbNetlistBuilder::build(label);
+  check(labelResult.ok() && labelResult.value->nets.size() == 1 &&
+        labelResult.value->nets[0].name == "VCC",
+        "same-name labels merge into one explicitly named net");
+
+  // 引用不存在的 junction/label 必须报错并回退到几何。
+  PcbProjectSnapshot missing;
+  missing.components = {pcb_single_pin("1", "A1", 0, 0),
+                        pcb_single_pin("2", "B1", 100, 0)};
+  PcbSnapshotWire bad;
+  bad.id = "bad";
+  bad.points = {{0, 0}, {100, 0}};
+  bad.start.kind = "pin";
+  bad.start.componentId = "1";
+  bad.start.pinId = "1";
+  bad.end.kind = "junction";
+  bad.end.junctionId = "missing";
+  missing.wires = {bad};
+  auto missingResult = PcbNetlistBuilder::build(missing);
+  check(contains_code(missingResult.diagnostics, "PCB_NETLIST_ENDPOINT_JUNCTION_MISSING"),
+        "unknown junction reference is diagnosed");
+
+  auto duplicateJunction = junction;
+  duplicateJunction.junctions.push_back({"j1", {50, 0}});
+  auto duplicateResult = PcbNetlistBuilder::build(duplicateJunction);
+  check(!duplicateResult.ok() &&
+        contains_code(duplicateResult.diagnostics, "PCB_NETLIST_JUNCTION_ID_DUPLICATE"),
+        "duplicate junction ids are rejected");
+}
+
 void test_pcb_diagnostics() {
   using namespace NetlistData;
 
@@ -475,6 +558,7 @@ int main() {
             test_pcb_builder_and_exporter();
             test_pcb_reference_assignment();
             test_pcb_connectivity_rules();
+            test_pcb_explicit_endpoints();
             test_pcb_diagnostics();
             test_kicad_exporter_errors_and_escaping();
 

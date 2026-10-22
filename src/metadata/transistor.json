@@ -42,7 +42,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1098,
@@ -84,7 +85,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1099,
@@ -126,7 +128,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1100,
@@ -168,7 +171,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1101,
@@ -210,7 +214,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1102,
@@ -252,7 +257,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     },
     {
       "id": 1103,
@@ -294,7 +300,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1104,
@@ -336,7 +343,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1105,
@@ -378,7 +386,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1106,
@@ -420,7 +429,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1107,
@@ -462,7 +472,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1108,
@@ -504,7 +515,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_SMD:SOT-23"
     },
     {
       "id": 1109,
@@ -546,7 +558,8 @@
           "y": 20,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Package_TO_SOT_THT:TO-92_Inline"
     }
   ],
   "schema_version": "2.0",

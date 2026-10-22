@@ -298,4 +298,20 @@ if(BUILD_TESTING)
     add_test(NAME metadata_selftest COMMAND metadata_selftest)
     set_tests_properties(metadata_selftest PROPERTIES
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # 网表导出演示：内存项目 -> 适配层 -> 构建器 -> KiCad 导出器，
+    # 把结果写到 tests/kicad_export_demo.net，便于直接用 KiCad 检查。
+    add_executable(
+        kicad_export_demo
+        src/Netlist/PcbProjectAdapter.cpp
+        src/Netlist/PcbNetlistBuilder.cpp
+        src/Netlist/KiCadNetlistExporter.cpp
+        src/Canva/CanvasItem.cpp
+        src/metadata/MetaDataJson.cpp
+        tests/kicad_export_demo.cpp
+    )
+    target_link_libraries(kicad_export_demo PRIVATE wx::core wx::base jsoncpp_lib)
+    add_test(NAME kicad_export_demo COMMAND kicad_export_demo)
+    set_tests_properties(kicad_export_demo PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()

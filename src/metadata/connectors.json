@@ -148,7 +148,8 @@
           "y": 70,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
     }
   ],
   "schema_version": "2.0",

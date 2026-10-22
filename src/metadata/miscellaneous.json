@@ -52,7 +52,8 @@
           "y": 50,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1047,
@@ -84,7 +85,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1048,
@@ -136,7 +138,8 @@
           "y": 50,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1049,
@@ -168,7 +171,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1050,
@@ -200,7 +204,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1051,
@@ -252,7 +257,8 @@
           "y": 10,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     },
     {
       "id": 1052,
@@ -274,7 +280,8 @@
           "y": 0,
           "width": 1
         }
-      ]
+      ],
+      "footprint": "TestPoint:TestPoint_Pad_D1.0mm"
     }
   ],
   "schema_version": "2.0",
