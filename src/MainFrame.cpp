@@ -67,9 +67,12 @@ MainFrame::MainFrame()
     //  splitter(外层竖分) = left_panel(调色板+资源树) | work_splitter
     //  work_splitter(中层横分) = right_splitter | agent_area（AI面板，默认隐藏）
     //  right_splitter(内层竖分) = canvas | attribute_bar
-    splitter = new wxSplitterWindow(this, wxID_ANY);
-    work_splitter = new wxSplitterWindow(splitter, wxID_ANY);
-    right_splitter = new wxSplitterWindow(work_splitter, wxID_ANY);
+    //统一带 wxSP_LIVE_UPDATE：不加这个样式时，拖动分栏画的是一条 2px 纯黑的"跟踪线"
+    //（wxSplitterWindow 默认的 m_sashTrackerPen 就是 wxBLACK）；加上后窗格实时缩放、没有黑线
+    const long split_style = wxSP_3D | wxSP_LIVE_UPDATE;
+    splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    work_splitter = new wxSplitterWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    right_splitter = new wxSplitterWindow(work_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
     left_panel    = new wxPanel(splitter);
     canvas        = new Canvas(right_splitter);
     attribute_bar = new AttributeBar(right_splitter);

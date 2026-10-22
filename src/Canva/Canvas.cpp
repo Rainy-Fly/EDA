@@ -39,7 +39,10 @@ float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint
 }
 
 Canvas::Canvas(wxWindow* parent, wxWindowID id)
-    : wxPanel(parent, id),
+    //wxFULL_REPAINT_ON_RESIZE：改尺寸时整块重画（配合下面的 wxEVT_SIZE 处理）。
+    //画布是 wxBG_STYLE_PAINT（背景不由系统擦除），拖动分栏实时改尺寸时若只重画
+    //新露出的那条，Windows 会先把还没画的区域显示成黑带 —— 拖动时就会看到黑边
+    : wxPanel(parent, id, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
       offset_coords(0, 0),
       scale(1.0f),
       canvasItemCollection(new std::unordered_set<CanvasItem*>()),
@@ -101,6 +104,9 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
         }
         e.Skip();
     });
+    //拖动分栏（画布边框）时画布会被连续改尺寸：每次都请求整块重画，
+    //避免 wxBG_STYLE_PAINT 下新露出的区域来不及画而闪出黑带
+    Bind(wxEVT_SIZE, [this](wxSizeEvent& e){ Refresh(false); e.Skip(); });
     //光标进出画布：进/出时同步状态栏坐标（离开时清空，避免一直显示上一次的位置）。
     //工具栏（元件调色板）已经搬到左侧栏，画布上不再有覆盖物，所以不用再为它做特殊处理
     Bind(wxEVT_ENTER_WINDOW, [this](wxMouseEvent& e){
