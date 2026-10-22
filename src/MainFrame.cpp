@@ -8,9 +8,19 @@
 #include"./MenuBar/FileActions.hpp"
 #include"./Agent/UI/AgentArea.hpp"
 #include"./Agent/UI/Show.hpp"
+#include"./DealProjectXML/DealProjectXML.hpp"
+#include"./Canva/SimulationBridge.hpp"
+#include"./Simulation/SimulationProject.hpp"
+#include"./Simulation/SimulationSession.hpp"
 
 //先摘掉属性栏的回调：它指向下面的FileActions，必须在成员析构前断开
 MainFrame::~MainFrame(){
+    //先停仿真定时器、断开画布上的回调：它们都指向本对象，成员析构后就会悬空
+    simulation_timer.Stop();
+    if(canvas){
+        canvas->set_simulation(nullptr);
+        canvas->set_simulation_dirty_callback(nullptr);
+    }
     if(attribute_bar) attribute_bar->set_edited_callback(nullptr);
 }
 
@@ -120,12 +130,12 @@ MainFrame::MainFrame()
     sizer->Add(splitter, 1, wxEXPAND);
     SetSizer(sizer);
 
-    //状态栏三个字段：① 状态/提示（FileActions 也往这里写）② 光标坐标 ③ 缩放/网格。
+    //状态栏四个字段：① 状态/提示（FileActions 也往这里写）② 光标坐标 ③ 缩放/网格 ④ 仿真摘要。
     //坐标是「画布逻辑坐标且已吸附网格」，与放置元件、画导线、写进 XML 用的是同一个值
-    CreateStatusBar(3);
+    CreateStatusBar(4);
     //第三个字段给足宽度（全角文字约150px）：让它远离右端的尺寸手柄
-    const int status_widths[3] = {-1, 150, 240};
-    SetStatusWidths(3, status_widths);
+    const int status_widths[4] = {-1, 150, 240, 175};
+    SetStatusWidths(4, status_widths);
     //状态栏是原生控件，不会继承框架字体，必须显式再设一次（中文发虚就是这么来的）
     if(GetStatusBar() && ui_font.IsOk()) GetStatusBar()->SetFont(ui_font);
 
@@ -144,7 +154,79 @@ MainFrame::MainFrame()
         if(GetStatusBar() && GetStatusBar()->GetStatusText(2) != text) SetStatusText(text, 2);
     });
 
+    //---- 仿真（模拟菜单）：会话 + 内容变化重建 + 状态栏第4段 ----
+    simulation = std::make_unique<Simulation::SimulationSession>();
+    canvas->set_simulation(simulation.get());
+    //画布内容变化（放置/删除/拖动/连线/加载）后去抖重建，批量加载只算一次
+    canvas->set_simulation_dirty_callback([this]{ ScheduleSimulationRebuild(); });
+    //模拟菜单：运行/暂停、单步时钟
+    Bind(wxEVT_MENU, &MainFrame::OnRunPause, this, ID_RUN_PAUSE);
+    Bind(wxEVT_MENU, &MainFrame::OnTick, this, ID_TICK);
+    simulation_timer.SetOwner(this, 1);
+    Bind(wxEVT_TIMER, &MainFrame::OnSimulationTimer, this, 1);
+    RebuildSimulation();   //启动时先算一次（空画布会显示"无可仿真元件"）
+
     Center();
+}
+
+//---- 仿真（模拟菜单）----
+
+//内容变化后延迟 80ms 重建：加载/批量操作时多次通知只合并成一次
+void MainFrame::ScheduleSimulationRebuild(){
+    simulation_timer.StartOnce(80);
+}
+
+void MainFrame::OnSimulationTimer(wxTimerEvent&){
+    RebuildSimulation();
+}
+
+//采集画布 → 适配成仿真电路 → 求值 → 刷新画布与状态栏。
+//用的采集入口与"保存项目/导出 KiCad 网表"完全一致（CollectFromCanvas），
+//所以仿真看到的连接关系和盘上文件是一致的
+void MainFrame::RebuildSimulation(){
+    if(!canvas || !simulation) return;
+    DealProjectXML::ProjectInfo info;
+    const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
+    const Simulation::SimProject sim_project = SimulationBridge::BuildSimulationProject(project);
+    simulation->rebuild(sim_project);
+    canvas->refresh_simulation_display();
+    UpdateSimulationStatus();
+}
+
+void MainFrame::UpdateSimulationStatus(){
+    if(!simulation) return;
+    wxString text;
+    if(!simulation->hasModel()){
+        text = wxString::FromUTF8("仿真：无可仿真元件");
+    }else if(!simulation->enabled()){
+        text = wxString::FromUTF8("仿真：已暂停");
+    }else{
+        text = wxString::FromUTF8("仿真：运行　网络 ") + full_width_int(simulation->netCount()) +
+               wxString::FromUTF8("　错误 ") + full_width_int(simulation->errorCount());
+    }
+    if(GetStatusBar() && GetStatusBar()->GetStatusText(3) != text) SetStatusText(text, 3);
+}
+
+//运行/暂停：切换后立刻重算一次，并把菜单项文字改成当前可做的动作
+void MainFrame::OnRunPause(wxCommandEvent&){
+    if(!simulation) return;
+    simulation->setEnabled(!simulation->enabled());
+    if(simulation->enabled()) simulation->evaluate();   //恢复运行时立刻出值
+    if(canvas) canvas->refresh_simulation_display();
+    UpdateSimulationStatus();
+    if(GetMenuBar()){
+        GetMenuBar()->SetLabel(ID_RUN_PAUSE, simulation->enabled()
+            ? wxString::FromUTF8("暂停仿真")
+            : wxString::FromUTF8("继续运行"));
+    }
+}
+
+//单步时钟：暂停状态下也能推进一次（本阶段只有组合逻辑，等价于"重新计算"）
+void MainFrame::OnTick(wxCommandEvent&){
+    if(!simulation) return;
+    simulation->evaluate();
+    if(canvas) canvas->refresh_simulation_display();
+    UpdateSimulationStatus();
 }
 
 //视图菜单：切换 AI 助手面板，并把菜单勾选同步为面板实际状态
