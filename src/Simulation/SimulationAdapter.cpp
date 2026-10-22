@@ -289,6 +289,20 @@ SimulationModel build_simulation_model(const SimProject& project){
         return best;
     };
 
+    //预扫描：常量源/输入端子的引脚网络。
+    //单刀开关要判断"哪一侧有信号源"来决定导通方向，而元件是按ID顺序处理的，
+    //源元件的ID可能比开关大，所以先扫一遍记下来
+    std::set<std::string> sourceNets;
+    for(const SimComponent& component : project.components){
+        const bool isSource = component.type == "POWER" || component.type == "GND" ||
+                              is_input_terminal(component.type);
+        if(!isSource) continue;
+        for(const SimPinRef& pin : component.pins){
+            const auto it = model.binding.pinNet.find({component.id, pin.id});
+            if(it != model.binding.pinNet.end()) sourceNets.insert(it->second);
+        }
+    }
+
     for(const SimComponent* component : ordered){
         const int id = component->id;
         const std::string simId = id_str(id);
@@ -321,42 +335,77 @@ SimulationModel build_simulation_model(const SimProject& project){
             continue;
         }
 
-        //---- 输入开关 ----
+        //---- 输入端子 / 单刀开关 ----
         if(is_switch_component(*component) && !component->pins.empty()){
+            const LogicValue state = parse_state(component->params);
+
+            //引脚 → 网络
+            const auto net_of_pin = [&](const SimPinRef& pinRef) -> std::string{
+                const auto it = model.binding.pinNet.find({id, pinRef.id});
+                return (it == model.binding.pinNet.end()) ? std::string() : it->second;
+            };
+
             bool ambiguous = false;
             const SimPinRef* pin = pick_connected_pin(*component, ambiguous);
-            const auto it = (pin == nullptr) ? model.binding.pinNet.end()
-                                             : model.binding.pinNet.find({id, pin->id});
-            if(pin == nullptr || it == model.binding.pinNet.end()){
+            const std::string firstNet = (pin == nullptr) ? std::string() : net_of_pin(*pin);
+            if(firstNet.empty()){
                 model.diagnostics.push_back(make_warning(
                     "SIMULATION_COMPONENT_UNCONNECTED",
-                    "开关没有接入任何网络：" + component->name, {simId}));
+                    "开关/端子没有接入任何网络：" + component->name, {simId}));
                 model.binding.role[id] = SimRole::Unsupported;
                 continue;
             }
-            if(ambiguous){
-                model.diagnostics.push_back(make_warning(
-                    "SIMULATION_SWITCH_AMBIGUOUS_PIN",
-                    "开关两个引脚都接了线，只把它当单端输入使用（取第一个引脚）。", {simId}));
-            }
-            const std::string net = it->second;
-            //只连到它自己 = 没接线：仍然可点击，但诊断里明确说明
-            if(nets.terminals[net] <= 1){
-                model.diagnostics.push_back(make_warning(
-                    is_input_terminal(component->type)
-                        ? "SIMULATION_TERMINAL_UNCONNECTED"
-                        : "SIMULATION_COMPONENT_UNCONNECTED",
-                    (is_input_terminal(component->type) ? "输入端子" : "开关") +
-                        std::string("没有接线（只连到自己），点击不会影响任何网络：") +
-                        component->name, {simId}));
-            }
-            const LogicValue value = parse_state(component->params);
+
             model.binding.role[id] = SimRole::InputSwitch;
-            model.binding.deviceNet[id] = net;
-            model.binding.switchValue[id] = value;
-            if(claim_driver(net, id, component->name)){
+            model.binding.switchValue[id] = state;
+
+            //输入端子（单脚）：单端 0/1 驱动源，单击切换
+            if(is_input_terminal(component->type) || component->pins.size() < 2){
+                if(nets.terminals[firstNet] <= 1){
+                    model.diagnostics.push_back(make_warning(
+                        "SIMULATION_TERMINAL_UNCONNECTED",
+                        "输入端子没有接线（只连到自己），点击不会影响任何网络：" +
+                            component->name, {simId}));
+                }
+                model.binding.deviceNet[id] = firstNet;
+                if(claim_driver(firstNet, id, component->name)){
+                    model.circuit.components.push_back(SimulationComponent(
+                        simId, GateKind::Input, {}, firstNet, state, "SWITCH"));
+                }
+                continue;
+            }
+
+            //两脚开关：闭合 = 两端导通（把有信号一侧的电平送到另一侧），
+            //断开 = 什么都不驱动（负载侧保持 X）。
+            //之前把它当"单端 0/1 源"是错的：POWER -> 开关 -> 门 这种接法完全不会导通
+            const std::string netA = net_of_pin(component->pins[0]);
+            const std::string netB = net_of_pin(component->pins[1]);
+            if(netA.empty() || netB.empty()){
+                model.diagnostics.push_back(make_warning(
+                    "SIMULATION_COMPONENT_UNCONNECTED",
+                    "开关有引脚没有接到网络：" + component->name, {simId}));
+                model.binding.deviceNet[id] = firstNet;
+                continue;
+            }
+            if(netA == netB){   //两个引脚落在同一个网络上：本来就是导通
+                model.binding.deviceNet[id] = netA;
+                continue;
+            }
+            if(state != LogicValue::One){   //断开
+                model.binding.deviceNet[id] = netB;
+                continue;
+            }
+            const bool aDriven = sourceNets.count(netA) > 0 ||
+                                 model.binding.netDriver.count(netA) > 0;
+            const bool bDriven = sourceNets.count(netB) > 0 ||
+                                 model.binding.netDriver.count(netB) > 0;
+            std::string from = netA;
+            std::string to   = netB;
+            if(!aDriven && bDriven){ from = netB; to = netA; }
+            model.binding.deviceNet[id] = to;
+            if(claim_driver(to, id, component->name)){
                 model.circuit.components.push_back(SimulationComponent(
-                    simId, GateKind::Input, {}, net, value, "SWITCH"));
+                    simId, GateKind::Buffer, {from}, to, LogicValue::Unknown, "SWITCH"));
             }
             continue;
         }

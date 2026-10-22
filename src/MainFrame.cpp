@@ -162,6 +162,7 @@ MainFrame::MainFrame()
     //模拟菜单：运行/暂停、单步时钟
     Bind(wxEVT_MENU, &MainFrame::OnRunPause, this, ID_RUN_PAUSE);
     Bind(wxEVT_MENU, &MainFrame::OnTick, this, ID_TICK);
+    Bind(wxEVT_MENU, &MainFrame::OnSimulationDiagnostics, this, ID_SIM_DIAGNOSTICS);
     simulation_timer.SetOwner(this, 1);
     Bind(wxEVT_TIMER, &MainFrame::OnSimulationTimer, this, 1);
     RebuildSimulation();   //启动时先算一次（空画布会显示"无可仿真元件"）
@@ -205,6 +206,34 @@ void MainFrame::UpdateSimulationStatus(){
                wxString::FromUTF8("　错误 ") + full_width_int(simulation->errorCount());
     }
     if(GetStatusBar() && GetStatusBar()->GetStatusText(3) != text) SetStatusText(text, 3);
+    //有错误时在状态字段提示去「仿真诊断」看细节（会被下一次画布提示覆盖，属一次性提醒）
+    if(GetStatusBar() && simulation->hasModel() && simulation->errorCount() > 0){
+        const wxString hint = wxString::FromUTF8("仿真：有 ") +
+                              full_width_int(simulation->errorCount()) +
+                              wxString::FromUTF8(" 个错误，看 模拟 → 仿真诊断");
+        if(GetStatusBar()->GetStatusText(0) != hint) SetStatusText(hint, 0);
+    }
+}
+
+//把仿真会话的诊断报告显示成一个只读多行窗口
+void MainFrame::OnSimulationDiagnostics(wxCommandEvent&){
+    if(!simulation) return;
+    wxDialog dialog(this, wxID_ANY, wxString::FromUTF8("仿真诊断"),
+                    wxDefaultPosition, wxSize(720, 560),
+                    wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
+    wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+    wxTextCtrl* text = new wxTextCtrl(&dialog, wxID_ANY,
+        wxString::FromUTF8(simulation->report_text().c_str()),
+        wxDefaultPosition, wxDefaultSize,
+        wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
+    wxFont mono = text->GetFont();
+    mono.SetFaceName(wxT("Consolas"));   //找不到时 wx 自动回退，不影响显示
+    text->SetFont(mono);
+    sizer->Add(text, 1, wxEXPAND | wxALL, 8);
+    wxSizer* buttons = dialog.CreateButtonSizer(wxOK);
+    if(buttons) sizer->Add(buttons, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    dialog.SetSizer(sizer);
+    dialog.ShowModal();
 }
 
 //运行/暂停：切换后立刻重算一次，并把菜单项文字改成当前可做的动作

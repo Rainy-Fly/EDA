@@ -122,6 +122,12 @@ bool SimulationSession::componentHasValue(int componentId) const{
 }
 
 LogicValue SimulationSession::componentValue(int componentId) const{
+    //输入端子/开关：徽标显示"当前开关状态 0/1"（真正传到网络上的电平看导线颜色）
+    const auto role = model_.binding.role.find(componentId);
+    if(role != model_.binding.role.end() && role->second == SimRole::InputSwitch){
+        const auto state = model_.binding.switchValue.find(componentId);
+        if(state != model_.binding.switchValue.end()) return state->second;
+    }
     const auto it = model_.binding.deviceNet.find(componentId);
     return (it == model_.binding.deviceNet.end()) ? LogicValue::Unknown
                                                   : value_of_net(it->second);

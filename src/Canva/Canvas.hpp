@@ -176,7 +176,8 @@ private:
     void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制
     void draw_items(wxDC& dc);  //绘制所有元件的位图（带alpha ⇒ 真透明；画在导线之上）
-    void draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect); //元件状态徽标/灯亮/不支持标记
+    void draw_state_overlay(wxDC& dc);   //第二遍：端子方框数值/状态徽标/灯亮光晕/不支持标记
+    void draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect); //单个元件的状态标注
     void draw_ghost(wxDC& dc);  //绘制放置/克隆中的虚影（最上层）
     bool wire_hit(Linking* wire, const wxPoint& pos); //点到线段命中检测（窗口px）
     void draw_pins(wxDC& dc); //绘制所有元件的引脚（小圆点，网格对齐）

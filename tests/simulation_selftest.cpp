@@ -355,6 +355,18 @@ void test_extras(){
         check(simulator.evaluate().probe_value("lamp") == LogicValue::Zero,
               "三输入 AND 有一个 0 = 0");
     }
+    {   //导通/缓冲（单刀开关闭合时用）：输出 = 输入
+        SimulationCircuit circuit;
+        circuit.nets = {"a", "y"};
+        circuit.components = {input("sw", "a"), gate("buf", GateKind::Buffer, {"a"}, "y")};
+        circuit.probes = {probe("lamp", "y")};
+
+        Simulator simulator(circuit);
+        simulator.set_input("sw", true);
+        check(simulator.evaluate().probe_value("lamp") == LogicValue::One, "BUFFER：1 通过 = 1");
+        simulator.set_input("sw", false);
+        check(simulator.evaluate().probe_value("lamp") == LogicValue::Zero, "BUFFER：0 通过 = 0");
+    }
 }
 
 } // namespace

@@ -31,6 +31,7 @@ private:
     //---- 仿真（模拟菜单）----
     void OnRunPause(wxCommandEvent& e);      //模拟 - 运行/暂停
     void OnTick(wxCommandEvent& e);          //模拟 - 单步时钟
+    void OnSimulationDiagnostics(wxCommandEvent& e);  //模拟 - 仿真诊断（列出元件/网络电平）
     void OnSimulationTimer(wxTimerEvent& e); //去抖：内容变化后延迟重建仿真
     void ScheduleSimulationRebuild();        //安排一次重建（80ms 去抖，批量加载只算一次）
     void RebuildSimulation();                //采集画布 → 适配 → 求值 → 刷新

@@ -937,6 +937,7 @@ wxColour Canvas::pin_colour(const CanvasItem* item, const std::string& pinId) co
 //用元数据而不是仿真会话，是为了新放置的元件（仿真还没重建）也能正确识别并响应点击
 bool Canvas::item_is_switch(const CanvasItem* item) const{
     if(!item || !item->metadata) return false;
+    if(item->metadata->get_type() == "IN_TERMINAL") return true;   //输入端子也是可点击的 0/1 源
     if(item->metadata->get_category() == "Switch") return true;
     return item->metadata->get_type().rfind("Switch-COM-", 0) == 0;
 }
@@ -999,22 +1000,30 @@ void Canvas::draw_wires(wxDC& dc){
             draw_wire_path(dc, wire->points, wxColour(0, 102, 204), 4);   //选中：粗蓝底
         }
 
-        //仿真电平着色（类似 Logisim）：1=亮绿粗线、0=深绿、X/未知=蓝、未参与仿真=原深灰
+        //仿真电平着色（类似 Logisim）：1=亮绿粗线(+淡绿外发光)、0=中灰粗线、X=蓝、
+        //未参与仿真=深灰细线。0 特意用中灰而不是深绿：深绿和亮绿肉眼几乎分不出来，
+        //容易被当成"已经变 1 了"（其实还是 0）
         wxColour colour(40, 40, 40);
         int width = 2;
+        bool has_value = false;
+        Simulation::LogicValue value = Simulation::LogicValue::Unknown;
         if(simulation && simulation->wireHasValue(wire->id)){
-            switch(simulation->wireValue(wire->id)){
+            has_value = true;
+            value = simulation->wireValue(wire->id);
+        }
+        if(has_value){
+            width = 3;
+            switch(value){
                 case Simulation::LogicValue::One:
+                    //高电平：先铺一层淡绿外发光，再画主线（选中时不铺，保持蓝色高亮）
+                    if(!selected) draw_wire_path(dc, wire->points, wxColour(175, 240, 205), 7);
                     colour = wxColour(0, 200, 90);
-                    width = 3;
                     break;
                 case Simulation::LogicValue::Zero:
-                    colour = wxColour(20, 120, 70);
-                    width = 2;
+                    colour = wxColour(120, 120, 120);
                     break;
                 default:
                     colour = wxColour(80, 110, 210);
-                    width = 2;
                     break;
             }
         }
@@ -1080,17 +1089,33 @@ void Canvas::draw_items(wxDC& dc){
         if(!bmp.IsOk()) continue;
         const wxRect r = item->display_rect(scale, offset_coords);
         dc.DrawBitmap(bmp, r.x, r.y, true);
-        draw_item_state(dc, item, r);   //仿真状态：徽标 0/1/X、灯亮光晕、不支持标记
+    }
+}
+
+//仿真状态覆盖层：等所有位图都画完之后再统一画一遍。
+//为什么单独一遍：徽标/方框数值如果夹在位图中间画，后面画的相邻元件位图会把它盖掉，
+//看起来就像"某个元件显示的是别人的值"——这正是之前"线变绿了但门显示 0"最可能的来源之一
+void Canvas::draw_state_overlay(wxDC& dc){
+    if(!simulation || !simulation->hasModel()) return;
+    for(CanvasItem* item : *canvasItemCollection){
+        if(dynamic_cast<Linking*>(item)) continue;
+        const wxRect r = item->display_rect(scale, offset_coords);
+        if(r.width <= 0 || r.height <= 0) continue;
+        draw_item_state(dc, item, r);
     }
 }
 
 //元件状态标注（Logisim 风格）：
-//   - 右上角小徽标显示该元件的值（门=输出、开关=当前状态、灯/探针=观察到的电平）
+//   - 端子：方框内直接显示 0/1/X（输入端子再描一圈"可点击"提示）
+//   - 门/开关/灯：右上角小徽标显示该元件的值（门=输出、开关=状态、灯/探针=观察电平）
 //   - 灯在值为 1 时画一圈黄色光晕
 //   - 不参与仿真的元件在左上角画一个灰色 ✕
 void Canvas::draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect){
     if(!simulation || !simulation->hasModel()) return;
     const int id = item->id;
+    const std::string type = item->metadata ? item->metadata->get_type() : std::string();
+    const bool input_terminal = (type == "IN_TERMINAL");
+    const bool output_terminal = (type == "OUT_TERMINAL");
 
     //不支持的元件：灰色 ✕（只标记真实存在、且确实被判为不支持的元件）
     if(!simulation->isSupported(id)){
@@ -1103,8 +1128,53 @@ void Canvas::draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rec
         return;
     }
 
-    if(!simulation->componentHasValue(id)) return;
-    const Simulation::LogicValue value = simulation->componentValue(id);
+    const bool has_value = simulation->componentHasValue(id);
+    const Simulation::LogicValue value = has_value ? simulation->componentValue(id)
+                                                   : Simulation::LogicValue::Unknown;
+
+    //---- 端子：数值直接写在方框里 ----
+    if(input_terminal || output_terminal){
+        wxColour fill(235, 235, 235);
+        wxColour ink(70, 70, 70);
+        switch(value){
+            case Simulation::LogicValue::One:
+                fill = wxColour(198, 246, 214);
+                ink  = wxColour(0, 120, 50);
+                break;
+            case Simulation::LogicValue::Zero:
+                fill = wxColour(228, 228, 228);
+                ink  = wxColour(60, 60, 60);
+                break;
+            default:
+                fill = wxColour(212, 224, 250);
+                ink  = wxColour(40, 70, 170);
+                break;
+        }
+        const int inset = std::max(4, rect.width / 8);
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(wxBrush(fill));
+        dc.DrawRectangle(rect.x + inset, rect.y + inset,
+                         rect.width - inset * 2, rect.height - inset * 2);
+        //输入端子是"可点击"的：再描一圈边框（值为 1 时用绿色，提示当前是 1）
+        if(input_terminal){
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            dc.SetPen(wxPen(value == Simulation::LogicValue::One
+                                ? wxColour(0, 170, 80) : wxColour(150, 150, 150), 2));
+            dc.DrawRectangle(rect.x + inset, rect.y + inset,
+                             rect.width - inset * 2, rect.height - inset * 2);
+        }
+        wxFont font = badge_font;
+        font.SetPointSize(std::max(10, rect.height / 5));
+        dc.SetFont(font);
+        dc.SetTextForeground(ink);
+        const wxString text = wxString::FromUTF8(Simulation::to_string(value));
+        const wxSize extent = dc.GetTextExtent(text);
+        dc.DrawText(text, rect.x + (rect.width - extent.GetWidth()) / 2,
+                    rect.y + (rect.height - extent.GetHeight()) / 2);
+        return;
+    }
+
+    if(!has_value) return;
 
     if(simulation->isLamp(id) && value == Simulation::LogicValue::One){
         const int cx = rect.x + rect.width / 2;
@@ -1190,5 +1260,6 @@ void Canvas::onPaint(wxPaintEvent& event){
     //元件与虚影：画布自绘（不再有子窗口）。缩放后先按当前scale刷新位图缓存
     reput_items();
     draw_items(dc);
+    draw_state_overlay(dc);   //第二遍：端子数值/状态徽标/灯亮光晕（不会被位图盖住）
     draw_ghost(dc);
 }

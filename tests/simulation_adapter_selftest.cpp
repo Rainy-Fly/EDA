@@ -82,13 +82,20 @@ SimWire wire(int id, SimPoint from, SimPoint to,
     return w;
 }
 
-// ---- 用例1/2 用到的电路 ----
+// ---- 输入/输出端子 & 用例1/2 用到的电路 ----
 
-// 开关(1) --线--> AND(2) <-VCC(3)；AND --> 灯(4)
+SimComponent in_terminal(int id, int x, int y, const std::string& state = "0"){
+    return comp(id, "IN_TERMINAL", "Simulation", {pin("A", "output", x, y)},
+                {{"State", state}});
+}
+SimComponent out_terminal(int id, int x, int y){
+    return comp(id, "OUT_TERMINAL", "Simulation", {pin("A", "input", x, y)});
+}
+
+// 输入端子(1) --线--> AND(2) <-VCC(3)；AND --> 灯(4)
 SimProject switch_and_lamp(){
     SimProject project;
-    project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
-        {pin("A", "passive", 0, 0), pin("B", "passive", 20, 0)}, {{"State", "0"}}));
+    project.components.push_back(in_terminal(1, 0, 0, "0"));
     project.components.push_back(comp(2, "AND", "LogicGate",
         {pin("IN1", "input", 60, 0), pin("IN2", "input", 60, 20),
          pin("OUT", "output", 120, 10)}));
@@ -101,11 +108,10 @@ SimProject switch_and_lamp(){
     return project;
 }
 
-// 开关(1) --> AND(2) --> NOT(5) --> 探针(6)
+// 输入端子(1) --> AND(2) --> NOT(5) --> 探针(6)
 SimProject multilevel(){
     SimProject project;
-    project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
-        {pin("A", "passive", 0, 0), pin("B", "passive", 20, 0)}, {{"State", "1"}}));
+    project.components.push_back(in_terminal(1, 0, 0, "1"));
     project.components.push_back(comp(2, "AND", "LogicGate",
         {pin("IN1", "input", 60, 0), pin("IN2", "input", 60, 20),
          pin("OUT", "output", 120, 10)}));
@@ -166,8 +172,7 @@ void test_multilevel(){
 // ---- 用例3：junction 合并三条支路 ----
 void test_junction(){
     SimProject project;
-    project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
-        {pin("A", "passive", -20, 0), pin("B", "passive", -10, 0)}, {{"State", "1"}}));
+    project.components.push_back(in_terminal(1, -20, 0, "1"));
     project.components.push_back(comp(2, "Miscellaneous-COM-Probe_Point", "Miscellaneous",
         {pin("A", "passive", 80, 0)}));
     project.junctionPositions.push_back(P(30, 0));
@@ -180,7 +185,7 @@ void test_junction(){
     const SimulationModel model = build_simulation_model(project);
     const std::string netSwitch = model.binding.pinNet.at({1, "A"});
     const std::string netProbe  = model.binding.pinNet.at({2, "A"});
-    check(netSwitch == netProbe, "junction：开关与探针在同一网络");
+    check(netSwitch == netProbe, "junction：端子与探针在同一网络");
     check(model.binding.wireNet.at(10) == netSwitch, "junction：导线 10 同网");
     check(model.binding.wireNet.at(11) == netSwitch, "junction：导线 11 同网");
     check(model.binding.wireNet.at(12) == netSwitch, "junction：导线 12 同网");
@@ -248,12 +253,10 @@ void test_unsupported(){
 
 // ---- 用例7：多驱动降级 + no_connect ----
 void test_multiple_drivers_and_noconnect(){
-    {   //两个开关驱动同一网络（坐标重合）
+    {   //两个输入端子驱动同一网络（坐标重合）
         SimProject project;
-        project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
-            {pin("A", "passive", 0, 0)}, {{"State", "1"}}));
-        project.components.push_back(comp(2, "Switch-COM-SPST", "Switch",
-            {pin("A", "passive", 0, 0)}, {{"State", "0"}}));
+        project.components.push_back(in_terminal(1, 0, 0, "1"));
+        project.components.push_back(in_terminal(2, 0, 0, "0"));
         project.wires.push_back(wire(10, P(0, 0), P(40, 0)));
         const SimulationModel model = build_simulation_model(project);
         bool warned = false;
@@ -302,14 +305,6 @@ void test_empty_and_pause(){
 }
 
 // ---- 用例9：输入端子 / 输出端子 ----
-
-SimComponent in_terminal(int id, int x, int y, const std::string& state = "0"){
-    return comp(id, "IN_TERMINAL", "Simulation", {pin("A", "output", x, y)},
-                {{"State", state}});
-}
-SimComponent out_terminal(int id, int x, int y){
-    return comp(id, "OUT_TERMINAL", "Simulation", {pin("A", "input", x, y)});
-}
 
 // 两个输入端子 → AND → 输出端子
 SimProject terminals_and_gate(const std::string& a, const std::string& b){
@@ -375,6 +370,63 @@ void test_terminals(){
     }
 }
 
+// ---- 用例10：单刀开关是"两端导通"器件（POWER -> 开关 -> 门 才是对的） ----
+void test_switch_passthrough(){
+    // POWER(3) 的 "+" -> 开关(1).A；开关(1).B -> AND(2).IN1；输入端子(5) -> AND(2).IN2；
+    // AND.OUT -> 输出端子(4)
+    const auto build = [](const std::string& state){
+        SimProject project;
+        project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
+            {pin("A", "passive", 0, 0), pin("B", "passive", 40, 0)}, {{"State", state}}));
+        project.components.push_back(comp(2, "AND", "LogicGate",
+            {pin("IN1", "input", 120, 0), pin("IN2", "input", 120, 80),
+             pin("OUT", "output", 180, 40)}));
+        project.components.push_back(comp(3, "POWER", "Source",
+            {pin("+", "power", 0, 0), pin("-", "power", 0, -40)}));
+        project.components.push_back(out_terminal(4, 220, 40));
+        project.components.push_back(in_terminal(5, 60, 80, "1"));
+        //A ↔ POWER+，B ↔ AND.IN1
+        project.wires.push_back(wire(10, P(0, 0), P(0, 0), pin_end(3, "+"), pin_end(1, "A")));
+        project.wires.push_back(wire(11, P(40, 0), P(120, 0), pin_end(1, "B"), pin_end(2, "IN1")));
+        project.wires.push_back(wire(12, P(60, 80), P(120, 80), pin_end(5, "A"), pin_end(2, "IN2")));
+        project.wires.push_back(wire(13, P(180, 40), P(220, 40), pin_end(2, "OUT"), pin_end(4, "A")));
+        return project;
+    };
+
+    {   // 断开：IN1 没有驱动源（X），IN2 = 1 => X
+        SimProject project = build("0");
+        SimulationSession session;
+        check(session.rebuild(project), "开关断开：建模型成功");
+        check(session.componentValue(1) == LogicValue::Zero, "开关状态徽标 = 0（断开）");
+        check(session.componentValue(2) == LogicValue::Unknown,
+              "断开时 AND.IN1 悬空 => 输出 X");
+        check(session.wireValue(11) == LogicValue::Unknown, "开关负载侧导线 = X");
+    }
+    {   // 闭合：POWER+(1) 经开关送到 IN1 => 1 AND 1 = 1
+        SimProject project = build("1");
+        SimulationSession session;
+        check(session.rebuild(project), "开关闭合：建模型成功");
+        check(session.componentValue(1) == LogicValue::One, "开关状态徽标 = 1（闭合）");
+        check(session.wireValue(11) == LogicValue::One, "闭合后负载侧导线 = 1（导通）");
+        check(session.componentValue(2) == LogicValue::One, "1 AND 1 => 门输出 1");
+        check(session.componentValue(4) == LogicValue::One, "输出端子读到 1");
+    }
+    {   // 源接在 B 侧、负载在 A 侧：方向要能自动反过来
+        SimProject project;
+        project.components.push_back(comp(1, "Switch-COM-SPST", "Switch",
+            {pin("A", "passive", 0, 0), pin("B", "passive", 40, 0)}, {{"State", "1"}}));
+        project.components.push_back(out_terminal(4, -40, 0));
+        project.components.push_back(comp(3, "POWER", "Source",
+            {pin("+", "power", 40, 0), pin("-", "power", 40, -40)}));
+        project.wires.push_back(wire(10, P(0, 0), P(40, 0), pin_end(1, "A"), pin_end(1, "B")));
+        project.wires.push_back(wire(11, P(0, 0), P(-40, 0), pin_end(1, "A"), pin_end(4, "A")));
+        project.wires.push_back(wire(12, P(40, 0), P(40, 0), pin_end(3, "+"), pin_end(1, "B")));
+        SimulationSession session;
+        check(session.rebuild(project), "反向接法：建模型成功");
+        check(session.wireValue(11) == LogicValue::One, "源在 B 侧时也能把 1 送到 A 侧");
+    }
+}
+
 } // namespace
 
 int main(){
@@ -387,6 +439,7 @@ int main(){
     test_multiple_drivers_and_noconnect();
     test_empty_and_pause();
     test_terminals();
+    test_switch_passthrough();
 
     if(failures == 0){
         std::cout << "Simulation adapter self-test passed (" << checks << " checks).\n";
