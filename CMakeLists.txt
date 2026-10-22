@@ -177,6 +177,8 @@ file(
 list(FILTER SOURCES EXCLUDE REGEX "/ExplorerBak/")
 list(FILTER SOURCES EXCLUDE REGEX "/main\\.cpp$")
 list(FILTER SOURCES EXCLUDE REGEX "/UI_frame_1\\.cpp$")
+# verilator/tests 下的自检程序自带 main，不能进入主程序或其他自检程序的源文件列表。
+list(FILTER SOURCES EXCLUDE REGEX "/verilator/tests/")
 
 # =========================
 # TinyEDA
@@ -314,4 +316,19 @@ if(BUILD_TESTING)
     add_test(NAME kicad_export_demo COMMAND kicad_export_demo)
     set_tests_properties(kicad_export_demo PROPERTIES
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # Verilog 双向转换核心自检：不依赖 GUI、项目 XML 或网表模块。
+    add_executable(
+        verilator_selftest
+        src/verilator/include/VerilatorTypes.cpp
+        src/verilator/VerilatorApi.cpp
+        src/verilator/model/CircuitModel.cpp
+        src/verilator/model/CircuitBuilder.cpp
+        src/verilator/model/CircuitValidator.cpp
+        src/verilator/parser/Lexer.cpp
+        src/verilator/parser/Parser.cpp
+        src/verilator/generator/VerilogGenerator.cpp
+        src/verilator/tests/verilator_selftest.cpp
+    )
+    add_test(NAME verilator_selftest COMMAND verilator_selftest)
 endif()
