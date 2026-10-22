@@ -14,9 +14,36 @@
       "value": "Conn_01x02",
       "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
       "pin_numbers": "A=1;B=2",
-      "params": {
-        "pin_count": "2"
-      }
+      "definition_version": "1",
+      "parameters": {
+        "pin_count": {
+          "type": "string",
+          "default": "2",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 402,
@@ -26,10 +53,107 @@
       "category": "Connector",
       "description": "排针：多引脚直插连接器",
       "DataBits": 8,
-      "params": {
-        "pin_count": "8",
-        "pitch": "2.54mm"
-      }
+      "definition_version": "1",
+      "reference_prefix": "J",
+      "parameters": {
+        "pin_count": {
+          "type": "string",
+          "default": "8",
+          "editable": true
+        },
+        "pitch": {
+          "type": "string",
+          "default": "2.54mm",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -70,
+          "width": 1
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "3",
+          "name": "3",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -30,
+          "width": 1
+        },
+        {
+          "id": "4",
+          "name": "4",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "5",
+          "name": "5",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "6",
+          "name": "6",
+          "number": "6",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 30,
+          "width": 1
+        },
+        {
+          "id": "7",
+          "name": "7",
+          "number": "7",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 50,
+          "width": 1
+        },
+        {
+          "id": "8",
+          "name": "8",
+          "number": "8",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 70,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

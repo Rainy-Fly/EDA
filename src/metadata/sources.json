@@ -10,9 +10,37 @@
       "category": "Source",
       "description": "电源：提供稳定直流电压",
       "DataBits": 1,
-      "params": {
-        "voltage": "5V"
-      }
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "parameters": {
+        "voltage": {
+          "type": "string",
+          "default": "5V",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 302,
@@ -21,7 +49,21 @@
       "type": "GND",
       "category": "Source",
       "description": "地：参考电位0V",
-      "DataBits": 1
+      "DataBits": 1,
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "ground",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 303,
@@ -31,11 +73,52 @@
       "category": "Source",
       "description": "激励源：仿真激励信号",
       "DataBits": 1,
-      "params": {
-        "waveform": "square",
-        "frequency": "1kHz",
-        "amplitude": "5V"
-      }
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "parameters": {
+        "waveform": {
+          "type": "string",
+          "default": "square",
+          "editable": true
+        },
+        "frequency": {
+          "type": "string",
+          "default": "1kHz",
+          "editable": true
+        },
+        "amplitude": {
+          "type": "string",
+          "default": "5V",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

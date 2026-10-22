@@ -8,7 +8,31 @@
       "name_en": "Capacitor-COM-Feedthrough",
       "type": "Capacitor-COM-Feedthrough",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1008,
@@ -16,7 +40,31 @@
       "name_en": "Capacitor-IEC-NonPolarized",
       "type": "Capacitor-IEC-NonPolarized",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1009,
@@ -24,7 +72,31 @@
       "name_en": "Capacitor-IEC-Polarized",
       "type": "Capacitor-IEC-Polarized",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1010,
@@ -32,7 +104,31 @@
       "name_en": "Capacitor-IEC-Trimmer",
       "type": "Capacitor-IEC-Trimmer",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1011,
@@ -40,7 +136,31 @@
       "name_en": "Capacitor-IEC-Variable",
       "type": "Capacitor-IEC-Variable",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1012,
@@ -48,7 +168,31 @@
       "name_en": "Capacitor-IEEE-NonPolarized",
       "type": "Capacitor-IEEE-NonPolarized",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1013,
@@ -56,7 +200,36 @@
       "name_en": "Capacitor-IEEE-Polarized",
       "type": "Capacitor-IEEE-Polarized",
       "category": "Capacitor",
-      "description": "电容：储能、滤波、耦合"
+      "description": "电容：储能、滤波、耦合",
+      "definition_version": "1",
+      "reference_prefix": "C",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

@@ -8,7 +8,31 @@
       "name_en": "Diode-COM-LED",
       "type": "Diode-COM-LED",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1015,
@@ -16,7 +40,31 @@
       "name_en": "Diode-COM-Laser",
       "type": "Diode-COM-Laser",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1016,
@@ -24,7 +72,31 @@
       "name_en": "Diode-COM-Photodiode",
       "type": "Diode-COM-Photodiode",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1017,
@@ -32,7 +104,31 @@
       "name_en": "Diode-COM-Shockley",
       "type": "Diode-COM-Shockley",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1018,
@@ -40,7 +136,31 @@
       "name_en": "Diode-COM-Shottky",
       "type": "Diode-COM-Shottky",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1019,
@@ -48,7 +168,31 @@
       "name_en": "Diode-COM-Standard",
       "type": "Diode-COM-Standard",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1020,
@@ -56,7 +200,31 @@
       "name_en": "Diode-COM-Tunnel",
       "type": "Diode-COM-Tunnel",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1021,
@@ -64,7 +232,31 @@
       "name_en": "Diode-COM-Varicap",
       "type": "Diode-COM-Varicap",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1022,
@@ -72,7 +264,36 @@
       "name_en": "Diode-COM-Zener",
       "type": "Diode-COM-Zener",
       "category": "Diode",
-      "description": "二极管：单向导通"
+      "description": "二极管：单向导通",
+      "definition_version": "1",
+      "reference_prefix": "D",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

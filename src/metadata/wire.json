@@ -9,7 +9,8 @@
       "type": "WIRE",
       "category": "Wire",
       "description": "导线：连接两个端点传递电平信号（连线功能待实现）",
-      "DataBits": 1
+      "DataBits": 1,
+      "definition_version": "1"
     },
     {
       "id": 102,
@@ -18,7 +19,13 @@
       "type": "BUS",
       "category": "Wire",
       "description": "总线：一组并行信号线的集合",
-      "DataBits": 8
+      "DataBits": 8,
+      "definition_version": "1"
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

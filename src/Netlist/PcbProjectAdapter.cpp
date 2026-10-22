@@ -99,10 +99,26 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
                                  : (metadata ? metadata->get_category() : std::string());
         component.exportable = component.category != "Ground" && component.category != "Source";
 
-        component.reference = param_of(componentData, metadata.get(), "reference");
-        component.referencePrefix = param_of(componentData, metadata.get(), "reference_prefix");
-        component.value = param_of(componentData, metadata.get(), "value");
-        component.footprint = param_of(componentData, metadata.get(), "footprint");
+        // 实例覆盖优先；没有覆盖时使用 2.0 元数据中的定义默认值。
+        component.reference = !componentData.reference.empty()
+                                  ? componentData.reference
+                                  : param_of(componentData, metadata.get(), "reference");
+        component.referencePrefix = metadata && !metadata->reference_prefix.empty()
+                                        ? metadata->reference_prefix
+                                        : param_of(componentData, metadata.get(), "reference_prefix");
+        component.value = !componentData.value.empty()
+                              ? componentData.value
+                              : param_of(componentData, metadata.get(), "value");
+        if (component.value.empty() && metadata) {
+            if (!metadata->value_parameter.empty())
+                component.value = param_of(componentData, metadata.get(), metadata->value_parameter);
+            if (component.value.empty()) component.value = metadata->value;
+        }
+        component.footprint = !componentData.footprint.empty()
+                                  ? componentData.footprint
+                                  : param_of(componentData, metadata.get(), "footprint");
+        if (component.footprint.empty() && metadata) component.footprint = metadata->footprint;
+        if (component.value.empty() && metadata) component.value = metadata->get_type();
 
         if (!metadata) {
             Diagnostic diagnostic;
@@ -117,21 +133,37 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
 
         // 只读复用画布的引脚布局规则；不构造 CanvasItem，避免消耗全局元件 id。
         const std::vector<Pin> pins = item_pins_for(metadata.get(), componentData.name);
-        const PinNumberSpec pinNumbers = parse_pin_numbers(param_of(componentData, metadata.get(), "pin_numbers"));
+        // 旧项目可能只有 pin_numbers 参数；2.0 元数据优先使用 pins[].number。
+        const PinNumberSpec legacyPinNumbers =
+            parse_pin_numbers(param_of(componentData, metadata.get(), "pin_numbers"));
 
         usedPinIds.clear();
         for (std::size_t index = 0; index < pins.size(); ++index) {
             const Pin& pin = pins[index];
             PcbSnapshotPin snapshotPin;
-            snapshotPin.name = pin.name;
-            snapshotPin.id = pin.name;
+            snapshotPin.name = pin.name.empty() ? pin.id : pin.name;
+            snapshotPin.id = pin.id.empty() ? pin.name : pin.id;
             if (snapshotPin.id.empty() || !usedPinIds.insert(snapshotPin.id).second) {
-                snapshotPin.id = pin.name + "#" + std::to_string(index + 1);
+                snapshotPin.id = pin.id + "#" + std::to_string(index + 1);
                 usedPinIds.insert(snapshotPin.id);
             }
-            snapshotPin.number = pinNumbers.number_for(pin.name, index);
-            snapshotPin.position = PcbPoint{componentData.x + pin.offset.x,
-                                            componentData.y + pin.offset.y};
+            std::string numberOverride;
+            for (const DealProjectXML::PinOverrideData& overridePin : componentData.pin_overrides) {
+                if (overridePin.id == pin.id) {
+                    numberOverride = overridePin.number;
+                    break;
+                }
+            }
+            if (!numberOverride.empty())
+                snapshotPin.number = numberOverride;
+            else if (!pin.number.empty())
+                snapshotPin.number = pin.number;
+            else
+                snapshotPin.number = legacyPinNumbers.number_for(pin.id, index);
+            const wxPoint offset = transform_pin_offset(pin.offset, componentData.rotation,
+                                                        componentData.mirror);
+            snapshotPin.position = PcbPoint{componentData.x + offset.x,
+                                            componentData.y + offset.y};
             component.pins.push_back(std::move(snapshotPin));
         }
 

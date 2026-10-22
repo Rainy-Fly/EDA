@@ -8,6 +8,27 @@
 #include"./ToolBar.hpp"
 using canvasPos=std::tuple<float,float>;
 
+// 项目级电气注解（XML 2.0）。画布当前不提供创建入口，但加载/保存必须原样保留，
+// 否则含 junction/label/no-connect 的项目会在保存时丢失电气语义。
+struct CanvasJunction{
+    std::string id;
+    wxPoint position;
+};
+struct CanvasLabel{
+    std::string id;
+    std::string text;
+    std::string scope = "local";
+    wxPoint position;
+};
+struct CanvasNoConnect{
+    int component_id = 0;
+    std::string pin_id;
+};
+struct CanvasLibrary{
+    std::string id = "builtin";
+    std::string version = "1.0";
+};
+
 //点到线段的最短距离（窗口像素），用于导线命中检测
 float point_segment_distance(const wxPoint& pos, const wxPoint& a, const wxPoint& b);
 
@@ -65,6 +86,12 @@ public:
     //注册内容变化回调：放置/删除/移动元件、画完导线、修改属性后触发
     //（供菜单栏标记“有未保存的修改”）
     void set_changed_callback(std::function<void()> callback);
+
+    // 项目级电气注解（由 DealProjectXML 读写；当前无交互式创建入口）
+    std::vector<CanvasJunction> junctions;
+    std::vector<CanvasLabel> labels;
+    std::vector<CanvasNoConnect> no_connects;
+    std::vector<CanvasLibrary> libraries;
 
 private:
     wxPoint offset_coords; //此窗口左上角在画布坐标系的网格位置

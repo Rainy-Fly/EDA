@@ -2,7 +2,8 @@
 #include<string>
 #include<map>
 #include<vector>
-#include<wx/wx.h>
+#include<wx/string.h>
+#include<wx/gdicmn.h>
 
 class Canvas;
 
@@ -26,34 +27,90 @@ struct ProjectInfo{
     std::string description;        //项目描述
 };
 
+// 实例级引脚焊盘覆盖（只在覆盖库默认值时写入）
+struct PinOverrideData{
+    std::string id;                                  //稳定逻辑引脚ID
+    std::string number;                              //物理焊盘号
+};
+
 // 元件（<component>）：门类/通用元件
 struct ComponentData{
     int id = 0;                                      //实例ID（circuit内唯一）
-    std::string type;                                //类型串（元数据主键，如 "NAND"/"Resistor-IEC-Standard"）
+    std::string type;                                //类型串（元数据主键，如 "NAND"/"RESISTOR"）
+    std::string library_id = "builtin";              //元件定义所属库
+    std::string definition_version = "1";            //元件定义版本
     std::string name;                                //中文显示名
-    std::string category;                            //类别（冗余）
+    std::string category;                            //类别（冗余，用于显示/筛除非物理符号）
     int x = 0, y = 0;                                //逻辑网格锚点坐标
+    int rotation = 0;                                //0/90/180/270，顺时针
+    std::string mirror = "none";                     //none/x/y
+    std::string reference;                           //位号覆盖（空=定义默认/自动）
+    std::string value;                               //值覆盖（空=定义默认/参数）
+    std::string footprint;                           //封装覆盖（空=定义默认）
     std::string description;                         //描述（覆盖元数据默认值）
-    std::map<std::string, std::string> params;       //通用参数（DataBits/resistance/...）
+    std::map<std::string, std::string> params;       //实例参数覆盖（DataBits/resistance/...）
+    std::vector<PinOverrideData> pin_overrides;      //实例级焊盘号覆盖
 };
 
-// 导线/总线（<wire>）：折点序列
+// 导线端点：kind 为空表示旧版 1.0（仅几何）；2.0 写入时会给出明确 kind。
+//   pin       -> component + pin
+//   junction  -> junction
+//   label     -> label
+//   free      -> 悬空端点（不引用符号，坐标由首/尾 point 决定）
+struct WireEndpointData{
+    std::string kind;
+    int component_id = 0;
+    std::string pin_id;
+    std::string junction_id;
+    std::string label_id;
+};
+
+// 导线/总线（<wire>）：几何折点 + 两个电气端点
 struct WireData{
     int id = 0;
     std::string type;                                //"WIRE"/"BUS"
     std::string name;                                //中文显示名
     std::map<std::string, std::string> params;       //通用参数
     std::vector<wxPoint> points;                     //折点（逻辑网格坐标，≥2）
+    WireEndpointData start;                          //首端点
+    WireEndpointData end;                            //末端点
+};
+
+// 电气连接注解（2.0）：不参与画布元件/导线重建，但保存时必须原样保留。
+struct JunctionData{
+    std::string id;
+    int x = 0, y = 0;
+};
+struct LabelData{
+    std::string id;
+    std::string text;
+    std::string scope = "local";                     //local/power/hier
+    int x = 0, y = 0;
+};
+struct NoConnectData{
+    int component_id = 0;
+    std::string pin_id;
+};
+
+// 项目引用的元件库版本。
+struct LibraryData{
+    std::string id = "builtin";
+    std::string version = "1.0";
 };
 
 // 完整项目数据
 struct ProjectData{
+    std::string schema_version = "1.0"; //被读取文件的原始版本；写入时统一输出 2.0
     ProjectInfo info;
     wxPoint offset;          //视口：画布左上角逻辑坐标
     float scale = 1.0f;      //缩放比例
     int grid_step = 10;      //网格步长
+    std::vector<LibraryData> libraries;
     std::vector<ComponentData> components;
     std::vector<WireData> wires;
+    std::vector<JunctionData> junctions;
+    std::vector<LabelData> labels;
+    std::vector<NoConnectData> no_connects;
 };
 
 // ---- 纯XML读写（不依赖画布，可独立测试）----

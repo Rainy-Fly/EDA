@@ -8,7 +8,31 @@
       "name_en": "Source-COM-AC",
       "type": "Source-COM-AC",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1078,
@@ -16,7 +40,31 @@
       "name_en": "Source-COM-Battery-Multiple",
       "type": "Source-COM-Battery-Multiple",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1079,
@@ -24,7 +72,31 @@
       "name_en": "Source-COM-Battery-Single",
       "type": "Source-COM-Battery-Single",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1080,
@@ -32,7 +104,31 @@
       "name_en": "Source-COM-Current",
       "type": "Source-COM-Current",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1081,
@@ -40,7 +136,31 @@
       "name_en": "Source-COM-Current-Controlled",
       "type": "Source-COM-Current-Controlled",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1082,
@@ -48,7 +168,31 @@
       "name_en": "Source-COM-DC",
       "type": "Source-COM-DC",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1083,
@@ -56,7 +200,31 @@
       "name_en": "Source-COM-DC-Controlled",
       "type": "Source-COM-DC-Controlled",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1084,
@@ -64,7 +232,31 @@
       "name_en": "Source-COM-Photovoltaic",
       "type": "Source-COM-Photovoltaic",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1085,
@@ -72,7 +264,31 @@
       "name_en": "Source-COM-Square",
       "type": "Source-COM-Square",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1086,
@@ -80,7 +296,36 @@
       "name_en": "Source-COM-Triangle",
       "type": "Source-COM-Triangle",
       "category": "Source",
-      "description": "电源/信号源"
+      "description": "电源/信号源",
+      "definition_version": "1",
+      "reference_prefix": "V",
+      "pins": [
+        {
+          "id": "+",
+          "name": "+",
+          "number": "1",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "number": "2",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

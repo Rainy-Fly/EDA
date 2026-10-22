@@ -11,7 +11,41 @@
       "description": "与非门：两个输入均为1时输出0，否则输出1",
       "DataBits": 1,
       "inputs": 2,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 2,
@@ -22,7 +56,41 @@
       "description": "与门：两个输入均为1时输出1，否则输出0",
       "DataBits": 1,
       "inputs": 2,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 3,
@@ -33,7 +101,41 @@
       "description": "或门：任一输入为1时输出1，否则输出0",
       "DataBits": 1,
       "inputs": 2,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 4,
@@ -44,7 +146,41 @@
       "description": "或非门：任一输入为1时输出0，否则输出1",
       "DataBits": 1,
       "inputs": 2,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 5,
@@ -55,7 +191,41 @@
       "description": "异或门：两个输入不同时输出1，相同时输出0",
       "DataBits": 1,
       "inputs": 2,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 6,
@@ -66,7 +236,36 @@
       "description": "非门（反相器）：输入为1时输出0，输入为0时输出1",
       "DataBits": 1,
       "inputs": 1,
-      "outputs": 1
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "2",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

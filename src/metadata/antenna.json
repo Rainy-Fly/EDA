@@ -8,7 +8,21 @@
       "name_en": "Antenna-COM-Aerial",
       "type": "Antenna-COM-Aerial",
       "category": "Antenna",
-      "description": "天线：发射或接收电磁波"
+      "description": "天线：发射或接收电磁波",
+      "definition_version": "1",
+      "reference_prefix": "ANT",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1001,
@@ -16,7 +30,21 @@
       "name_en": "Antenna-COM-Dipole",
       "type": "Antenna-COM-Dipole",
       "category": "Antenna",
-      "description": "天线：发射或接收电磁波"
+      "description": "天线：发射或接收电磁波",
+      "definition_version": "1",
+      "reference_prefix": "ANT",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1002,
@@ -24,7 +52,26 @@
       "name_en": "Antenna-COM-Loop",
       "type": "Antenna-COM-Loop",
       "category": "Antenna",
-      "description": "天线：发射或接收电磁波"
+      "description": "天线：发射或接收电磁波",
+      "definition_version": "1",
+      "reference_prefix": "ANT",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

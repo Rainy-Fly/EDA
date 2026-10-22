@@ -14,11 +14,47 @@
       "value": "10k",
       "footprint": "Resistor_SMD:R_0603_1608Metric",
       "pin_numbers": "A=1;B=2",
-      "params": {
-        "resistance": "10k",
-        "tolerance": "5%",
-        "power": "0.25W"
-      }
+      "definition_version": "1",
+      "parameters": {
+        "resistance": {
+          "type": "string",
+          "default": "10k",
+          "editable": true
+        },
+        "tolerance": {
+          "type": "string",
+          "default": "5%",
+          "editable": true
+        },
+        "power": {
+          "type": "string",
+          "default": "0.25W",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ],
+      "value_parameter": "resistance"
     },
     {
       "id": 202,
@@ -32,10 +68,42 @@
       "value": "100nF",
       "footprint": "Capacitor_SMD:C_0603_1608Metric",
       "pin_numbers": "A=1;B=2",
-      "params": {
-        "capacitance": "100nF",
-        "voltage": "50V"
-      }
+      "definition_version": "1",
+      "parameters": {
+        "capacitance": {
+          "type": "string",
+          "default": "100nF",
+          "editable": true
+        },
+        "voltage": {
+          "type": "string",
+          "default": "50V",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ],
+      "value_parameter": "capacitance"
     },
     {
       "id": 203,
@@ -49,9 +117,42 @@
       "value": "10uH",
       "footprint": "Inductor_SMD:L_0603_1608Metric",
       "pin_numbers": "A=1;B=2",
-      "params": {
-        "inductance": "10uH"
-      }
+      "definition_version": "1",
+      "parameters": {
+        "inductance": {
+          "type": "string",
+          "default": "10uH",
+          "editable": true
+        }
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ],
+      "value_parameter": "inductance"
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

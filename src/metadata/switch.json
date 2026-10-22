@@ -8,7 +8,71 @@
       "name_en": "Switch-COM-DPDT",
       "type": "Switch-COM-DPDT",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "COM1",
+          "name": "COM1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COM2",
+          "name": "COM2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "COM3",
+          "name": "COM3",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "NO1",
+          "name": "NO1",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "NC1",
+          "name": "NC1",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NO2",
+          "name": "NO2",
+          "number": "6",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1088,
@@ -16,7 +80,51 @@
       "name_en": "Switch-COM-DPST",
       "type": "Switch-COM-DPST",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "A1",
+          "name": "A1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "B1",
+          "name": "B1",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "A2",
+          "name": "A2",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "B2",
+          "name": "B2",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1089,
@@ -24,7 +132,31 @@
       "name_en": "Switch-COM-Pushbutton-NC",
       "type": "Switch-COM-Pushbutton-NC",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1090,
@@ -32,7 +164,31 @@
       "name_en": "Switch-COM-Pushbutton-NO",
       "type": "Switch-COM-Pushbutton-NO",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1091,
@@ -40,7 +196,51 @@
       "name_en": "Switch-COM-Pushbutton-Two_Circuit",
       "type": "Switch-COM-Pushbutton-Two_Circuit",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "A1",
+          "name": "A1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "B1",
+          "name": "B1",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "A2",
+          "name": "A2",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "B2",
+          "name": "B2",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1092,
@@ -48,7 +248,41 @@
       "name_en": "Switch-COM-SPDT",
       "type": "Switch-COM-SPDT",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1093,
@@ -56,7 +290,36 @@
       "name_en": "Switch-COM-SPST",
       "type": "Switch-COM-SPST",
       "category": "Switch",
-      "description": "开关：通断控制"
+      "description": "开关：通断控制",
+      "definition_version": "1",
+      "reference_prefix": "SW",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

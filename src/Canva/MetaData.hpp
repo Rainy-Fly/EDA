@@ -1,15 +1,38 @@
 #pragma once
 #include<string>
 #include<map>
+#include<vector>
 #include<utility>
 
 // 元件元数据文件所在目录（相对仓库根；运行时同时支持“当前目录”与“可执行文件相对”两种基准）
 const std::string MetaDataJsonPath = "src/metadata/";
 
+// 元件定义中的显式引脚。
+// id 是元件定义内的稳定逻辑引脚标识（如 "IN1"/"A"/"COIL1"），
+// number 是对应的物理焊盘号（如 KiCad 封装的 "1"/"2"；未知时为空）。
+// direction/electrical_type 供仿真与 ERC 使用；x/y 是相对元件锚点的网格偏移。
+struct MetaDataPin{
+    std::string id;
+    std::string name;
+    std::string number;
+    std::string direction = "passive";         // input/output/inout/passive/power
+    std::string electrical_type = "passive";   // input/output/bidirectional/passive/power/ground/no_connect
+    int x = 0;
+    int y = 0;
+    unsigned int width = 1;
+};
+
+// 结构化参数定义：类型、默认值、是否允许实例覆盖。
+struct MetaDataParameter{
+    std::string type = "string";   // string/int/float/bool/enum
+    std::string default_value;
+    bool editable = true;
+    std::vector<std::string> choices;
+};
+
 // 元件元数据基类：每个元件在 src/metadata/ 下的多个JSON文件中有一条定义，
 // 运行时由 MetaDataJson（load_metadata）读取为 MetaData（或其子类）实例。
-// 公共字段：中文名/英文名/ID/类型字符串/类别/描述；其余键值对统一放入 params，
-// 特定类别可继承本类并增加类型化字段（如逻辑门 LogicGateMetaData 的输入/输出/位宽）。
+// 公共字段：中文名/英文名/ID/类型字符串/类别/描述；显式引脚、库版本与结构化参数也在此层。
 class MetaData{
 public:
     MetaData() = default;
@@ -37,8 +60,48 @@ public:
         return it == params.end() ? def : it->second;
     }
 
-    // 通用参数表（子类/属性栏可直接读写）
+    // 通用参数表（子类/属性栏可直接读写）。值是实例当前生效值，
+    // 初始值来自元数据参数定义的 default_value。
     std::map<std::string, std::string> params;
+
+    //---- 元件定义（库级）----
+    // 库版本与元件定义版本职责分离：
+    //   library_id/library_version 标识“这套元件定义来自哪个库版本”；
+    //   definition_version 标识单个元件定义自身的修订版本。
+    // 项目实例只引用这三者，不复制定义内容。
+    std::string library_id = "builtin";
+    std::string library_version = "1.0";
+    std::string definition_version = "1";
+
+    // PCB 相关默认属性；实例可在项目 XML 中覆盖。
+    std::string reference_prefix;
+    std::string footprint;
+    std::string value;
+    std::string value_parameter;   //值来自哪个参数（如 "resistance"）
+
+    // 显式引脚定义；为空时画布/网表层才回退到旧启发式。
+    std::vector<MetaDataPin> pins;
+
+    // 结构化参数定义（默认值同时写入 params，供属性栏显示与编辑）。
+    std::map<std::string, MetaDataParameter> parameter_defs;
+
+    // 旧版 pin_numbers 字符串解析结果（"A=1;B=2"），仅用于兼容旧元数据。
+    std::map<std::string, std::string> legacy_pin_numbers;
+
+    // 取显式引脚；没有显式定义时返回 nullptr。
+    const MetaDataPin* find_pin(const std::string& pin_id) const{
+        for(const MetaDataPin& pin : pins)
+            if(pin.id == pin_id) return &pin;
+        return nullptr;
+    }
+
+    // 取引脚焊盘号：显式 pins[].number 优先，其次旧版 pin_numbers。
+    std::string pin_number(const std::string& pin_id) const{
+        if(const MetaDataPin* pin = find_pin(pin_id); pin && !pin->number.empty())
+            return pin->number;
+        auto it = legacy_pin_numbers.find(pin_id);
+        return it == legacy_pin_numbers.end() ? std::string() : it->second;
+    }
 
 private:
     std::string name;

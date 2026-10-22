@@ -8,7 +8,51 @@
       "name_en": "Miscellaneous-COM-ADC",
       "type": "Miscellaneous-COM-ADC",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "AIN",
+          "name": "AIN",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "DOUT",
+          "name": "DOUT",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "V+",
+          "name": "V+",
+          "number": "3",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "V-",
+          "name": "V-",
+          "number": "4",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1047,
@@ -16,7 +60,31 @@
       "name_en": "Miscellaneous-COM-Crystal_Oscillator",
       "type": "Miscellaneous-COM-Crystal_Oscillator",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1048,
@@ -24,7 +92,51 @@
       "name_en": "Miscellaneous-COM-DAC",
       "type": "Miscellaneous-COM-DAC",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "AOUT",
+          "name": "AOUT",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "DIN",
+          "name": "DIN",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "V+",
+          "name": "V+",
+          "number": "3",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "V-",
+          "name": "V-",
+          "number": "4",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1049,
@@ -32,7 +144,31 @@
       "name_en": "Miscellaneous-COM-Lamp-Incandescent",
       "type": "Miscellaneous-COM-Lamp-Incandescent",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1050,
@@ -40,7 +176,31 @@
       "name_en": "Miscellaneous-COM-Lamp-Indicator",
       "type": "Miscellaneous-COM-Lamp-Indicator",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1051,
@@ -48,7 +208,51 @@
       "name_en": "Miscellaneous-COM-Optocoupler",
       "type": "Miscellaneous-COM-Optocoupler",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1052,
@@ -56,7 +260,26 @@
       "name_en": "Miscellaneous-COM-Probe_Point",
       "type": "Miscellaneous-COM-Probe_Point",
       "category": "Miscellaneous",
-      "description": "杂项器件"
+      "description": "杂项器件",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 0,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

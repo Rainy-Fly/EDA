@@ -8,7 +8,21 @@
       "name_en": "Ground-COM-Chassis",
       "type": "Ground-COM-Chassis",
       "category": "Ground",
-      "description": "接地：参考电位符号"
+      "description": "接地：参考电位符号",
+      "definition_version": "1",
+      "reference_prefix": "GND",
+      "pins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "ground",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1027,
@@ -16,7 +30,21 @@
       "name_en": "Ground-COM-General",
       "type": "Ground-COM-General",
       "category": "Ground",
-      "description": "接地：参考电位符号"
+      "description": "接地：参考电位符号",
+      "definition_version": "1",
+      "reference_prefix": "GND",
+      "pins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "ground",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1028,
@@ -24,7 +52,26 @@
       "name_en": "Ground-COM-Signal",
       "type": "Ground-COM-Signal",
       "category": "Ground",
-      "description": "接地：参考电位符号"
+      "description": "接地：参考电位符号",
+      "definition_version": "1",
+      "reference_prefix": "GND",
+      "pins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "ground",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

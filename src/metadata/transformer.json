@@ -8,7 +8,61 @@
       "name_en": "Transformer-COM-Center",
       "type": "Transformer-COM-Center",
       "category": "Transformer",
-      "description": "变压器：电压变换、隔离"
+      "description": "变压器：电压变换、隔离",
+      "definition_version": "1",
+      "reference_prefix": "T",
+      "pins": [
+        {
+          "id": "P1",
+          "name": "P1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "S1",
+          "name": "S1",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "S2",
+          "name": "S2",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "CT",
+          "name": "CT",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1095,
@@ -16,7 +70,71 @@
       "name_en": "Transformer-COM-Center-Double",
       "type": "Transformer-COM-Center-Double",
       "category": "Transformer",
-      "description": "变压器：电压变换、隔离"
+      "description": "变压器：电压变换、隔离",
+      "definition_version": "1",
+      "reference_prefix": "T",
+      "pins": [
+        {
+          "id": "P1",
+          "name": "P1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "S1",
+          "name": "S1",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "S2",
+          "name": "S2",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "CT1",
+          "name": "CT1",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "CT2",
+          "name": "CT2",
+          "number": "6",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1096,
@@ -24,7 +142,56 @@
       "name_en": "Transformer-COM-Standard",
       "type": "Transformer-COM-Standard",
       "category": "Transformer",
-      "description": "变压器：电压变换、隔离"
+      "description": "变压器：电压变换、隔离",
+      "definition_version": "1",
+      "reference_prefix": "T",
+      "pins": [
+        {
+          "id": "P1",
+          "name": "P1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "S1",
+          "name": "S1",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "S2",
+          "name": "S2",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

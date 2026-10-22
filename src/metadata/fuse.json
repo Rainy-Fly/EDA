@@ -8,7 +8,31 @@
       "name_en": "Fuse-IEC",
       "type": "Fuse-IEC",
       "category": "Fuse",
-      "description": "保险丝：过流保护"
+      "description": "保险丝：过流保护",
+      "definition_version": "1",
+      "reference_prefix": "F",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1024,
@@ -16,7 +40,31 @@
       "name_en": "Fuse-IEEE",
       "type": "Fuse-IEEE",
       "category": "Fuse",
-      "description": "保险丝：过流保护"
+      "description": "保险丝：过流保护",
+      "definition_version": "1",
+      "reference_prefix": "F",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1025,
@@ -24,7 +72,36 @@
       "name_en": "Fuse-IEEE-Alt",
       "type": "Fuse-IEEE-Alt",
       "category": "Fuse",
-      "description": "保险丝：过流保护"
+      "description": "保险丝：过流保护",
+      "definition_version": "1",
+      "reference_prefix": "F",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

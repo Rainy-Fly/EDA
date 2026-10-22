@@ -5,230 +5,163 @@
 #include"../Canva/MetaData.hpp"
 #include"../metadata/MetaDataJson.hpp"
 
-#include<wx/xml/xml.h>
-#include<ctime>
-
-// 本地时间兼容：localtime_r 是 POSIX 接口，MSVC 没有这个函数，
-// MinGW-w64 虽然有，但只在定义了 _POSIX_C_SOURCE 时才在 <time.h> 里声明它；
-// 本工程编译用的是严格模式（-std=c++20，见 CMakeLists 的 CMAKE_CXX_EXTENSIONS OFF），
-// 拿不到那个声明，会报 'localtime_r' was not declared in this scope。
-// 两种 Windows 工具链都无条件提供参数顺序相反的 localtime_s（MinGW-w64 的
-// time.h 里 localtime_s 没有 POSIX 保护宏），所以两个宏都映射过去。
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    #define localtime_r(timep, result) localtime_s(result, timep)
-#endif
+#include<map>
+#include<set>
+#include<unordered_map>
+#include<utility>
 
 namespace{
 
-// ---- 小工具 ----
-wxString to_wx(const std::string& s){ return wxString::FromUTF8(s.c_str()); }
-std::string from_wx(const wxString& s){ return s.ToUTF8().data(); }
-
-// 取元素属性；缺失返回默认值
-wxString attr(const wxXmlNode* n, const char* key, const wxString& def = wxEmptyString){
-    wxString v;
-    if(n->GetAttribute(wxString::FromUTF8(key), &v)) return v;
-    return def;
-}
-
-// 元素文本内容（text/cdata子节点拼接）
-wxString text_of(const wxXmlNode* n){
-    wxString t;
-    for(const wxXmlNode* c = n->GetChildren(); c; c = c->GetNext()){
-        const wxXmlNodeType ty = c->GetType();
-        if(ty == wxXML_TEXT_NODE || ty == wxXML_CDATA_SECTION_NODE) t += c->GetContent();
-    }
-    return t;
-}
-
-wxXmlNode* new_element(const char* name){
-    return new wxXmlNode(wxXML_ELEMENT_NODE, wxString::FromUTF8(name));
-}
-
-void add_text_child(wxXmlNode* parent, const char* name, const std::string& value){
-    wxXmlNode* n = new_element(name);
-    n->AddChild(new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, to_wx(value)));
-    parent->AddChild(n);
-}
-
-void add_param_child(wxXmlNode* parent, const std::pair<std::string,std::string>& kv){
-    wxXmlNode* p = new_element("param");
-    p->AddAttribute(wxString::FromUTF8("key"), to_wx(kv.first));
-    p->AddChild(new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, to_wx(kv.second)));
-    parent->AddChild(p);
-}
-
-wxXmlNode* add_point_child(wxXmlNode* parent, const wxPoint& pt){
-    wxXmlNode* p = new_element("point");
-    p->AddAttribute(wxString::FromUTF8("x"), wxString::Format(wxT("%d"), pt.x));
-    p->AddAttribute(wxString::FromUTF8("y"), wxString::Format(wxT("%d"), pt.y));
-    parent->AddChild(p);
-    return p;
-}
-
-// 当前时间（ISO 8601，不含时区偏移的本地时间）
-std::string now_iso(){
-    std::time_t t = std::time(nullptr);
-    std::tm tm{};
-    localtime_r(&t, &tm);   //Windows/MSVC 的兼容在文件顶部用宏处理
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm);
-    return buf;
-}
-
-// 把参数写入元数据：门类的inputs/outputs/DataBits走类型化setter，其余写入通用params
+// 把 XML 参数应用到元数据；逻辑门的专用参数走类型化 setter。
 void apply_param(MetaData* md, const std::string& key, const std::string& value){
     if(!md) return;
-    auto to_int = [&](int def)->int{
+    auto to_int = [&](int def){
         try{ return std::stoi(value); }catch(...){ return def; }
     };
-    if(LogicGateMetaData* g = dynamic_cast<LogicGateMetaData*>(md)){
-        if(key == "inputs"){   int v = to_int(g->get_inputs());   if(v > 0) g->set_inputs(v);   return; }
-        if(key == "outputs"){  int v = to_int(g->get_outputs());  if(v > 0) g->set_outputs(v);  return; }
-        if(key == "DataBits"){ int v = to_int(g->get_data_bits());if(v > 0) g->set_data_bits(v);return; }
+    if(LogicGateMetaData* gate = dynamic_cast<LogicGateMetaData*>(md)){
+        if(key == "DataBits"){ gate->set_data_bits(to_int(gate->get_data_bits())); return; }
+        if(key == "inputs"){ gate->set_inputs(to_int(gate->get_inputs())); return; }
+        if(key == "outputs"){ gate->set_outputs(to_int(gate->get_outputs())); return; }
     }
     md->params[key] = value;
 }
 
+struct PinAt{
+    int component_id = 0;
+    std::string pin_id;
+    bool ambiguous = false;
+};
+
+// 把导线端点写成 XML 2.0 的显式引用；无法解析时写 free。
+DealProjectXML::WireEndpointData resolve_endpoint(
+    const wxPoint& point,
+    const WireEndpointRef& stored,
+    const std::map<std::pair<int,int>, PinAt>& pins,
+    const std::map<std::pair<int,int>, std::string>& junctions,
+    const std::map<std::pair<int,int>, std::string>& labels,
+    const std::set<int>& componentIds,
+    const std::set<std::string>& junctionIds,
+    const std::set<std::string>& labelIds,
+    const std::set<std::pair<int,std::string>>& validPins)
+{
+    DealProjectXML::WireEndpointData ep;
+    ep.kind = stored.kind;
+    ep.component_id = stored.component_id;
+    ep.pin_id = stored.pin_id;
+    ep.junction_id = stored.junction_id;
+    ep.label_id = stored.label_id;
+
+    // 显式引用仍然有效：保留（移动元件后端点引用比坐标更可靠）。
+    if(ep.kind == "pin" && componentIds.count(ep.component_id) &&
+       validPins.count({ep.component_id, ep.pin_id})) return ep;
+    if(ep.kind == "junction" && junctionIds.count(ep.junction_id)) return ep;
+    if(ep.kind == "label" && labelIds.count(ep.label_id)) return ep;
+    if(ep.kind == "free") return ep;
+
+    ep = {};
+    const auto key = std::make_pair(point.x, point.y);
+    auto pinIt = pins.find(key);
+    if(pinIt != pins.end() && !pinIt->second.ambiguous){
+        ep.kind = "pin";
+        ep.component_id = pinIt->second.component_id;
+        ep.pin_id = pinIt->second.pin_id;
+        return ep;
+    }
+    auto junctionIt = junctions.find(key);
+    if(junctionIt != junctions.end() && !junctionIt->second.empty()){
+        ep.kind = "junction";
+        ep.junction_id = junctionIt->second;
+        return ep;
+    }
+    auto labelIt = labels.find(key);
+    if(labelIt != labels.end() && !labelIt->second.empty()){
+        ep.kind = "label";
+        ep.label_id = labelIt->second;
+        return ep;
+    }
+    ep.kind = "free";
+    return ep;
+}
+
 } // namespace
-
-// ================= 纯XML读写 =================
-
-bool DealProjectXML::WriteXml(const ProjectData& data, const std::string& path){
-    if(path.empty()) return false;
-    wxXmlDocument doc;
-    wxXmlNode* root = new_element("teda-project");
-    root->AddAttribute(wxString::FromUTF8("schema-version"), wxString::FromUTF8("1.0"));
-    doc.SetRoot(root);
-
-    //---- info：项目信息 + 视口 ----
-    wxXmlNode* info = new_element("info");
-    add_text_child(info, "name",        data.info.name.empty() ? "Untitled" : data.info.name);
-    add_text_child(info, "author",      data.info.author);
-    add_text_child(info, "created",     data.info.created.empty() ? now_iso() : data.info.created);
-    add_text_child(info, "modified",    now_iso());
-    add_text_child(info, "description", data.info.description);
-    wxXmlNode* view = new_element("view");
-    view->AddAttribute(wxString::FromUTF8("offset-x"), wxString::Format(wxT("%d"), data.offset.x));
-    view->AddAttribute(wxString::FromUTF8("offset-y"), wxString::Format(wxT("%d"), data.offset.y));
-    view->AddAttribute(wxString::FromUTF8("scale"),    wxString::Format(wxT("%g"), (double)data.scale));
-    view->AddAttribute(wxString::FromUTF8("grid-step"),wxString::Format(wxT("%d"), data.grid_step));
-    info->AddChild(view);
-    root->AddChild(info);
-
-    //---- circuit：元件 + 导线 ----
-    wxXmlNode* circuit = new_element("circuit");
-    for(const ComponentData& c : data.components){
-        wxXmlNode* n = new_element("component");
-        n->AddAttribute(wxString::FromUTF8("id"),   wxString::Format(wxT("%d"), c.id));
-        n->AddAttribute(wxString::FromUTF8("type"), to_wx(c.type));
-        n->AddAttribute(wxString::FromUTF8("name"), to_wx(c.name));
-        if(!c.category.empty()) n->AddAttribute(wxString::FromUTF8("category"), to_wx(c.category));
-        n->AddAttribute(wxString::FromUTF8("x"),    wxString::Format(wxT("%d"), c.x));
-        n->AddAttribute(wxString::FromUTF8("y"),    wxString::Format(wxT("%d"), c.y));
-        if(!c.description.empty()) add_text_child(n, "description", c.description);
-        for(const auto& kv : c.params) add_param_child(n, kv);
-        circuit->AddChild(n);
-    }
-    for(const WireData& w : data.wires){
-        wxXmlNode* n = new_element("wire");
-        n->AddAttribute(wxString::FromUTF8("id"),   wxString::Format(wxT("%d"), w.id));
-        n->AddAttribute(wxString::FromUTF8("type"), to_wx(w.type));
-        if(!w.name.empty()) n->AddAttribute(wxString::FromUTF8("name"), to_wx(w.name));
-        for(const auto& kv : w.params) add_param_child(n, kv);
-        for(const wxPoint& pt : w.points) add_point_child(n, pt);
-        circuit->AddChild(n);
-    }
-    root->AddChild(circuit);
-
-    return doc.Save(to_wx(path), 2);
-}
-
-bool DealProjectXML::ReadXml(const std::string& path, ProjectData* data){
-    if(path.empty() || !data) return false;
-    wxXmlDocument doc;
-    if(!doc.Load(to_wx(path))) return false;
-    wxXmlNode* root = doc.GetRoot();
-    if(!root || root->GetName() != wxT("teda-project")) return false;
-
-    ProjectData out;
-    //容错解析：未知元素/未知属性忽略不报错（与“缺失不报错”的容错原则一致）
-    for(const wxXmlNode* child = root->GetChildren(); child; child = child->GetNext()){
-        if(child->GetType() != wxXML_ELEMENT_NODE) continue;
-        if(child->GetName() == wxT("info")){
-            for(const wxXmlNode* c = child->GetChildren(); c; c = c->GetNext()){
-                if(c->GetType() != wxXML_ELEMENT_NODE) continue;
-                const wxString cn = c->GetName();
-                if(cn == wxT("name"))        out.info.name        = from_wx(text_of(c));
-                else if(cn == wxT("author")) out.info.author      = from_wx(text_of(c));
-                else if(cn == wxT("created"))out.info.created     = from_wx(text_of(c));
-                else if(cn == wxT("modified"))out.info.modified   = from_wx(text_of(c));
-                else if(cn == wxT("description"))out.info.description = from_wx(text_of(c));
-                else if(cn == wxT("view")){
-                    long v;
-                    if(attr(c, "offset-x").ToLong(&v)) out.offset.x = (int)v;
-                    if(attr(c, "offset-y").ToLong(&v)) out.offset.y = (int)v;
-                    double d;
-                    if(attr(c, "scale").ToDouble(&d)) out.scale = (float)d;
-                    if(attr(c, "grid-step").ToLong(&v)) out.grid_step = (int)v;
-                }
-            }
-        }else if(child->GetName() == wxT("circuit")){
-            for(const wxXmlNode* c = child->GetChildren(); c; c = c->GetNext()){
-                if(c->GetType() != wxXML_ELEMENT_NODE) continue;
-                if(c->GetName() == wxT("component")){
-                    ComponentData cd;
-                    long v;
-                    if(attr(c, "id").ToLong(&v)) cd.id = (int)v;
-                    cd.type = from_wx(attr(c, "type"));
-                    cd.name = from_wx(attr(c, "name"));
-                    cd.category = from_wx(attr(c, "category"));
-                    if(attr(c, "x").ToLong(&v)) cd.x = (int)v;
-                    if(attr(c, "y").ToLong(&v)) cd.y = (int)v;
-                    for(const wxXmlNode* cc = c->GetChildren(); cc; cc = cc->GetNext()){
-                        if(cc->GetType() != wxXML_ELEMENT_NODE) continue;
-                        if(cc->GetName() == wxT("description")) cd.description = from_wx(text_of(cc));
-                        else if(cc->GetName() == wxT("param")){
-                            cd.params[from_wx(attr(cc, "key"))] = from_wx(text_of(cc));
-                        }
-                    }
-                    out.components.push_back(std::move(cd));
-                }else if(c->GetName() == wxT("wire")){
-                    WireData wd;
-                    long v;
-                    if(attr(c, "id").ToLong(&v)) wd.id = (int)v;
-                    wd.type = from_wx(attr(c, "type"));
-                    wd.name = from_wx(attr(c, "name"));
-                    for(const wxXmlNode* cc = c->GetChildren(); cc; cc = cc->GetNext()){
-                        if(cc->GetType() != wxXML_ELEMENT_NODE) continue;
-                        if(cc->GetName() == wxT("param")){
-                            wd.params[from_wx(attr(cc, "key"))] = from_wx(text_of(cc));
-                        }else if(cc->GetName() == wxT("point")){
-                            wxPoint p;
-                            if(attr(cc, "x").ToLong(&v)) p.x = (int)v;
-                            if(attr(cc, "y").ToLong(&v)) p.y = (int)v;
-                            wd.points.push_back(p);
-                        }
-                    }
-                    out.wires.push_back(std::move(wd));
-                }
-            }
-        }
-    }
-    *data = std::move(out);
-    return true;
-}
 
 // ================= 画布互转 =================
 
 DealProjectXML::ProjectData DealProjectXML::CollectFromCanvas(const Canvas* canvas,
                                                               const ProjectInfo& info){
     ProjectData data;
+    data.schema_version = "2.0";
     data.info = info;
     if(!canvas) return data;
     data.offset = canvas->get_offset();
     data.scale = canvas->get_scale();
     data.grid_step = canvas->get_grid_step();
+
+    //---- 引脚坐标索引：用于把旧版几何端点升级为 2.0 显式引用 ----
+    std::map<std::pair<int,int>, PinAt> pinsAt;
+    std::set<std::pair<int,std::string>> validPins;
+    std::set<int> componentIds;
+    for(const CanvasItem* item : canvas->get_items()){
+        if(dynamic_cast<const Linking*>(item)) continue;
+        componentIds.insert(item->id);
+        for(const Pin& pin : item_pins(*item)){
+            validPins.insert({item->id, pin.id});
+            const int x = item->coords_x + pin.offset.x;
+            const int y = item->coords_y + pin.offset.y;
+            const auto key = std::make_pair(x, y);
+            auto it = pinsAt.find(key);
+            if(it == pinsAt.end()){
+                pinsAt[key] = PinAt{item->id, pin.id, false};
+            }else if(it->second.component_id != item->id || it->second.pin_id != pin.id){
+                it->second.ambiguous = true;   //同一坐标多个引脚：不臆测连接
+            }
+        }
+    }
+
+    std::map<std::pair<int,int>, std::string> junctionsAt;
+    std::set<std::string> junctionIds;
+    for(const CanvasJunction& j : canvas->junctions){
+        junctionIds.insert(j.id);
+        const auto key = std::make_pair(j.position.x, j.position.y);
+        auto it = junctionsAt.find(key);
+        if(it == junctionsAt.end()) junctionsAt[key] = j.id;
+        else it->second.clear();   //同坐标多个 junction：视为不明确
+    }
+    std::map<std::pair<int,int>, std::string> labelsAt;
+    std::set<std::string> labelIds;
+    for(const CanvasLabel& l : canvas->labels){
+        labelIds.insert(l.id);
+        const auto key = std::make_pair(l.position.x, l.position.y);
+        auto it = labelsAt.find(key);
+        if(it == labelsAt.end()) labelsAt[key] = l.id;
+        else it->second.clear();
+    }
+
+    //---- 项目引用的库版本：优先使用加载时保留的列表，否则从元件定义推导 ----
+    data.libraries.reserve(canvas->libraries.size());
+    for(const CanvasLibrary& lib : canvas->libraries)
+        data.libraries.push_back({lib.id, lib.version});
+    if(data.libraries.empty()){
+        std::set<std::pair<std::string,std::string>> seen;
+        for(const CanvasItem* item : canvas->get_items()){
+            if(dynamic_cast<const Linking*>(item) || !item->metadata) continue;
+            const std::string id = item->metadata->library_id.empty()
+                                       ? "builtin" : item->metadata->library_id;
+            const std::string version = item->metadata->library_version.empty()
+                                            ? "1.0" : item->metadata->library_version;
+            if(seen.insert({id, version}).second) data.libraries.push_back({id, version});
+        }
+    }
+
+    data.junctions.reserve(canvas->junctions.size());
+    for(const CanvasJunction& j : canvas->junctions)
+        data.junctions.push_back({j.id, j.position.x, j.position.y});
+    data.labels.reserve(canvas->labels.size());
+    for(const CanvasLabel& l : canvas->labels)
+        data.labels.push_back({l.id, l.text, l.scope, l.position.x, l.position.y});
+    data.no_connects.reserve(canvas->no_connects.size());
+    for(const CanvasNoConnect& nc : canvas->no_connects)
+        data.no_connects.push_back({nc.component_id, nc.pin_id});
 
     for(const CanvasItem* item : canvas->get_items()){
         if(const Linking* wire = dynamic_cast<const Linking*>(item)){
@@ -239,6 +172,15 @@ DealProjectXML::ProjectData DealProjectXML::CollectFromCanvas(const Canvas* canv
             wd.name = item->name;
             if(item->metadata) wd.params = item->metadata->params;
             wd.points = wire->points;
+            // 显式引用优先；否则按首/尾点与当前引脚/junction/label 几何解析。
+            if(!wd.points.empty()){
+                wd.start = resolve_endpoint(wd.points.front(), wire->start_endpoint,
+                                            pinsAt, junctionsAt, labelsAt,
+                                            componentIds, junctionIds, labelIds, validPins);
+                wd.end = resolve_endpoint(wd.points.back(), wire->end_endpoint,
+                                          pinsAt, junctionsAt, labelsAt,
+                                          componentIds, junctionIds, labelIds, validPins);
+            }
             data.wires.push_back(std::move(wd));
         }else{
             ComponentData cd;
@@ -248,10 +190,33 @@ DealProjectXML::ProjectData DealProjectXML::CollectFromCanvas(const Canvas* canv
             if(cd.type.empty()) cd.type = item->name;
             cd.name = item->name;
             if(item->metadata){
+                cd.library_id = item->metadata->library_id;
+                cd.definition_version = item->metadata->definition_version;
                 cd.category = item->metadata->get_category();
                 cd.description = item->metadata->get_description();
                 cd.params = item->metadata->params;
             }
+            // 实例级属性从 params 中移出，避免同一信息存在两个来源。
+            // 属性栏目前仍直接编辑 metadata->params，因此实例字段为空时回退到参数值，
+            // 保证“在属性栏改过的值”也能写进类型化字段。
+            auto meta_param = [&](const char* key){
+                return item->metadata ? item->metadata->get_param(key) : std::string();
+            };
+            cd.params.erase("reference");
+            cd.params.erase("value");
+            cd.params.erase("footprint");
+            cd.params.erase("reference_prefix");
+            cd.params.erase("pin_numbers");
+            cd.params.erase("rotation");
+            cd.params.erase("mirror");
+            cd.reference = !item->reference.empty() ? item->reference : meta_param("reference");
+            cd.value = !item->value.empty() ? item->value : meta_param("value");
+            cd.footprint = !item->footprint.empty() ? item->footprint : meta_param("footprint");
+            cd.rotation = item->rotation;
+            cd.mirror = item->mirror;
+            cd.pin_overrides.reserve(item->pin_number_overrides.size());
+            for(const auto& kv : item->pin_number_overrides)
+                cd.pin_overrides.push_back({kv.first, kv.second});
             cd.x = item->coords_x;
             cd.y = item->coords_y;
             data.components.push_back(std::move(cd));
@@ -264,6 +229,20 @@ void DealProjectXML::ApplyToCanvas(Canvas* canvas, const ProjectData& data){
     if(!canvas) return;
     canvas->clear_all_items();
 
+    // 电气注解与库版本不属于画布图元，直接恢复到画布项目级状态。
+    canvas->libraries.clear();
+    for(const LibraryData& lib : data.libraries)
+        canvas->libraries.push_back({lib.id, lib.version});
+    canvas->junctions.clear();
+    for(const JunctionData& j : data.junctions)
+        canvas->junctions.push_back({j.id, wxPoint(j.x, j.y)});
+    canvas->labels.clear();
+    for(const LabelData& l : data.labels)
+        canvas->labels.push_back({l.id, l.text, l.scope, wxPoint(l.x, l.y)});
+    canvas->no_connects.clear();
+    for(const NoConnectData& nc : data.no_connects)
+        canvas->no_connects.push_back({nc.component_id, nc.pin_id});
+
     // 元件（门/通用元件）：按类型串创建（类型串是元数据最可靠的键）
     for(const ComponentData& cd : data.components){
         if(cd.type.empty()) continue;
@@ -274,9 +253,21 @@ void DealProjectXML::ApplyToCanvas(Canvas* canvas, const ProjectData& data){
         item->coords_y = cd.y;
         CanvasItem::reserve_id(cd.id);
         item->id = cd.id;
+        item->rotation = ((cd.rotation % 360) + 360) % 360;
+        item->mirror = (cd.mirror == "x" || cd.mirror == "y") ? cd.mirror : "none";
+        item->reference = cd.reference;
+        item->value = cd.value;
+        item->footprint = cd.footprint;
+        item->pin_number_overrides.clear();
+        for(const PinOverrideData& pin : cd.pin_overrides)
+            item->pin_number_overrides[pin.id] = pin.number;
         if(item->metadata){
             if(!cd.description.empty()) item->metadata->set_description(cd.description);
             for(const auto& kv : cd.params) apply_param(item->metadata, kv.first, kv.second);
+            // 让属性栏继续能显示/编辑实例覆盖值。
+            if(!cd.reference.empty()) item->metadata->params["reference"] = cd.reference;
+            if(!cd.value.empty()) item->metadata->params["value"] = cd.value;
+            if(!cd.footprint.empty()) item->metadata->params["footprint"] = cd.footprint;
         }
         canvas->add_item(item);
     }
@@ -296,6 +287,10 @@ void DealProjectXML::ApplyToCanvas(Canvas* canvas, const ProjectData& data){
         }
         wire->name = wd.name.empty() ? wd.type : wd.name;
         wire->points = wd.points;
+        wire->start_endpoint = {wd.start.kind, wd.start.component_id, wd.start.pin_id,
+                                wd.start.junction_id, wd.start.label_id};
+        wire->end_endpoint = {wd.end.kind, wd.end.component_id, wd.end.pin_id,
+                              wd.end.junction_id, wd.end.label_id};
         CanvasItem::reserve_id(wd.id);
         wire->id = wd.id;
         if(wire->metadata){

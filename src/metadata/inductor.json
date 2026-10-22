@@ -8,7 +8,31 @@
       "name_en": "Inductor-COM-Air",
       "type": "Inductor-COM-Air",
       "category": "Inductor",
-      "description": "电感：储能、滤波"
+      "description": "电感：储能、滤波",
+      "definition_version": "1",
+      "reference_prefix": "L",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1042,
@@ -16,7 +40,31 @@
       "name_en": "Inductor-COM-Ferrite-Bead",
       "type": "Inductor-COM-Ferrite-Bead",
       "category": "Inductor",
-      "description": "电感：储能、滤波"
+      "description": "电感：储能、滤波",
+      "definition_version": "1",
+      "reference_prefix": "L",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1043,
@@ -24,7 +72,31 @@
       "name_en": "Inductor-COM-Magnetic",
       "type": "Inductor-COM-Magnetic",
       "category": "Inductor",
-      "description": "电感：储能、滤波"
+      "description": "电感：储能、滤波",
+      "definition_version": "1",
+      "reference_prefix": "L",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1044,
@@ -32,7 +104,31 @@
       "name_en": "Inductor-COM-Tapped",
       "type": "Inductor-COM-Tapped",
       "category": "Inductor",
-      "description": "电感：储能、滤波"
+      "description": "电感：储能、滤波",
+      "definition_version": "1",
+      "reference_prefix": "L",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1045,
@@ -40,7 +136,36 @@
       "name_en": "Inductor-COM-Variable",
       "type": "Inductor-COM-Variable",
       "category": "Inductor",
-      "description": "电感：储能、滤波"
+      "description": "电感：储能、滤波",
+      "definition_version": "1",
+      "reference_prefix": "L",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

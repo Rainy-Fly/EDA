@@ -278,4 +278,24 @@ if(BUILD_TESTING)
     )
     target_link_libraries(netlist_selftest PRIVATE jsoncpp_lib)
     add_test(NAME netlist_selftest COMMAND netlist_selftest)
+
+    # XML 2.0 读写与 1.0 兼容迁移的独立测试（不依赖 Canvas/GUI 主程序）。
+    add_executable(
+        projectxml_selftest
+        src/DealProjectXML/ProjectFile.cpp
+        tests/projectxml_selftest.cpp
+    )
+    target_link_libraries(projectxml_selftest PRIVATE wx::core wx::base wx::xml)
+    add_test(NAME projectxml_selftest COMMAND projectxml_selftest)
+
+    # 元件元数据 2.0 解析测试（显式引脚、库/定义版本、结构化参数）。
+    add_executable(
+        metadata_selftest
+        src/metadata/MetaDataJson.cpp
+        tests/metadata_selftest.cpp
+    )
+    target_link_libraries(metadata_selftest PRIVATE wx::base jsoncpp_lib)
+    add_test(NAME metadata_selftest COMMAND metadata_selftest)
+    set_tests_properties(metadata_selftest PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()

@@ -647,6 +647,10 @@ void Canvas::clear_all_items(){
         delete item;   //没有子窗口要销毁，位图随对象一起释放
     }
     canvasItemCollection->clear();
+    junctions.clear();
+    labels.clear();
+    no_connects.clear();
+    libraries.clear();
     set_current_item(nullptr);
     Refresh();
 }
@@ -746,8 +750,19 @@ CanvasItem* Canvas::clone_item(const CanvasItem* item) const{
     if(!item) return nullptr;
     CanvasItem* copy = ItemSVG(item->name);
     if(!copy) return nullptr;
+    // 实例级状态（变换/属性/焊盘覆盖）必须随克隆一起复制，否则放下后属性会丢失。
+    copy->rotation = item->rotation;
+    copy->mirror = item->mirror;
+    copy->reference = item->reference;
+    copy->value = item->value;
+    copy->footprint = item->footprint;
+    copy->pin_number_overrides = item->pin_number_overrides;
     if(const Linking* src = dynamic_cast<const Linking*>(item)){
-        if(Linking* dst = dynamic_cast<Linking*>(copy)) dst->points = src->points;
+        if(Linking* dst = dynamic_cast<Linking*>(copy)){
+            dst->points = src->points;
+            dst->start_endpoint = src->start_endpoint;
+            dst->end_endpoint = src->end_endpoint;
+        }
     }
     if(item->metadata && copy->metadata){
         copy->metadata->params = item->metadata->params;
@@ -776,7 +791,12 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     //克隆的导线虚影：无UI节点，只复制折点
     if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
         CanvasItem* item = ItemSVG(ghost->name);
-        if(Linking* dst = dynamic_cast<Linking*>(item)) dst->points = wire_ghost->points;
+        if(Linking* dst = dynamic_cast<Linking*>(item)){
+            dst->points = wire_ghost->points;
+            dst->start_endpoint = wire_ghost->start_endpoint;
+            dst->end_endpoint = wire_ghost->end_endpoint;
+        }
+        item->pin_number_overrides = ghost->pin_number_overrides;
         canvasItemCollection->insert(item);
         cancel_tool();
         edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（一次性）
@@ -789,6 +809,17 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     CanvasItem* item = ItemSVG(ghost->name);
     item->coords_x = ghost->coords_x;
     item->coords_y = ghost->coords_y;
+    // 克隆放置时保留虚影身上的实例状态（普通放置的虚影为默认值，不受影响）。
+    item->rotation = ghost->rotation;
+    item->mirror = ghost->mirror;
+    item->reference = ghost->reference;
+    item->value = ghost->value;
+    item->footprint = ghost->footprint;
+    item->pin_number_overrides = ghost->pin_number_overrides;
+    if(item->metadata && ghost->metadata){
+        item->metadata->params = ghost->metadata->params;
+        item->metadata->set_description(ghost->metadata->get_description());
+    }
     item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
     cancel_tool();  //结束放置：之后再点击该元件可移动它

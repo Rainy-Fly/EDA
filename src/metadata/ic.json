@@ -8,7 +8,61 @@
       "name_en": "IC-COM-Comparator",
       "type": "IC-COM-Comparator",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN-",
+          "name": "IN-",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN+",
+          "name": "IN+",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "V+",
+          "name": "V+",
+          "number": "4",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "V-",
+          "name": "V-",
+          "number": "5",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1030,
@@ -16,7 +70,51 @@
       "name_en": "IC-COM-FlipFlop-ClockedD",
       "type": "IC-COM-FlipFlop-ClockedD",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "D",
+          "name": "D",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "CLK",
+          "name": "CLK",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1031,
@@ -24,7 +122,61 @@
       "name_en": "IC-COM-FlipFlop-ClockedJK",
       "type": "IC-COM-FlipFlop-ClockedJK",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "J",
+          "name": "J",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "CLK",
+          "name": "CLK",
+          "number": "3",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "5",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1032,
@@ -32,7 +184,51 @@
       "name_en": "IC-COM-FlipFlop-ClockedT",
       "type": "IC-COM-FlipFlop-ClockedT",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "T",
+          "name": "T",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "CLK",
+          "name": "CLK",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1033,
@@ -40,7 +236,51 @@
       "name_en": "IC-COM-FlipFlop-GatedD",
       "type": "IC-COM-FlipFlop-GatedD",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "D",
+          "name": "D",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "EN",
+          "name": "EN",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1034,
@@ -48,7 +288,61 @@
       "name_en": "IC-COM-FlipFlop-GatedSR",
       "type": "IC-COM-FlipFlop-GatedSR",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "S",
+          "name": "S",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "R",
+          "name": "R",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "EN",
+          "name": "EN",
+          "number": "3",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "5",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1035,
@@ -56,7 +350,51 @@
       "name_en": "IC-COM-FlipFlop-SimpleSR",
       "type": "IC-COM-FlipFlop-SimpleSR",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "S",
+          "name": "S",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "R",
+          "name": "R",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "QN",
+          "name": "QN",
+          "number": "4",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 10,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1036,
@@ -64,7 +402,31 @@
       "name_en": "IC-COM-Logic-Buffer",
       "type": "IC-COM-Logic-Buffer",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "Y",
+          "name": "Y",
+          "number": "2",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1037,
@@ -72,7 +434,41 @@
       "name_en": "IC-COM-Logic-XNOR",
       "type": "IC-COM-Logic-XNOR",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "Y",
+          "name": "Y",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1038,
@@ -80,7 +476,61 @@
       "name_en": "IC-COM-OpAmp",
       "type": "IC-COM-OpAmp",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN-",
+          "name": "IN-",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN+",
+          "name": "IN+",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "V+",
+          "name": "V+",
+          "number": "4",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": -50,
+          "width": 1
+        },
+        {
+          "id": "V-",
+          "name": "V-",
+          "number": "5",
+          "direction": "power",
+          "electrical_type": "power",
+          "x": 0,
+          "y": 50,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1039,
@@ -88,7 +538,31 @@
       "name_en": "IC-COM-Schmitt",
       "type": "IC-COM-Schmitt",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "Y",
+          "name": "Y",
+          "number": "2",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1040,
@@ -96,7 +570,36 @@
       "name_en": "IC-COM-Schmitt-Inverted",
       "type": "IC-COM-Schmitt-Inverted",
       "category": "IC",
-      "description": "集成电路/功能块符号"
+      "description": "集成电路/功能块符号",
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "A",
+          "name": "A",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "Y",
+          "name": "Y",
+          "number": "2",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

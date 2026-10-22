@@ -59,7 +59,11 @@ CanvasItem::CanvasItem(const std::string& name, ItemType type,
     //SVG引用构造后不再改变；缩放时由update_bitmap用wxBitmapBundle按目标尺寸重绘
     rendered_width = 0;
     rendered_height = 0;
+    rendered_source_width = 0;
+    rendered_source_height = 0;
     rendered_ghost = false;
+    rendered_rotation = 0;
+    rendered_mirror = "none";
 }
 
 CanvasItem::~CanvasItem(){
@@ -103,17 +107,30 @@ void CanvasItem::update_bitmap(float scale){
     const wxSize pref = svg->GetPreferredBitmapSizeAtScale(scale);
     const int width  = std::clamp(pref.x, 1, MaxDisplaySize);
     const int height = std::clamp(pref.y, 1, MaxDisplaySize);
-    if(width == rendered_width && height == rendered_height &&
-       ghost_mode == rendered_ghost){
+    if(width == rendered_source_width && height == rendered_source_height &&
+       ghost_mode == rendered_ghost && rotation == rendered_rotation &&
+       mirror == rendered_mirror){
         return;   //没变化：复用缓存
     }
     //render_svg统一去掉scale factor，否则GTK按逻辑尺寸绘制会抵消尺寸变化（图片不随缩放变化）
     wxBitmap bmp = render_svg(*svg, width, height);
     if(ghost_mode) bmp = apply_ghost_alpha(bmp);
-    rendered_bitmap = bmp;
-    rendered_width  = width;
-    rendered_height = height;
+    //实例变换：先镜像，再按顺时针旋转。wxImage的操作会产生新位图。
+    wxImage img = bmp.ConvertToImage();
+    if(mirror == "x") img = img.Mirror(true);      //水平翻转
+    else if(mirror == "y") img = img.Mirror(false); //垂直翻转
+    const int normalized = ((rotation % 360) + 360) % 360;
+    if(normalized == 90) img = img.Rotate90(true);
+    else if(normalized == 180) img = img.Rotate180();
+    else if(normalized == 270) img = img.Rotate90(false);
+    rendered_bitmap = wxBitmap(img);
+    rendered_width  = rendered_bitmap.GetWidth();
+    rendered_height = rendered_bitmap.GetHeight();
+    rendered_source_width = width;
+    rendered_source_height = height;
     rendered_ghost  = ghost_mode;
+    rendered_rotation = rotation;
+    rendered_mirror = mirror;
 }
 
 //元件在画布客户区里的矩形：图片中心对准 (coords - offset_coords) × scale。
@@ -131,27 +148,60 @@ bool CanvasItem::hit_test(const wxPoint& pos, float scale, const wxPoint& offset
     return display_rect(scale, offset_coords).Contains(pos);
 }
 
-// 引脚布局（见头文件注释；偏移均为GridStep的倍数，保证引脚在网格上）
+// 对引脚偏移应用实例的旋转/镜像（先镜像，再顺时针旋转）。
+wxPoint transform_pin_offset(wxPoint offset, int rotation, const std::string& mirror){
+    int x = offset.x;
+    int y = offset.y;
+    if(mirror == "x") x = -x;        //水平翻转
+    else if(mirror == "y") y = -y;   //垂直翻转
+    switch(((rotation % 360) + 360) % 360){
+        case 90:  return wxPoint(-y, x);
+        case 180: return wxPoint(-x, -y);
+        case 270: return wxPoint(y, -x);
+        default:  return wxPoint(x, y);
+    }
+}
+
+// 引脚布局：优先使用元数据中的显式 pins；没有显式定义时才回退到旧启发式。
+// 返回的 offset 已经是实例变换后的结果。
 std::vector<Pin> item_pins(const CanvasItem& item){
-    return item_pins_for(item.metadata, item.name);
+    std::vector<Pin> pins = item_pins_for(item.metadata, item.name);
+    for(Pin& pin : pins)
+        pin.offset = transform_pin_offset(pin.offset, item.rotation, item.mirror);
+    return pins;
 }
 
 std::vector<Pin> item_pins_for(const MetaData* metadata, const std::string& name){
     std::vector<Pin> pins;
     constexpr int PIN_X = 50;   //左右引脚距中心5格（逻辑坐标）
 
+    // 1) 显式引脚定义：这是 XML 2.0 / 元数据 2.0 的主路径。
+    if(metadata && !metadata->pins.empty()){
+        for(const MetaDataPin& def : metadata->pins){
+            Pin pin;
+            pin.id = def.id;
+            pin.name = def.name.empty() ? def.id : def.name;
+            pin.number = def.number.empty() ? metadata->pin_number(def.id) : def.number;
+            pin.offset = wxPoint(def.x, def.y);
+            pins.push_back(std::move(pin));
+        }
+        return pins;
+    }
+
+    // 2) 兼容旧元数据：按类型/类别生成启发式引脚。
     // 逻辑门：左输入/右输出
     if(const LogicGateMetaData* g = dynamic_cast<const LogicGateMetaData*>(metadata)){
         const int n = std::max(1, g->get_inputs());
         for(int i = 0; i < n; ++i){
             const int y = (2 * i - (n - 1)) * 10;
-            pins.push_back({"IN" + std::to_string(i + 1), wxPoint(-PIN_X, y)});
+            const std::string id = "IN" + std::to_string(i + 1);
+            pins.push_back({id, id, std::to_string(i + 1), wxPoint(-PIN_X, y)});
         }
         const int o = std::max(1, g->get_outputs());
         for(int i = 0; i < o; ++i){
             const int y = (o == 1) ? 0 : (2 * i - (o - 1)) * 10;
-            pins.push_back({(o == 1) ? "OUT" : "OUT" + std::to_string(i + 1),
-                            wxPoint(PIN_X, y)});
+            const std::string id = (o == 1) ? "OUT" : "OUT" + std::to_string(i + 1);
+            pins.push_back({id, id, std::to_string(n + i + 1), wxPoint(PIN_X, y)});
         }
         return pins;
     }
@@ -166,40 +216,40 @@ std::vector<Pin> item_pins_for(const MetaData* metadata, const std::string& name
        type.find("JFET") != std::string::npos ||
        type.find("Darlington") != std::string::npos ||
        type.find("Phototrans") != std::string::npos){
-        pins.push_back({"B", wxPoint(-PIN_X, 0)});
-        pins.push_back({"C", wxPoint(PIN_X, -20)});
-        pins.push_back({"E", wxPoint(PIN_X, 20)});
+        pins.push_back({"B", "B", "1", wxPoint(-PIN_X, 0)});
+        pins.push_back({"C", "C", "2", wxPoint(PIN_X, -20)});
+        pins.push_back({"E", "E", "3", wxPoint(PIN_X, 20)});
         return pins;
     }
     // 运放/比较器：反相/同相输入 + 输出
     if(type.find("OpAmp") != std::string::npos ||
        type.find("Comparator") != std::string::npos){
-        pins.push_back({"IN-", wxPoint(-PIN_X, -20)});
-        pins.push_back({"IN+", wxPoint(-PIN_X, 20)});
-        pins.push_back({"OUT", wxPoint(PIN_X, 0)});
+        pins.push_back({"IN-", "IN-", "1", wxPoint(-PIN_X, -20)});
+        pins.push_back({"IN+", "IN+", "2", wxPoint(-PIN_X, 20)});
+        pins.push_back({"OUT", "OUT", "3", wxPoint(PIN_X, 0)});
         return pins;
     }
     // 地：上方引脚；电源：上下引脚
     if(cat == "Ground"){
-        pins.push_back({"GND", wxPoint(0, -PIN_X)});
+        pins.push_back({"GND", "GND", "1", wxPoint(0, -PIN_X)});
         return pins;
     }
     if(cat == "Source"){
-        pins.push_back({"+", wxPoint(0, -PIN_X)});
-        pins.push_back({"-", wxPoint(0, PIN_X)});
+        pins.push_back({"+", "+", "1", wxPoint(0, -PIN_X)});
+        pins.push_back({"-", "-", "2", wxPoint(0, PIN_X)});
         return pins;
     }
     // 继电器：线圈(左) + 触点(右)
     if(cat == "Relay"){
-        pins.push_back({"COIL", wxPoint(-PIN_X, -20)});
-        pins.push_back({"COIL", wxPoint(-PIN_X, 20)});
-        pins.push_back({"COM",  wxPoint(PIN_X, 0)});
-        pins.push_back({"NC",   wxPoint(PIN_X, 20)});
+        pins.push_back({"COIL1", "COIL1", "1", wxPoint(-PIN_X, -20)});
+        pins.push_back({"COIL2", "COIL2", "2", wxPoint(-PIN_X, 20)});
+        pins.push_back({"COM", "COM", "3", wxPoint(PIN_X, 0)});
+        pins.push_back({"NC", "NC", "4", wxPoint(PIN_X, 20)});
         return pins;
     }
     // 默认：左右两引脚
-    pins.push_back({"A", wxPoint(-PIN_X, 0)});
-    pins.push_back({"B", wxPoint(PIN_X, 0)});
+    pins.push_back({"A", "A", "1", wxPoint(-PIN_X, 0)});
+    pins.push_back({"B", "B", "2", wxPoint(PIN_X, 0)});
     return pins;
 }
 

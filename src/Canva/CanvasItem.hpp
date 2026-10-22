@@ -1,5 +1,6 @@
 #pragma once
 #include<string>
+#include<map>
 #include<vector>
 #include<wx/wx.h>
 #include"./MetaData.hpp"
@@ -40,6 +41,15 @@ public:
     MetaData* metadata;      //元数据：构造时经 load_config 从 src/metadata/*.json 读取（可能为空）
     bool ghost_mode;         //是否为虚影（放置时跟随鼠标的半透明元件）
 
+    //---- 项目实例状态（XML 2.0）----
+    // 这些是“实例覆盖”，不是元件定义本身；默认值来自 metadata。
+    int rotation = 0;                 //0/90/180/270，顺时针
+    std::string mirror = "none";      //none/x/y；x=水平翻转，y=垂直翻转
+    std::string reference;            //位号覆盖（空=使用定义默认/自动编号）
+    std::string value;                //值覆盖（空=使用定义默认/参数）
+    std::string footprint;            //封装覆盖（空=使用定义默认）
+    std::map<std::string, std::string> pin_number_overrides; //引脚ID -> 焊盘号
+
     //构造函数：持有SVG引用（来自ItemSVG共享缓存，不拥有）与元数据
     CanvasItem(const std::string& name, ItemType type,
                const wxBitmapBundle* svg, MetaData* metadata = nullptr);
@@ -71,7 +81,11 @@ private:
     static int next_id;
     int rendered_width;         //当前已渲染位图的尺寸（=0表示尚未渲染）
     int rendered_height;
+    int rendered_source_width;  //变换前的源位图尺寸（缓存判断用）
+    int rendered_source_height;
     bool rendered_ghost;        //渲染缓存对应的ghost_mode（虚影状态变了要重画）
+    int rendered_rotation;      //渲染缓存对应的旋转角
+    std::string rendered_mirror;//渲染缓存对应的镜像
     wxBitmap rendered_bitmap;   //当前显示的位图（缓存，避免重复重绘）
 };
 
@@ -82,6 +96,15 @@ public:
     //没有自己的窗口：位图由画布onPaint按scale绘制（见CanvasItem::update_bitmap）
 };
 
+// 导线端点引用（XML 2.0）。kind 为空表示旧版仅几何连接。
+struct WireEndpointRef{
+    std::string kind;            //pin/junction/label/free；空=未解析
+    int component_id = 0;
+    std::string pin_id;
+    std::string junction_id;
+    std::string label_id;
+};
+
 // 连线/网络类	导线、总线、节点、网络标签、电源/地端口、页连接符
 class Linking : public CanvasItem{
 public:
@@ -89,14 +112,22 @@ public:
     //连线端点/折点（逻辑坐标coords，已吸附网格）。
     //导线没有位图，由画布onPaint直接绘制折线
     std::vector<wxPoint> points;
+    WireEndpointRef start_endpoint;   //电气首端点（优先于首点坐标）
+    WireEndpointRef end_endpoint;     //电气末端点
 };
 
 // 引脚：相对元件锚点（图片中心）的逻辑网格坐标偏移。
-// 偏移为 GridStep(10) 的倍数，且锚点已吸附网格 ⇒ 引脚自动落在网格上。
+// offset 已经是实例变换（旋转/镜像）后的偏移；id 是元件定义内的稳定逻辑引脚标识。
 struct Pin{
-    std::string name;   //引脚名（"IN1"/"OUT"/"B"/"C"/...）
-    wxPoint offset;     //相对锚点的网格坐标偏移（如 (-50, -10)）
+    std::string id;       //稳定引脚ID（"IN1"/"OUT"/"B"/"C"/...）
+    std::string name;     //显示名（通常与id相同）
+    std::string number;   //物理焊盘号（可能为空）
+    wxPoint offset;       //相对锚点的网格坐标偏移（如 (-50, -10)）
 };
+
+// 对引脚偏移应用实例的旋转/镜像（先镜像，再顺时针旋转）。
+// mirror: none/x/y；x=水平翻转，y=垂直翻转。
+wxPoint transform_pin_offset(wxPoint offset, int rotation, const std::string& mirror);
 
 // 计算元件的引脚（启发式：与SVG符号的实际引脚不完全一致，仅保证网格对齐，
 // 供导线吸附与正交布线使用）：

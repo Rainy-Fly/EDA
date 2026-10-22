@@ -8,7 +8,61 @@
       "name_en": "Relay-COM-COM-SPDT",
       "type": "Relay-COM-COM-SPDT",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1054,
@@ -16,7 +70,51 @@
       "name_en": "Relay-COM-COM-SPST-NC",
       "type": "Relay-COM-COM-SPST-NC",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1055,
@@ -24,7 +122,51 @@
       "name_en": "Relay-COM-COM-SPST-NO",
       "type": "Relay-COM-COM-SPST-NO",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1056,
@@ -32,7 +174,61 @@
       "name_en": "Relay-IEC-SPDT",
       "type": "Relay-IEC-SPDT",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1057,
@@ -40,7 +236,51 @@
       "name_en": "Relay-IEC-SPST-NC",
       "type": "Relay-IEC-SPST-NC",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1058,
@@ -48,7 +288,51 @@
       "name_en": "Relay-IEC-SPST-NO",
       "type": "Relay-IEC-SPST-NO",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1059,
@@ -56,7 +340,61 @@
       "name_en": "Relay-IEEE-SPDT",
       "type": "Relay-IEEE-SPDT",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "5",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1060,
@@ -64,7 +402,51 @@
       "name_en": "Relay-IEEE-SPST-NC",
       "type": "Relay-IEEE-SPST-NC",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1061,
@@ -72,7 +454,56 @@
       "name_en": "Relay-IEEE-SPST-NO",
       "type": "Relay-IEEE-SPST-NO",
       "category": "Relay",
-      "description": "继电器：电磁开关"
+      "description": "继电器：电磁开关",
+      "definition_version": "1",
+      "reference_prefix": "K",
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "COIL1",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "COIL2",
+          "name": "COIL2",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 20,
+          "width": 1
+        },
+        {
+          "id": "COM",
+          "name": "COM",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "NO",
+          "name": "NO",
+          "number": "4",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }

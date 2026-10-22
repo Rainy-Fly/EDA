@@ -8,7 +8,41 @@
       "name_en": "Transistor-COM-BJT-NPN",
       "type": "Transistor-COM-BJT-NPN",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1098,
@@ -16,7 +50,41 @@
       "name_en": "Transistor-COM-BJT-PNP",
       "type": "Transistor-COM-BJT-PNP",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1099,
@@ -24,7 +92,41 @@
       "name_en": "Transistor-COM-Darlington-NPN",
       "type": "Transistor-COM-Darlington-NPN",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1100,
@@ -32,7 +134,41 @@
       "name_en": "Transistor-COM-Darlington-PNP",
       "type": "Transistor-COM-Darlington-PNP",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1101,
@@ -40,7 +176,41 @@
       "name_en": "Transistor-COM-JFET-N",
       "type": "Transistor-COM-JFET-N",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1102,
@@ -48,7 +218,41 @@
       "name_en": "Transistor-COM-JFET-P",
       "type": "Transistor-COM-JFET-P",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1103,
@@ -56,7 +260,41 @@
       "name_en": "Transistor-COM-MOSFET-N",
       "type": "Transistor-COM-MOSFET-N",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1104,
@@ -64,7 +302,41 @@
       "name_en": "Transistor-COM-MOSFET-N-Depletion",
       "type": "Transistor-COM-MOSFET-N-Depletion",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1105,
@@ -72,7 +344,41 @@
       "name_en": "Transistor-COM-MOSFET-N-Enhancement",
       "type": "Transistor-COM-MOSFET-N-Enhancement",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1106,
@@ -80,7 +386,41 @@
       "name_en": "Transistor-COM-MOSFET-P",
       "type": "Transistor-COM-MOSFET-P",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1107,
@@ -88,7 +428,41 @@
       "name_en": "Transistor-COM-MOSFET-P-Depletion",
       "type": "Transistor-COM-MOSFET-P-Depletion",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1108,
@@ -96,7 +470,41 @@
       "name_en": "Transistor-COM-MOSFET-P-Enhancement",
       "type": "Transistor-COM-MOSFET-P-Enhancement",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     },
     {
       "id": 1109,
@@ -104,7 +512,46 @@
       "name_en": "Transistor-COM-Phototransitor",
       "type": "Transistor-COM-Phototransitor",
       "category": "Transistor",
-      "description": "晶体管：放大、开关"
+      "description": "晶体管：放大、开关",
+      "definition_version": "1",
+      "reference_prefix": "Q",
+      "pins": [
+        {
+          "id": "B",
+          "name": "B",
+          "number": "1",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": -50,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "C",
+          "name": "C",
+          "number": "2",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "number": "3",
+          "direction": "passive",
+          "electrical_type": "passive",
+          "x": 50,
+          "y": 20,
+          "width": 1
+        }
+      ]
     }
-  ]
+  ],
+  "schema_version": "2.0",
+  "library": {
+    "id": "builtin",
+    "version": "1.0"
+  }
 }
