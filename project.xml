@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<teda-project schema-version="2.0">
+  <info>
+    <name>project</name>
+    <author>86199</author>
+    <created>2026-10-22T17:40:57</created>
+    <modified>2026-10-22T17:40:57</modified>
+    <description></description>
+    <view offset-x="49" offset-y="-19" scale="1.02773" grid-step="10"/>
+  </info>
+  <libraries>
+    <library id="builtin" version="1.0"/>
+  </libraries>
+  <circuit>
+    <component id="41" type="Audio-COM-Buzzer" library="builtin" definition-version="1" name="Audio-COM-Buzzer" category="Audio" x="560" y="360" rotation="0" mirror="none">
+      <description>音频器件：发声或拾音</description>
+    </component>
+    <component id="38" type="AND" library="builtin" definition-version="1" name="与门" category="LogicGate" x="450" y="220" rotation="0" mirror="none">
+      <description>与门：两个输入均为1时输出1，否则输出0</description>
+      <param key="DataBits">1</param>
+      <param key="inputs">2</param>
+      <param key="outputs">1</param>
+    </component>
+    <component id="33" type="POWER" library="builtin" definition-version="1" name="POWER" category="Source" x="90" y="390" rotation="0" mirror="none">
+      <description>电源：提供稳定直流电压</description>
+      <param key="DataBits">1</param>
+      <param key="voltage">5V</param>
+    </component>
+    <component id="30" type="NAND" library="builtin" definition-version="1" name="与非门" category="LogicGate" x="310" y="490" rotation="0" mirror="none">
+      <description>与非门：两个输入均为1时输出0，否则输出1</description>
+      <param key="DataBits">1</param>
+      <param key="inputs">2</param>
+      <param key="outputs">1</param>
+    </component>
+    <component id="27" type="Switch-COM-SPST" library="builtin" definition-version="1" name="Switch-COM-SPST" category="Switch" x="210" y="220" rotation="0" mirror="none">
+      <description>开关：通断控制</description>
+      <param key="State">0</param>
+    </component>
+    <wire id="39" type="WIRE" name="导线">
+      <param key="DataBits">1</param>
+      <point x="90" y="440"/>
+      <point x="400" y="440"/>
+      <point x="400" y="230"/>
+      <endpoint side="start" kind="pin" component="33" pin="-"/>
+      <endpoint side="end" kind="pin" component="38" pin="IN2"/>
+    </wire>
+    <wire id="42" type="WIRE" name="导线">
+      <param key="DataBits">1</param>
+      <point x="500" y="220"/>
+      <point x="500" y="360"/>
+      <point x="510" y="360"/>
+      <endpoint side="start" kind="pin" component="38" pin="OUT"/>
+      <endpoint side="end" kind="pin" component="41" pin="A"/>
+    </wire>
+    <wire id="35" type="WIRE" name="导线">
+      <param key="DataBits">1</param>
+      <point x="90" y="340"/>
+      <point x="90" y="220"/>
+      <point x="160" y="220"/>
+      <endpoint side="start" kind="pin" component="33" pin="+"/>
+      <endpoint side="end" kind="pin" component="27" pin="A"/>
+    </wire>
+    <wire id="31" type="WIRE" name="导线">
+      <param key="DataBits">1</param>
+      <point x="260" y="220"/>
+      <point x="400" y="220"/>
+      <point x="400" y="210"/>
+      <endpoint side="start" kind="pin" component="27" pin="B"/>
+      <endpoint side="end" kind="pin" component="38" pin="IN1"/>
+    </wire>
+  </circuit>
+</teda-project>
