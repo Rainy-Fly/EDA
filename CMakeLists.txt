@@ -331,4 +331,32 @@ if(BUILD_TESTING)
         src/verilator/tests/verilator_selftest.cpp
     )
     add_test(NAME verilator_selftest COMMAND verilator_selftest)
+
+    # 项目 XML <-> Verilog 双向适配层自检：复用 PCB 快照解析与 Verilator 生成器。
+    add_executable(
+        verilog_bridge_selftest
+        src/VerilogBridge/ProjectToModule.cpp
+        src/VerilogBridge/ModuleToProject.cpp
+        src/Netlist/PcbProjectAdapter.cpp
+        src/Netlist/PcbNetlistBuilder.cpp
+        src/Canva/CanvasItem.cpp
+        src/metadata/MetaDataJson.cpp
+        src/verilator/include/VerilatorTypes.cpp
+        src/verilator/VerilatorApi.cpp
+        src/verilator/model/CircuitModel.cpp
+        src/verilator/model/CircuitBuilder.cpp
+        src/verilator/model/CircuitValidator.cpp
+        src/verilator/parser/Lexer.cpp
+        src/verilator/parser/Parser.cpp
+        src/verilator/generator/VerilogGenerator.cpp
+        tests/verilog_bridge_selftest.cpp
+    )
+    target_link_libraries(verilog_bridge_selftest PRIVATE
+        wx::core
+        wx::base
+        jsoncpp_lib
+    )
+    add_test(NAME verilog_bridge_selftest COMMAND verilog_bridge_selftest)
+    set_tests_properties(verilog_bridge_selftest PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()

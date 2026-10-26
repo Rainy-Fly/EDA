@@ -19,6 +19,7 @@ enum class GateKind{
     And,        //与门：>=2 输入
     Or,         //或门：>=2 输入
     Xor,        //异或门：>=2 输入（附加）
+    Xnor,       //同或门：>=2 输入（附加）
     Nand,       //与非门：>=2 输入（附加）
     Nor,        //或门非：>=2 输入（附加）
     Buffer,     //缓冲/导通：1 输入，输出=输入（单刀开关闭合时用它把一侧的电平送到另一侧）
@@ -108,7 +109,8 @@ inline bool gate_input_count_range(GateKind kind, std::size_t& minInputs, std::s
 //是不是“门”（有输入网络、要按真值表求值；Buffer 也算，它只是 output=input）
 inline bool is_gate(GateKind kind){
     return kind == GateKind::Not || kind == GateKind::And || kind == GateKind::Or ||
-           kind == GateKind::Xor || kind == GateKind::Nand || kind == GateKind::Nor ||
+           kind == GateKind::Xor || kind == GateKind::Xnor || kind == GateKind::Nand ||
+           kind == GateKind::Nor ||
            kind == GateKind::Buffer;
 }
 

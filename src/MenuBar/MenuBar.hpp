@@ -8,7 +8,9 @@ enum{
     ID_SIM_DIAGNOSTICS,                //仿真诊断（列出每个元件/网络的电平与诊断）
     ID_SET_DEFAULT_DIR,                //文件 - 设置默认目录（存在配置文件里）
     ID_EXPORT_KICAD_NETLIST,           //文件 - 导出 KiCad 网表
+    ID_EXPORT_VERILOG,                 //文件 - 导出 Verilog（由画布/项目生成）
     ID_SHOW_AGENT,                     //视图 - 显示/隐藏 AI 助手面板
+    ID_SHOW_VERILOG_PANEL,             //Verilog - 显示/隐藏代码面板
 };
 
 // 菜单栏：File（文件）/ Edit（编辑）/ Simulate（模拟）/ View（视图）四个菜单。

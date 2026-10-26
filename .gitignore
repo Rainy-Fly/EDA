@@ -7,6 +7,7 @@ tests/*
 !tests/projectxml_selftest.cpp
 !tests/metadata_selftest.cpp
 !tests/kicad_export_demo.cpp
+!tests/verilog_bridge_selftest.cpp
 # Compiled binaries
 bin/
 

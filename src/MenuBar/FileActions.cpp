@@ -5,8 +5,11 @@
 #include"../Netlist/PcbProjectAdapter.hpp"
 #include"../Netlist/PcbNetlistBuilder.hpp"
 #include"../Netlist/KiCadNetlistExporter.hpp"
+#include"../VerilogBridge/ProjectToModule.hpp"
+#include"../verilator/VerilatorApi.hpp"
 
 #include<algorithm>
+#include<fstream>
 #include<sstream>
 #include<vector>
 
@@ -54,6 +57,24 @@ wxString format_diagnostics(const std::vector<NetlistData::Diagnostic>& diagnost
     return wxString::FromUTF8(out.str());
 }
 
+//把 Verilator 的诊断（语法/语义/模型）整理成可读文本。
+//行号只在解析源码时才有意义，项目侧生成的模型诊断不带位置。
+wxString format_verilog_diagnostics(const std::vector<Verilator::Diagnostic>& diagnostics){
+    std::ostringstream out;
+    for(const Verilator::Diagnostic& diagnostic : diagnostics){
+        out << (diagnostic.severity == Verilator::DiagnosticSeverity::Error
+                    ? "[错误] "
+                    : "[警告] ")
+            << diagnostic.code << ": " << diagnostic.message;
+        if(diagnostic.location.line > 0){
+            out << "（行 " << diagnostic.location.line
+                << ", 列 " << diagnostic.location.column << "）";
+        }
+        out << "\n";
+    }
+    return wxString::FromUTF8(out.str());
+}
+
 } // namespace
 
 FileActions::FileActions(wxFrame* frame_, Canvas* canvas_)
@@ -66,6 +87,8 @@ FileActions::FileActions(wxFrame* frame_, Canvas* canvas_)
     frame->Bind(wxEVT_MENU, &FileActions::on_open,    this, wxID_OPEN);
     frame->Bind(wxEVT_MENU, &FileActions::on_save,    this, wxID_SAVE);
     frame->Bind(wxEVT_MENU, &FileActions::on_save_as, this, wxID_SAVEAS);
+    frame->Bind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
+    frame->Bind(wxEVT_MENU, &FileActions::on_export_verilog, this, ID_EXPORT_VERILOG);
     frame->Bind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
     frame->Bind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     //关闭窗口也要走“是否保存”的确认，否则点右上角的×会绕过未保存检查
@@ -89,6 +112,7 @@ FileActions::~FileActions(){
     frame->Unbind(wxEVT_MENU, &FileActions::on_open,    this, wxID_OPEN);
     frame->Unbind(wxEVT_MENU, &FileActions::on_save,    this, wxID_SAVE);
     frame->Unbind(wxEVT_MENU, &FileActions::on_save_as, this, wxID_SAVEAS);
+    frame->Unbind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
     frame->Unbind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
     frame->Unbind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     frame->Unbind(wxEVT_CLOSE_WINDOW, &FileActions::on_close, this);
@@ -184,6 +208,78 @@ void FileActions::on_export_kicad_netlist(wxCommandEvent& event){
         return;
     }
     if(frame) frame->SetStatusText(wxString::FromUTF8("KiCad 网表已导出"));
+}
+
+//导出 Verilog：画布 -> ProjectData -> Verilator 电路模型 -> .v 文件。
+//适配与校验都在 VerilogBridge/ProjectToModule 里完成，本函数只负责交互与写盘。
+void FileActions::on_export_verilog(wxCommandEvent& event){
+    (void)event;
+    if(!canvas) return;
+
+    const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
+    const std::string top_name = info.name.empty() ? "top" : info.name;
+    const VerilogBridge::ProjectToModuleResult built =
+        VerilogBridge::BuildModuleFromProject(project, top_name);
+
+    if(built.ok && built.module.ports.empty() && built.module.gates.empty()){
+        wxMessageBox(wxString::FromUTF8("当前画布没有可导出的逻辑元件（门或输入/输出端子）。"),
+                     wxString::FromUTF8("导出 Verilog"), wxOK | wxICON_INFORMATION, frame);
+        return;
+    }
+    if(!built.ok){
+        wxMessageBox(wxString::FromUTF8("无法导出 Verilog：\n\n") +
+                         format_verilog_diagnostics(built.diagnostics),
+                     wxString::FromUTF8("导出 Verilog"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+
+    const bool hasWarnings = std::any_of(
+        built.diagnostics.begin(), built.diagnostics.end(),
+        [](const Verilator::Diagnostic& diagnostic){
+            return diagnostic.severity == Verilator::DiagnosticSeverity::Warning;
+        });
+    if(hasWarnings){
+        const int answer = wxMessageBox(
+            wxString::FromUTF8("导出前检查发现以下警告：\n\n") +
+                format_verilog_diagnostics(built.diagnostics) +
+                wxString::FromUTF8("\n是否继续导出？"),
+            wxString::FromUTF8("导出 Verilog"), wxYES_NO | wxICON_WARNING, frame);
+        if(answer != wxYES) return;
+    }
+
+    const Verilator::GenerateResult generated = Verilator::generate_verilog(built.module);
+    if(!generated.ok){
+        wxMessageBox(wxString::FromUTF8("生成 Verilog 源码失败：\n\n") +
+                         format_verilog_diagnostics(generated.diagnostics),
+                     wxString::FromUTF8("导出 Verilog"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+
+    const wxString suggested = current_path.empty()
+        ? wxString::FromUTF8(built.module.name.c_str()) + wxT(".v")
+        : wxFileName(current_path).GetName() + wxT(".v");
+    wxFileDialog dlg(frame, wxString::FromUTF8("导出 Verilog"), start_dir(), suggested,
+                     wxString::FromUTF8("Verilog 源文件 (*.v)|*.v|所有文件 (*.*)|*.*"),
+                     wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if(dlg.ShowModal() != wxID_OK) return;
+
+    wxString path = dlg.GetPath();
+    if(!path.Lower().EndsWith(wxT(".v"))) path += wxT(".v");
+
+    std::ofstream out(to_utf8(path), std::ios::binary | std::ios::trunc);
+    if(!out){
+        wxMessageBox(wxString::FromUTF8("无法写入 Verilog 文件：\n") + path,
+                     wxString::FromUTF8("导出失败"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+    out << generated.verilog;
+    out.close();
+    if(!out){
+        wxMessageBox(wxString::FromUTF8("写入 Verilog 文件时出错：\n") + path,
+                     wxString::FromUTF8("导出失败"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+    if(frame) frame->SetStatusText(wxString::FromUTF8("Verilog 已导出"));
 }
 
 //设置默认目录：选一个目录存进配置文件，“打开项目”里的“从默认目录打开”就用它

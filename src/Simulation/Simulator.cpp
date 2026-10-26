@@ -37,6 +37,7 @@ LogicValue Simulator::compute_gate(GateKind kind, const std::vector<LogicValue>&
         case GateKind::And:  return logical_and(inputs);
         case GateKind::Or:   return logical_or(inputs);
         case GateKind::Xor:  return logical_xor(inputs);
+        case GateKind::Xnor: return logical_not(logical_xor(inputs));
         case GateKind::Nand: return logical_not(logical_and(inputs));
         case GateKind::Nor:  return logical_not(logical_or(inputs));
         //导通/缓冲：输出 = 输入（单刀开关闭合时用它把一侧电平送到另一侧）

@@ -15,6 +15,7 @@ ItemType type_from_name(const std::string& name){
     if(name == "或门"   || name == "OR")   return ItemType::OR;
     if(name == "或非门" || name == "NOR")  return ItemType::NOR;
     if(name == "异或门" || name == "XOR")  return ItemType::XOR;
+    if(name == "同或门" || name == "XNOR") return ItemType::XNOR;
     if(name == "非门"   || name == "NOT")  return ItemType::NOT;
     if(name == "导线"   || name == "WIRE" ||
        name == "总线"   || name == "BUS")  return ItemType::WIRE;
@@ -42,6 +43,7 @@ std::string source_name_of(ItemType type){
         case ItemType::OR:   return "IC-COM-Logic-OR.svg";
         case ItemType::NOR:  return "IC-COM-Logic-NOR.svg";
         case ItemType::XOR:  return "IC-COM-Logic-XOR.svg";
+        case ItemType::XNOR: return "IC-COM-Logic-XNOR.svg";
         case ItemType::NOT:  return "IC-COM-Logic-Inverter.svg";
         default: return "";
     }

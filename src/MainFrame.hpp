@@ -12,6 +12,7 @@ class ToolBar;
 
 namespace Simulation{ class SimulationSession; }
 namespace Agent{ class AgentArea; class Show; }
+namespace VerilogPanelUI{ class VerilogPanel; }
 
 // 主窗口布局（类似 Logisim）：
 //   左侧栏   = 上：元件调色板(ToolBar：与非门…导线 + 选择/删除/克隆)
@@ -27,6 +28,8 @@ public:
     ~MainFrame() override;
 private:
     void OnToggleAgent(wxCommandEvent& e);   //视图菜单：显示/隐藏 AI 助手面板
+    void OnToggleVerilogPanel(wxCommandEvent& e);   //Verilog菜单：显示/隐藏代码面板
+    void SetVerilogPanelVisible(bool visible);
 
     //---- 仿真（模拟菜单）----
     void OnRunPause(wxCommandEvent& e);      //模拟 - 运行/暂停
@@ -40,12 +43,15 @@ private:
     wxSplitterWindow* splitter;        //外层分栏：左侧栏 / 右侧工作区
     wxSplitterWindow* work_splitter;   //中层分栏：画布区 / AI助手区（右侧可拉伸）
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar
+    wxSplitterWindow* canvas_splitter; //画布 / Verilog代码面板（右侧可挤出）
     wxPanel* left_panel;               //左侧栏容器：上元件调色板 + 下资源树
     ToolBar* palette;                  //元件调色板（与或非门…导线 + 选择/删除/克隆）
     ExplorerPane* explorer;
     Canvas* canvas;
+    VerilogPanelUI::VerilogPanel* verilog_panel;   //画布右侧的Verilog代码面板
     AttributeBar* attribute_bar;
     Agent::AgentArea* agent_area;      //AI助手（对话+设置）
+    bool verilog_visible = false;      //代码面板是否已挤出
     //仿真会话（画布只借指针着色；这里拥有它，必须在canvas之前创建、之后销毁）
     std::unique_ptr<Simulation::SimulationSession> simulation;
     wxTimer simulation_timer;          //内容变化后的去抖定时器

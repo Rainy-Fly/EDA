@@ -8,6 +8,7 @@
 #include"./MenuBar/FileActions.hpp"
 #include"./Agent/UI/AgentArea.hpp"
 #include"./Agent/UI/Show.hpp"
+#include"./VerilogPanel/VerilogPanel.hpp"
 #include"./DealProjectXML/DealProjectXML.hpp"
 #include"./Canva/SimulationBridge.hpp"
 #include"./Simulation/SimulationProject.hpp"
@@ -49,12 +50,15 @@ MainFrame::MainFrame()
       splitter(nullptr),
       work_splitter(nullptr),
       right_splitter(nullptr),
+      canvas_splitter(nullptr),
       left_panel(nullptr),
       palette(nullptr),
       explorer(nullptr),
       canvas(nullptr),
+      verilog_panel(nullptr),
       attribute_bar(nullptr),
       agent_area(nullptr){
+    //（代码面板默认隐藏，见下方 canvas_splitter 初始化）
     //中文字体：wx 默认界面字体是 "MS Shell Dlg 2"（Tahoma），它没有中文字形，
     //GDI 只能用字体链接回退到宋体 —— 宋体小字号是位图字形，在状态栏那种窄字段里会发虚，
     //放大看就像重影/乱码。这里显式换成中文界面字体（微软雅黑，TrueType），中文才清晰。
@@ -76,15 +80,18 @@ MainFrame::MainFrame()
     //分栏结构（类似 Logisim）：
     //  splitter(外层竖分) = left_panel(调色板+资源树) | work_splitter
     //  work_splitter(中层横分) = right_splitter | agent_area（AI面板，默认隐藏）
-    //  right_splitter(内层竖分) = canvas | attribute_bar
+    //  right_splitter(内层竖分) = canvas_splitter | attribute_bar
+    //  canvas_splitter(内层竖分) = canvas | verilog_panel（Verilog代码面板，默认隐藏）
     //统一带 wxSP_LIVE_UPDATE：不加这个样式时，拖动分栏画的是一条 2px 纯黑的"跟踪线"
     //（wxSplitterWindow 默认的 m_sashTrackerPen 就是 wxBLACK）；加上后窗格实时缩放、没有黑线
     const long split_style = wxSP_3D | wxSP_LIVE_UPDATE;
     splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
     work_splitter = new wxSplitterWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
     right_splitter = new wxSplitterWindow(work_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    canvas_splitter = new wxSplitterWindow(right_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
     left_panel    = new wxPanel(splitter);
-    canvas        = new Canvas(right_splitter);
+    canvas        = new Canvas(canvas_splitter);
+    verilog_panel = new VerilogPanelUI::VerilogPanel(canvas_splitter, canvas);
     attribute_bar = new AttributeBar(right_splitter);
     //左侧栏：元件调色板在上、资源树在下（调色板需要canvas指针，所以在canvas之后创建）
     palette       = new ToolBar(left_panel, canvas);
@@ -102,7 +109,15 @@ MainFrame::MainFrame()
     splitter->SplitVertically(left_panel, work_splitter, 250);
 
     right_splitter->SetMinimumPaneSize(120);
-    right_splitter->SplitHorizontally(canvas, attribute_bar, 560);  //画布在上，属性栏在下
+    right_splitter->SplitHorizontally(canvas_splitter, attribute_bar, 560);  //画布区在上，属性栏在下
+
+    //Verilog 代码面板：先建立左画布/右面板的分栏，再摘除面板实现默认隐藏
+    //（Unsplit 不销毁窗口，显示时用 SplitVertically 重新接回，可拉伸宽度）
+    canvas_splitter->SetMinimumPaneSize(80);
+    canvas_splitter->SplitVertically(canvas, verilog_panel, -280);
+    canvas_splitter->Unsplit(verilog_panel);
+    verilog_panel->Hide();
+    verilog_panel->set_applied_callback([this]{ file_actions->mark_modified(); });
 
     work_splitter->SetMinimumPaneSize(120);
     //AI 面板：建立右分栏布局并默认隐藏（视图菜单可切换）
@@ -122,6 +137,8 @@ MainFrame::MainFrame()
 
     //视图菜单：切换 AI 助手面板显隐（勾选状态与面板实际状态同步）
     Bind(wxEVT_MENU, &MainFrame::OnToggleAgent, this, ID_SHOW_AGENT);
+    //Verilog菜单：切换代码面板显隐（勾选状态与面板实际状态同步）
+    Bind(wxEVT_MENU, &MainFrame::OnToggleVerilogPanel, this, ID_SHOW_VERILOG_PANEL);
 
     //联动：属性栏里改过的属性也算改项目 -> 标记“未保存”
     attribute_bar->set_edited_callback([this]{ file_actions->mark_modified(); });
@@ -263,5 +280,30 @@ void MainFrame::OnToggleAgent(wxCommandEvent&){
     if(show) show->Toggle();
     if(wxMenuBar* bar = GetMenuBar()){
         bar->Check(ID_SHOW_AGENT, show && show->Visible());
+    }
+}
+
+//Verilog菜单：切换代码面板，并把菜单勾选同步为面板实际状态
+void MainFrame::OnToggleVerilogPanel(wxCommandEvent&){
+    SetVerilogPanelVisible(!verilog_visible);
+}
+
+void MainFrame::SetVerilogPanelVisible(bool visible){
+    if(!canvas_splitter || !verilog_panel) return;
+    if(visible == verilog_visible) return;
+    verilog_visible = visible;
+    if(visible){
+        //显示：画布在左、代码面板在右，可拉伸宽度
+        canvas_splitter->SplitVertically(canvas, verilog_panel, -280);
+        verilog_panel->Show();
+        //每次打开都从当前画布重新生成代码（画布可能已变化）
+        verilog_panel->refresh_from_canvas();
+    }else{
+        //隐藏：从分隔器摘除（不销毁窗口），画布占满
+        canvas_splitter->Unsplit(verilog_panel);
+        verilog_panel->Hide();
+    }
+    if(wxMenuBar* bar = GetMenuBar()){
+        bar->Check(ID_SHOW_VERILOG_PANEL, visible);
     }
 }

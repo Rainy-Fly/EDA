@@ -95,7 +95,9 @@ void test_all_definitions(){
               !md->definition_version.empty(),
               "library and definition versions present: " + md->get_type());
         const std::string category = md->get_category();
-        if(category != "Ground" && category != "Source")
+        // 排除仿真用端子和层级化模块实例，它们不参与 PCB 封装
+        if(category != "Ground" && category != "Source" &&
+           category != "Simulation" && category != "Hierarchy")
             check(!md->footprint.empty(),
                   "physical definition has a default footprint: " + md->get_type());
     }

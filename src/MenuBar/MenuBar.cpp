@@ -10,6 +10,7 @@ MenuBar::MenuBar(){
     file_menu->Append(wxID_SAVE,   wxString::FromUTF8("保存(&S)\tCtrl+S"));
     file_menu->Append(wxID_SAVEAS, wxString::FromUTF8("另存为(&A)...\tCtrl+Shift+S"));
     file_menu->Append(ID_EXPORT_KICAD_NETLIST, wxString::FromUTF8("导出 KiCad 网表(&K)..."));
+    file_menu->Append(ID_EXPORT_VERILOG, wxString::FromUTF8("导出 Verilog(&V)..."));
     file_menu->AppendSeparator();
     //设置默认目录：打开/另存为对话框的默认起始位置（存在用户配置文件的 default-dir 里）
     file_menu->Append(ID_SET_DEFAULT_DIR, wxString::FromUTF8("设置默认目录(&D)..."));
@@ -36,8 +37,15 @@ MenuBar::MenuBar(){
     view_menu->AppendCheckItem(ID_SHOW_AGENT, wxString::FromUTF8("AI 助手面板(&A)\tF12"));
     //菜单里的勾选状态由主窗口随面板实际显隐同步（默认隐藏 => 不勾选）
 
+    //---- Verilog（Verilog）----
+    wxMenu* verilog_menu = new wxMenu;
+    //勾选状态由主窗口随代码面板实际显隐同步（默认隐藏 => 不勾选）
+    verilog_menu->AppendCheckItem(ID_SHOW_VERILOG_PANEL,
+                                  wxString::FromUTF8("代码面板(&P)\tF11"));
+
     Append(file_menu,     wxString::FromUTF8("文件"));
     Append(edit_menu,     wxString::FromUTF8("编辑"));
     Append(simulate_menu, wxString::FromUTF8("模拟"));
     Append(view_menu,     wxString::FromUTF8("视图"));
+    Append(verilog_menu,  wxString::FromUTF8("Verilog"));
 }

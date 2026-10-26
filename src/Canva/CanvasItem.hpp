@@ -13,6 +13,7 @@ enum class ItemType{
     OR,     // 或门
     NOR,    // 或非门
     XOR,    // 异或门
+    XNOR,   // 同或门
     NOT,    // 非门
     WIRE,   // 导线
     GENERIC,// 通用元件（电阻/电容/二极管/…来自电子符号库，类型串由元数据决定）

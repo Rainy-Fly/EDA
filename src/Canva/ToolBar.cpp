@@ -32,13 +32,14 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     SetBackgroundColour(wxColour(240, 240, 240));
     wxBoxSizer* outer = new wxBoxSizer(wxVERTICAL);
 
-    //元件：7 个，2 行 5 列
+    //元件：10 个，2 行 5 列
     wxGridSizer* tools = new wxGridSizer(2, 5, 3, 3);
     add_tool(tools, "与非门", ItemType::NAND);
     add_tool(tools, "与门",   ItemType::AND);
     add_tool(tools, "或门",   ItemType::OR);
     add_tool(tools, "或非门", ItemType::NOR);
     add_tool(tools, "异或门", ItemType::XOR);
+    add_tool(tools, "同或门", ItemType::XNOR);
     add_tool(tools, "非门",   ItemType::NOT);
     add_tool(tools, "导线",   ItemType::WIRE);
     //仿真输入/输出端子（小方框）：输入端子单击切换 0/1，输出端子显示所接网络电平。

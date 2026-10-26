@@ -29,6 +29,7 @@ const char* item_type_label(ItemType type){
         case ItemType::OR:   return "或门";
         case ItemType::NOR:  return "或非门";
         case ItemType::XOR:  return "异或门";
+        case ItemType::XNOR: return "同或门";
         case ItemType::NOT:  return "非门";
         case ItemType::WIRE: return "导线";
         case ItemType::GENERIC: return "通用元件";

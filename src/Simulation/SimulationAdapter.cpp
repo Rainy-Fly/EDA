@@ -80,6 +80,7 @@ bool gate_kind_for_type(const std::string& type, GateKind& kind){
     if(type == "AND"){  kind = GateKind::And;  return true; }
     if(type == "OR"){   kind = GateKind::Or;   return true; }
     if(type == "XOR"){  kind = GateKind::Xor;  return true; }
+    if(type == "XNOR"){ kind = GateKind::Xnor; return true; }
     if(type == "NAND"){ kind = GateKind::Nand; return true; }
     if(type == "NOR"){  kind = GateKind::Nor;  return true; }
     return false;

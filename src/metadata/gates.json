@@ -267,6 +267,52 @@
         }
       ],
       "footprint": "Package_DIP:DIP-14_W7.62mm"
+    },
+    {
+      "id": 7,
+      "name": "同或门",
+      "name_en": "XNOR",
+      "type": "XNOR",
+      "category": "LogicGate",
+      "description": "同或门：两个输入相同时输出1，不同时输出0",
+      "DataBits": 1,
+      "inputs": 2,
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "pins": [
+        {
+          "id": "IN1",
+          "name": "IN1",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": -10,
+          "width": 1
+        },
+        {
+          "id": "IN2",
+          "name": "IN2",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -50,
+          "y": 10,
+          "width": 1
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 50,
+          "y": 0,
+          "width": 1
+        }
+      ],
+      "footprint": "Package_DIP:DIP-14_W7.62mm"
     }
   ],
   "schema_version": "2.0",
