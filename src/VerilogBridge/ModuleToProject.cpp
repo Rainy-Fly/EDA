@@ -73,19 +73,120 @@ int snap_value(int value){
     return static_cast<int>(std::lround(static_cast<double>(value) / kGrid)) * kGrid;
 }
 
-//正交折线：先水平走到中间 x，再竖直，再水平到终点。
-//布局保证终点在起点右侧；若方向相反则改用中间 y 折线，仍保证没有斜线。
-std::vector<wxPoint> orthogonal_path(const wxPoint& from, const wxPoint& to){
-    if(from.x == to.x || from.y == to.y) return {from, to};
+//正交折线：把同一引脚出发的多条导线按 lane 交替方向展开，保证首段不共享线段
+//（0=先横后竖、1=先竖后横、2=向上绕行一段再横走），只在引脚点相交；
+//之后即使与其他线交叉也是"点重合"，由画布用跳线弧表示。布局保证终点通常在起点右侧。
+std::vector<wxPoint> orthogonal_path(const wxPoint& from, const wxPoint& to, int lane){
+    if(from.y == to.y || from.x == to.x) return {from, to};   //同行/同列：直线
     if(to.x > from.x){
-        int mid_x = snap_value((from.x + to.x) / 2);
-        if(mid_x <= from.x) mid_x = from.x + kGrid;
-        if(mid_x >= to.x) mid_x = to.x - kGrid;
-        return {from, wxPoint(mid_x, from.y), wxPoint(mid_x, to.y), to};
+        switch(lane % 3){
+            case 1: {
+                //先竖后横：竖直段在引脚列，水平段在目标行
+                return {from, wxPoint(from.x, to.y), to};
+            }
+            case 2: {
+                //向上绕行：竖上一格 → 横走 → 竖到目标行 → 横到目标
+                const int my = from.y - kGrid;
+                int mx = from.x + kGrid * 2;
+                if(mx >= to.x) mx = to.x - kGrid;
+                if(mx <= from.x) mx = from.x + kGrid;
+                return {from, wxPoint(from.x, my), wxPoint(mx, my),
+                        wxPoint(mx, to.y), to};
+            }
+            default: {
+                //先横后竖：水平段在源行，中间 x 用避让偏移错开
+                int mx = from.x + kGrid;
+                if(mx >= to.x) mx = to.x - kGrid;
+                if(mx <= from.x) return {from, to};   //目标太近：直线兜底
+                return {from, wxPoint(mx, from.y), wxPoint(mx, to.y), to};
+            }
+        }
     }
     int mid_y = snap_value((from.y + to.y) / 2);
     if(mid_y == from.y) mid_y += kGrid;
     return {from, wxPoint(from.x, mid_y), wxPoint(to.x, mid_y), to};
+}
+
+//两条正交线段是否重合：共线（平行且在同一直线上）且区间重叠长度为正值。
+bool segment_overlap(const wxPoint& a, const wxPoint& b,
+                     const wxPoint& c, const wxPoint& d){
+    const long abx = b.x - a.x, aby = b.y - a.y;
+    if(abx * (d.y - c.y) - aby * (d.x - c.x) != 0) return false;   //不平行
+    if((c.x - a.x) * aby - (c.y - a.y) * abx != 0) return false;   //不共线
+    const int lo = std::max(std::min(a.x, b.x), std::min(c.x, d.x));
+    const int hi = std::min(std::max(a.x, b.x), std::max(c.x, d.x));
+    const int lo_y = std::max(std::min(a.y, b.y), std::min(c.y, d.y));
+    const int hi_y = std::min(std::max(a.y, b.y), std::max(c.y, d.y));
+    return (hi - lo) + (hi_y - lo_y) > 0;   //任一轴上区间重叠长度>0即重合
+}
+
+//给 wire.points 的第 seg 段（points[seg-1]->points[seg]）做绕行，避开重合：
+//水平段绕行到 y±kGrid，竖直段绕行到 x±kGrid。两个方向都试，选不产生新重合的。
+//返回 true 表示已绕行（调用方需重新扫描）。
+bool try_detour(std::vector<DealProjectXML::WireData>& wires, size_t wire_idx, size_t seg){
+    auto& pts = wires[wire_idx].points;
+    if(seg == 0 || seg >= pts.size()) return false;
+    const wxPoint a = pts[seg - 1];
+    const wxPoint b = pts[seg];
+    const bool horizontal = (a.y == b.y);
+    const int choices[2] = { kGrid, -kGrid };
+    for(int offset : choices){
+        //绕行后的三段：竖/横/竖（或横/竖/横），两端点 a、b 保持不变（引脚位置不动）
+        const wxPoint p2 = horizontal ? wxPoint(a.x, a.y + offset)
+                                      : wxPoint(a.x + offset, a.y);
+        const wxPoint p3 = horizontal ? wxPoint(b.x, a.y + offset)
+                                      : wxPoint(b.x + offset, a.y);
+        bool conflict = false;
+        for(size_t w = 0; w < wires.size() && !conflict; ++w){
+            const auto& other = wires[w].points;
+            for(size_t s = 1; s < other.size() && !conflict; ++s){
+                if(w == wire_idx && s == seg) continue;   //被替换的段
+                if(segment_overlap(a, p2, other[s - 1], other[s]) ||
+                   segment_overlap(p2, p3, other[s - 1], other[s]) ||
+                   segment_overlap(p3, b, other[s - 1], other[s])){
+                    conflict = true;
+                }
+            }
+        }
+        if(conflict) continue;
+        //应用绕行：把 a->b 替换为 a->p2->p3->b
+        std::vector<wxPoint> out;
+        out.reserve(pts.size() + 2);
+        out.insert(out.end(), pts.begin(), pts.begin() + seg);
+        out.push_back(p2);
+        out.push_back(p3);
+        out.insert(out.end(), pts.begin() + seg, pts.end());
+        pts = std::move(out);
+        return true;
+    }
+    return false;
+}
+
+//消除所有导线之间的线段重合（允许点相交，由画布画跳线弧）。
+//迭代多轮直至无重合或达到轮数上限；每处冲突优先绕行后出现的导线，失败再绕行先出现者。
+void resolve_wire_overlaps(std::vector<DealProjectXML::WireData>& wires){
+    constexpr int kMaxPasses = 12;
+    for(int pass = 0; pass < kMaxPasses; ++pass){
+        bool changed = false;
+        for(size_t i = 0; i < wires.size() && !changed; ++i){
+            for(size_t j = i + 1; j < wires.size() && !changed; ++j){
+                const auto& pi = wires[i].points;
+                const auto& pj = wires[j].points;
+                for(size_t si = 1; si < pi.size() && !changed; ++si){
+                    for(size_t sj = 1; sj < pj.size(); ++sj){
+                        if(!segment_overlap(pi[si - 1], pi[si], pj[sj - 1], pj[sj])){
+                            continue;
+                        }
+                        //优先后出现的导线（j）绕行，不行再绕先出现的（i）
+                        if(try_detour(wires, j, sj)) changed = true;
+                        else if(try_detour(wires, i, si)) changed = true;
+                        break;   //这一对已经处理，交给下一轮重新全量扫描
+                    }
+                }
+            }
+        }
+        if(!changed) break;
+    }
 }
 
 //驱动源分类：门输出 / 输入端口 / 常量。
@@ -422,6 +523,9 @@ ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
 
     // ---- 导线：驱动引脚 -> 每个接收引脚 ----
     int next_wire_id = 1;
+    //避让序号：按源引脚（x,y）分配，同一引脚的多条导线方向交替展开，
+    //首段不共享线段（只在引脚点相交），避免线重合
+    std::map<std::pair<int, int>, int> lane_by_source_pin;
     for(const Verilator::Net& net : module.nets){
         if(net.sinks.empty()) continue;
 
@@ -491,7 +595,9 @@ ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
             wire.id = next_wire_id++;
             wire.type = "WIRE";
             wire.name = "导线";
-            wire.points = orthogonal_path(source_point, target_point);
+            wire.points = orthogonal_path(source_point, target_point,
+                                          lane_by_source_pin[{source_point.x,
+                                                              source_point.y}]++);
             wire.start.kind = "pin";
             wire.start.component_id = source_component;
             wire.start.pin_id = source_pin;
@@ -501,6 +607,9 @@ ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
             result.project.wires.push_back(std::move(wire));
         }
     }
+
+    //消除线段重合：允许点相交（画布画跳线弧），不允许线重合
+    resolve_wire_overlaps(result.project.wires);
 
     if(module.name.empty()){
         add_warning("PROJECT_VERILOG_MODULE_NAME_EMPTY",

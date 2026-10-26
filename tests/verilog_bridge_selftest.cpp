@@ -3,6 +3,7 @@
 #include "../src/VerilogBridge/ProjectToModule.hpp"
 #include "../src/verilator/VerilatorApi.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -255,6 +256,65 @@ void test_empty_module_rejected(){
           "empty module reports its diagnostic");
 }
 
+//两条正交线段是否重合（共线且区间重叠长度为正值）。
+bool segments_overlap(const wxPoint& a, const wxPoint& b,
+                      const wxPoint& c, const wxPoint& d){
+    const long abx = b.x - a.x, aby = b.y - a.y;
+    if(abx * (d.y - c.y) - aby * (d.x - c.x) != 0) return false;   //不平行
+    if((c.x - a.x) * aby - (c.y - a.y) * abx != 0) return false;   //不共线
+    const int lo = std::max(std::min(a.x, b.x), std::min(c.x, d.x));
+    const int hi = std::min(std::max(a.x, b.x), std::max(c.x, d.x));
+    const int lo_y = std::max(std::min(a.y, b.y), std::min(c.y, d.y));
+    const int hi_y = std::min(std::max(a.y, b.y), std::max(c.y, d.y));
+    return (hi - lo) + (hi_y - lo_y) > 0;   //任一轴上区间重叠即重合
+}
+
+//生成电路时导线不允许线段重合（点相交允许）。用扇出场景验证：
+//同一输入端子驱动门的两路输入、同一门输出驱动两个输出端子。
+void test_wires_do_not_overlap(){
+    const std::string source =
+        "module top(\n"
+        "    input A,\n"
+        "    input B,\n"
+        "    output Y1,\n"
+        "    output Y2\n"
+        ");\n"
+        "    wire n1;\n"
+        "    wire n2;\n"
+        "    assign n1 = A & A;\n"    //A 同一网络两路：输入端子出两条线
+        "    assign n2 = n1 & B;\n"
+        "    assign Y1 = n2;\n"
+        "    assign Y2 = n2;\n"       //n2 扇出两个输出端子：门输出两条线
+        "endmodule\n";
+
+    const Verilator::ParseResult parsed = Verilator::parse_verilog(source);
+    check(parsed.ok, "fanout source parses");
+    if(!parsed.ok) return;
+
+    const VerilogBridge::ModuleToProjectResult project =
+        VerilogBridge::BuildProjectFromModule(parsed.module, wxPoint(0, 0));
+    check(project.ok, "fanout module builds a project");
+    if(!project.ok) return;
+
+    bool overlap = false;
+    const auto& wires = project.project.wires;
+    for(size_t i = 0; i < wires.size() && !overlap; ++i){
+        for(size_t j = i + 1; j < wires.size() && !overlap; ++j){
+            const auto& pi = wires[i].points;
+            const auto& pj = wires[j].points;
+            for(size_t si = 1; si < pi.size(); ++si){
+                for(size_t sj = 1; sj < pj.size(); ++sj){
+                    if(segments_overlap(pi[si - 1], pi[si], pj[sj - 1], pj[sj])){
+                        overlap = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    check(!overlap, "generated wires do not overlap");
+}
+
 } // namespace
 
 int main(int argc, char** argv){
@@ -269,6 +329,7 @@ int main(int argc, char** argv){
     test_round_trip_from_verilog();
     test_round_trip_constant();
     test_empty_module_rejected();
+    test_wires_do_not_overlap();
 
     std::cout << "verilog_bridge_selftest: " << checks << " checks, "
               << failures << " failure(s)\n";

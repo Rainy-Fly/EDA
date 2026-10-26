@@ -41,6 +41,7 @@ namespace Simulation{ class SimulationSession; }
 enum class EditTool{
     NONE,    //无编辑工具（默认：单击元件即跟随鼠标、再单击放下；按住左键可直接拖动）
     SELECT,  //选择：点击元件→跟随鼠标移动；右键取消跟随；Del删除
+    ACTIVATE,//激活：单击开关/输入端子切换 0/1（只有此模式会改元件状态）
     ERASE,   //删除：点击元件即删除
     CLONE,   //克隆：点击元件→复制出跟随鼠标的虚影，再点击放置
 };
@@ -135,6 +136,8 @@ private:
     wxPoint wire_mouse_pos;          //橡皮筋预览的鼠标逻辑坐标
     wxPoint wire_drag_origin;        //拖动导线时抓取点（吸附后coords）
     std::vector<wxPoint> wire_drag_saved;  //拖动开始时各折点的原始coords
+    bool wire_corner_locked;         //橡皮筋拐角方向是否已锁定（由首个鼠标移动方向决定）
+    bool wire_corner_horizontal_first; //true=拐角先横后竖；false=先竖后横
 
     //----- 编辑工具(选择/删除/克隆)状态 -----
     EditTool edit_tool;                   //当前编辑工具
@@ -171,6 +174,7 @@ private:
 
     //导线
     void finish_wire();      //提交正在绘制的导线到集合并结束绘制模式
+    void commit_wire();      //提交当前折点为导线元件并清空绘制状态（不退出导线模式）
     void cancel_wire();      //丢弃正在绘制的导线并结束绘制模式
     void draw_wires(wxDC& dc);  //在画布上绘制所有导线+预览+选中高亮
     void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,

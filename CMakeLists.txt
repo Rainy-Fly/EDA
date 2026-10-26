@@ -222,6 +222,8 @@ target_link_libraries(
     wx::xml
     # 聊天界面用 wxHtmlWindow（Agent 面板），HTML 渲染在独立的 html 组件里
     wx::html
+    # Verilog 代码面板用 wxStyledTextCtrl（Scintilla）：语法高亮/Tab缩进/自动补全
+    wx::stc
     jsoncpp_lib
     # Agent 的 HTTPS 通信（DeepSeek /chat/completions）：
     # Windows 下是上面 FetchContent 编出来的静态 libcurl，Linux 下是系统 libcurl
@@ -261,6 +263,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/xml_selftest.cpp")
         wx::core
         wx::base
         wx::xml
+        wx::stc
         jsoncpp_lib
     )
 

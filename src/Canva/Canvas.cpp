@@ -68,6 +68,8 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       wire_mouse_pos(0, 0),
       wire_drag_origin(0, 0),
       wire_drag_saved(),
+      wire_corner_locked(false),
+      wire_corner_horizontal_first(false),
       edit_tool(EditTool::NONE),
       select_follow_item(nullptr){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -199,9 +201,11 @@ void Canvas::update_status(){
         text = wxString::Format(wxString::FromUTF8("放置 %s：在画布上单击放下，按退出键或右键取消"),
                                 wxString::FromUTF8(ghost->name.c_str()));
     }else if(wire_placing){
-        text = wxString::FromUTF8("绘制导线：左键连续加点，点回起点/双击/右键完成，按退出键取消");
+        text = wxString::FromUTF8("绘制导线：左键连续加点，点回起点/双击完成，右键取消本段，按退出键退出");
     }else if(edit_tool == EditTool::SELECT){
         text = wxString::FromUTF8("选择工具：单击元件即可让它跟随鼠标");
+    }else if(edit_tool == EditTool::ACTIVATE){
+        text = wxString::FromUTF8("激活工具：单击开关/输入端子切换 ０/１");
     }else if(edit_tool == EditTool::ERASE){
         text = wxString::FromUTF8("删除工具：单击元件即删除");
     }else if(edit_tool == EditTool::CLONE){
@@ -211,7 +215,7 @@ void Canvas::update_status(){
         //仿真开启时提示"怎么改输入"。数字用全角：状态栏是原生控件，
         //中文里混半角数字/字母会被 GDI 的字体链接渲染得发虚（实测过）
         if(simulation && simulation->enabled() && simulation->hasModel())
-            text += wxString::FromUTF8("；仿真运行中：单击开关切换 ０/１");
+            text += wxString::FromUTF8("；仿真运行中：用激活工具单击开关切换 ０/１");
     }
     if(text == last_status) return;
     last_status = text;
@@ -338,6 +342,14 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         if(snap_to_pin(pos, pin)) coords = pin;   //引脚优先于网格吸附
         if(coords != wire_mouse_pos){
             wire_mouse_pos = coords;
+            //锁定橡皮筋拐角方向：以「离开上一个折点的首个移动方向」为准。
+            //之后鼠标方向再怎么变，拐角都保持先竖后横/先横后竖，不会中途突变
+            if(!wire_points.empty() && !wire_corner_locked && coords != wire_points.back()){
+                const wxPoint last = wire_points.back();
+                wire_corner_horizontal_first =
+                    std::abs(coords.x - last.x) >= std::abs(coords.y - last.y);
+                wire_corner_locked = true;
+            }
             Refresh();   //重绘预览线
         }
         return;
@@ -387,6 +399,16 @@ void Canvas::on_left_down(wxMouseEvent& event){
         else set_current_item(nullptr);
         return;
     }
+    //激活工具：只有此模式会改变元件状态（开关/输入端子切换 0/1），其它元件仅选中
+    if(edit_tool == EditTool::ACTIVATE){
+        if(CanvasItem* hit = item_at(pos)){
+            if(item_is_switch(hit)) toggle_switch(hit);
+            else set_current_item(hit);
+        }else{
+            set_current_item(nullptr);
+        }
+        return;
+    }
     if(edit_tool == EditTool::SELECT){
         if(CanvasItem* hit = item_at(pos)) start_select_follow(hit);
         else{ stop_select_follow(); set_current_item(nullptr); }
@@ -405,18 +427,10 @@ void Canvas::on_left_down(wxMouseEvent& event){
 }
 
 void Canvas::on_left_up(wxMouseEvent& event){
-    //单击（按下后没有真的拖动）落在"输入开关"上：切换 0/1 并重算（类似 Logisim），
-    //不进入"跟随鼠标"状态；按住拖动仍然是移动元件，老习惯不变
-    if(dragging_item && !move_dirty && item_is_switch(dragging_item) && simulation){
-        CanvasItem* item = dragging_item;
-        dragging_item = nullptr;
-        if(HasCapture()) ReleaseMouse();
-        toggle_switch(item);
-        return;
-    }
     //单击（按下后没有真的拖动）＝让元件进入「跟随鼠标」状态：之后移动鼠标它跟着走，
     //再点一下左键放下（与「选择」工具一致）。按住拖动仍然是直接拖动，老习惯不变。
-    //只对门/通用元件生效：导线单击仍然只是选中，免得整根线被拽到光标下
+    //只对门/通用元件生效：导线单击仍然只是选中，免得整根线被拽到光标下。
+    //（开关/输入端子的 0/1 切换已移至「激活」工具，普通模式下点击只做选择/移动）
     if(dragging_item && !move_dirty && !dynamic_cast<Linking*>(dragging_item)){
         CanvasItem* item = dragging_item;
         dragging_item = nullptr;
@@ -489,18 +503,22 @@ void Canvas::on_wire_left_down(const wxMouseEvent& event){
     }
     wire_points.push_back(coords);
     wire_mouse_pos = coords;
+    wire_corner_locked = false;   //新折点后拐角方向重新按首个移动方向决定
     Refresh();
 }
 
-//右键：完成或取消导线
+//右键：已有足够折点时提交当前导线，否则丢弃本段；
+//两种情况都保持导线模式——接下来左键即可从当前位置开始连新的导线，无需再点工具栏
 void Canvas::on_wire_right_down(wxMouseEvent& event){
     (void)event;
     if(!wire_placing) return;
-    if(wire_points.size() >= 2) finish_wire();
-    else{
-        cancel_wire();
-        if(toolbar) toolbar->clear_selection();
+    if(wire_points.size() >= 2){
+        commit_wire();
+    }else{
+        wire_points.clear();
+        wire_corner_locked = false;
         Refresh();
+        update_status();
     }
 }
 
@@ -599,9 +617,10 @@ void Canvas::select_action(ToolAction action){
     dragging_item = nullptr;
     set_current_item(nullptr);
     switch(action){
-        case ToolAction::SELECT: edit_tool = EditTool::SELECT; break;
-        case ToolAction::ERASE: edit_tool = EditTool::ERASE; break;
-        case ToolAction::CLONE:  edit_tool = EditTool::CLONE;  break;
+        case ToolAction::SELECT:   edit_tool = EditTool::SELECT;   break;
+        case ToolAction::ACTIVATE: edit_tool = EditTool::ACTIVATE; break;
+        case ToolAction::ERASE:    edit_tool = EditTool::ERASE;    break;
+        case ToolAction::CLONE:    edit_tool = EditTool::CLONE;    break;
     }
     Refresh();   //虚影是画布自绘的：clear_ghost后必须显式重画，否则残影留在屏幕上
     update_status();
@@ -619,7 +638,16 @@ void Canvas::cancel_tool(){
 //提交正在绘制的导线：折点≥2时创建Linking加入集合，结束绘制模式
 void Canvas::finish_wire(){
     if(!wire_placing) return;
+    commit_wire();
     wire_placing = false;
+    wire_corner_locked = false;
+    if(toolbar) toolbar->clear_selection();
+    Refresh();
+    update_status();
+}
+
+//提交当前折点为导线元件并清空绘制状态（不退出导线模式，由调用方决定是否退出）
+void Canvas::commit_wire(){
     if(wire_points.size() >= 2){
         //去掉连续重复点后按正交展开（相邻锚点间插入拐角，保证只有水平/垂直段）
         std::vector<wxPoint> clean;
@@ -639,7 +667,7 @@ void Canvas::finish_wire(){
         //点数不足2的导线不创建，直接丢弃
     }
     wire_points.clear();
-    if(toolbar) toolbar->clear_selection();
+    wire_corner_locked = false;
     Refresh();
     update_status();
 }
@@ -648,6 +676,7 @@ void Canvas::finish_wire(){
 void Canvas::cancel_wire(){
     wire_placing = false;
     wire_points.clear();
+    wire_corner_locked = false;
     update_status();
 }
 
@@ -989,13 +1018,64 @@ void Canvas::reput(){
     reput_items();
 }
 
-//在画布上绘制所有导线：已放置的导线（选中高亮）+ 正在绘制的预览
+//线段内部交叉（不含端点）求交点；返回 true 并在 out 里给出交点逻辑坐标。
+//平行/共线（线段重合）不视为交叉——重合是布线问题，由生成端避免。
+static bool segment_intersection(const wxPoint& a, const wxPoint& b,
+                                 const wxPoint& c, const wxPoint& d, wxPoint* out){
+    const long abx = b.x - a.x, aby = b.y - a.y;
+    const long cdx = d.x - c.x, cdy = d.y - c.y;
+    const long denom = abx * cdy - aby * cdx;
+    if(denom == 0) return false;
+    const long acx = c.x - a.x, acy = c.y - a.y;
+    const double t = (double)(acx * cdy - acy * cdx) / denom;
+    const double u = (double)(acx * aby - acy * abx) / denom;
+    if(t <= 0.0 || t >= 1.0 || u <= 0.0 || u >= 1.0) return false;
+    if(out){
+        out->x = a.x + (int)std::lround(t * abx);
+        out->y = a.y + (int)std::lround(t * aby);
+    }
+    return true;
+}
+
+//在画布上绘制所有导线：已放置的导线（选中高亮 + 端点实心圆 + 交叉跳线弧）+ 正在绘制的预览
 void Canvas::draw_wires(wxDC& dc){
-    //已放置的导线
+    //收集已放置导线
+    std::vector<Linking*> wires;
     for(CanvasItem* item : *canvasItemCollection){
         Linking* wire = dynamic_cast<Linking*>(item);
-        if(!wire || wire->points.size() < 2) continue;
-        const bool selected = (item == current_item);
+        if(wire && wire->points.size() >= 2) wires.push_back(wire);
+    }
+
+    //交叉点：两条导线在线段内部相交（非端点连接）时，其中一条画跳线弧绕过另一条。
+    //用 id 较大的导线画弧（决定结果稳定）；弧凸向该线段方向（水平→上半圆，竖直→右半圆）
+    struct Crossing{ wxPoint pos; bool horizontal; };
+    std::map<Linking*, std::vector<Crossing>> arcs_by_wire;
+    for(size_t i = 0; i < wires.size(); ++i){
+        const auto& pi = wires[i]->points;
+        for(size_t j = i + 1; j < wires.size(); ++j){
+            const auto& pj = wires[j]->points;
+            for(size_t si = 1; si < pi.size(); ++si){
+                for(size_t sj = 1; sj < pj.size(); ++sj){
+                    wxPoint p;
+                    if(!segment_intersection(pi[si - 1], pi[si],
+                                             pj[sj - 1], pj[sj], &p)){
+                        continue;
+                    }
+                    Linking* arc_wire = (wires[i]->id > wires[j]->id) ? wires[i] : wires[j];
+                    const bool horizontal = (arc_wire == wires[i])
+                        ? (std::abs(pi[si].x - pi[si - 1].x) >=
+                           std::abs(pi[si].y - pi[si - 1].y))
+                        : (std::abs(pj[sj].x - pj[sj - 1].x) >=
+                           std::abs(pj[sj].y - pj[sj - 1].y));
+                    arcs_by_wire[arc_wire].push_back({p, horizontal});
+                }
+            }
+        }
+    }
+
+    //已放置的导线
+    for(Linking* wire : wires){
+        const bool selected = (wire == current_item);
         if(selected){
             draw_wire_path(dc, wire->points, wxColour(0, 102, 204), 4);   //选中：粗蓝底
         }
@@ -1030,6 +1110,35 @@ void Canvas::draw_wires(wxDC& dc){
         draw_wire_path(dc, wire->points,
                        selected ? wxColour(0, 120, 255) : colour,
                        selected ? 2 : width);
+
+        //起点/终点实心圆：端点就是连接点，用线色画实心圆点
+        dc.SetBrush(wxBrush(colour));
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.DrawCircle(coords_to_pos_px(wire->points.front()), 3);
+        dc.DrawCircle(coords_to_pos_px(wire->points.back()), 3);
+
+        //跳线弧：交叉处画小半圆绕过另一条线（与线同色）
+        const auto arcs = arcs_by_wire.find(wire);
+        if(arcs != arcs_by_wire.end()){
+            dc.SetPen(wxPen(selected ? wxColour(0, 120, 255) : colour,
+                            std::max(width, 1)));
+            //关键：DrawArc 在 GTK 会"填充"扇形区域（含两条半径线），
+            //画弧前必须把画刷设回透明，否则跳线弧会变成实心半圆
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            for(const Crossing& c : arcs->second){
+                const wxPoint px = coords_to_pos_px(c.pos);
+                //半径按线宽计算：至少 6，且随线宽线性增长，
+                //保证半圆环的内外径差（r - 线宽）明显，不会被线宽填满成实心
+                const int r = std::max(6, width * 2);
+                if(c.horizontal){
+                    //水平线在交叉处画上半圆（逆时针绕过上方）
+                    dc.DrawArc(px.x - r, px.y, px.x + r, px.y, px.x, px.y);
+                }else{
+                    //竖直线在交叉处画右半圆（逆时针绕过右侧）
+                    dc.DrawArc(px.x, px.y - r, px.x, px.y + r, px.x, px.y);
+                }
+            }
+        }
     }
 
     //正在绘制的导线：已确定的折线（正交展开）+ 橡皮筋预览（正交拐角）+ 端点圆点
@@ -1037,10 +1146,15 @@ void Canvas::draw_wires(wxDC& dc){
         if(wire_points.size() >= 2){
             draw_wire_path(dc, orthogonal_expand(wire_points), wxColour(0, 120, 255), 2);
         }
-        //橡皮筋：最后一个折点 -> 拐角 -> 鼠标（只走横竖段，无斜线）
+        //橡皮筋：最后一个折点 -> 拐角 -> 鼠标（只走横竖段，无斜线）。
+        //拐角方向已由首个鼠标移动方向锁定：鼠标方向改变后拐角不会中途突变
         const wxPoint last  = wire_points.back();
         const wxPoint mouse = wire_mouse_pos;
-        const wxPoint corner = (std::abs(mouse.x - last.x) >= std::abs(mouse.y - last.y))
+        const bool horizontal_first = wire_corner_locked
+                                          ? wire_corner_horizontal_first
+                                          : (std::abs(mouse.x - last.x) >=
+                                             std::abs(mouse.y - last.y));
+        const wxPoint corner = horizontal_first
                                    ? wxPoint(mouse.x, last.y)   //先横后竖
                                    : wxPoint(last.x, mouse.y);  //先竖后横
         dc.SetPen(wxPen(wxColour(0, 150, 255), 2, wxPENSTYLE_SHORT_DASH));
@@ -1213,6 +1327,22 @@ void Canvas::draw_ghost(wxDC& dc){
     if(!bmp.IsOk()) return;
     const wxRect r = ghost->display_rect(scale, offset_coords);
     dc.DrawBitmap(bmp, r.x, r.y, true);
+
+    //端子虚影补画状态外框：实物放置后会画一个几乎占满位图矩形的状态方框
+    //（比SVG符号本体大）。只画SVG会让虚影看起来明显小于实物（放置瞬间"突然变大"），
+    //这里按"未定值"样式画同样的外框（半透明保持虚影质感），让虚影与实物尺寸一致
+    const std::string type = ghost->metadata ? ghost->metadata->get_type() : std::string();
+    if(type == "IN_TERMINAL" || type == "OUT_TERMINAL"){
+        const int inset = std::max(4, r.width / 8);
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(wxBrush(wxColour(212, 224, 250, 128)));
+        dc.DrawRectangle(r.x + inset, r.y + inset,
+                         r.width - inset * 2, r.height - inset * 2);
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.SetPen(wxPen(wxColour(150, 150, 150, 140), 2));
+        dc.DrawRectangle(r.x + inset, r.y + inset,
+                         r.width - inset * 2, r.height - inset * 2);
+    }
 }
 
 void Canvas::onPaint(wxPaintEvent& event){

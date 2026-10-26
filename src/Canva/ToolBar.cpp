@@ -53,9 +53,10 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
                                 wxLI_HORIZONTAL),
                0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, 6);
 
-    //动作工具：选择/删除/克隆，1 行 3 列
-    wxGridSizer* actions = new wxGridSizer(1, 3, 3, 3);
+    //动作工具：选择/激活/删除/克隆，1 行 4 列
+    wxGridSizer* actions = new wxGridSizer(1, 4, 3, 3);
     add_action_button(actions, "选择", ToolAction::SELECT);
+    add_action_button(actions, "激活", ToolAction::ACTIVATE);
     add_action_button(actions, "删除", ToolAction::ERASE);
     add_action_button(actions, "克隆", ToolAction::CLONE);
     outer->Add(actions, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
@@ -109,12 +110,13 @@ void ToolBar::on_tool_click(const std::string& name, ItemType type, wxToggleButt
     canvas->select_tool(name, type);
 }
 
-//动作工具按钮：图标来自 src/Canva/assets/Tools/（select/delete/clone.svg）
+//动作工具按钮：图标来自 src/Canva/assets/Tools/（select/activate/delete/clone.svg）
 void ToolBar::add_action_button(wxSizer* sizer, const std::string& label,
                                 ToolAction action){
-    const wxString icon_file = (action == ToolAction::SELECT) ? wxT("select.svg")
-                             : (action == ToolAction::ERASE)  ? wxT("delete.svg")
-                                                              : wxT("clone.svg");
+    const wxString icon_file = (action == ToolAction::SELECT)   ? wxT("select.svg")
+                             : (action == ToolAction::ACTIVATE) ? wxT("activate.svg")
+                             : (action == ToolAction::ERASE)    ? wxT("delete.svg")
+                                                               : wxT("clone.svg");
     wxToggleButton* btn = make_button(sizer, wxString::FromUTF8(label),
                                       tool_icon(icon_file, wxSize(16, 16)));
     btn->Bind(wxEVT_TOGGLEBUTTON, [this, label, action, btn](wxCommandEvent&){

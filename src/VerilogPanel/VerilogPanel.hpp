@@ -6,12 +6,16 @@
 #include<vector>
 
 class Canvas;
+class wxStyledTextCtrl;
+class wxStyledTextEvent;
 
 namespace Verilator{ struct Diagnostic; }
 
 namespace VerilogPanelUI{
 
 // 画布右侧的 Verilog 代码面板：
+//   - 编辑器基于 wxStyledTextCtrl（Scintilla）：Verilog 语法高亮、Tab 缩进、
+//     行号、缩进参考线、括号匹配、输入时自动补全（关键字 + 文档内标识符）
 //   - 显示当前画布生成的 Verilog；无法转换时在诊断区显示报错
 //   - 代码可编辑，点击【转化】后把代码解析并应用到画布
 class VerilogPanel : public wxPanel{
@@ -30,11 +34,13 @@ public:
 
 private:
     void on_convert(wxCommandEvent& event);
+    void on_char_added(wxStyledTextEvent& event);   //输入标识符字符时弹出补全列表
+    void on_update_ui(wxStyledTextEvent& event);    //光标移动时更新括号匹配高亮
     void show_diagnostics(const std::vector<Verilator::Diagnostic>& diagnostics);
     void set_code(const std::string& code);
 
     Canvas* canvas_;
-    wxTextCtrl* code_;
+    wxStyledTextCtrl* code_;
     wxTextCtrl* diagnostics_;
     wxButton* convert_button_;
     std::function<void()> applied_callback_;
