@@ -9,6 +9,7 @@ class ExplorerPane;
 class AttributeBar;
 class FileActions;
 class ToolBar;
+class MenuBar;
 
 namespace Simulation{ class SimulationSession; }
 namespace Agent{ class AgentArea; class Show; }
@@ -40,6 +41,7 @@ private:
     void RebuildSimulation();                //采集画布 → 适配 → 求值 → 刷新
     void UpdateSimulationStatus();           //状态栏第4段：运行状态/网络数/错误数
 
+    MenuBar* menu_bar;                 //自绘菜单栏：顶部命令入口
     wxSplitterWindow* splitter;        //外层分栏：左侧栏 / 右侧工作区
     wxSplitterWindow* work_splitter;   //中层分栏：画布区 / AI助手区（右侧可拉伸）
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar

@@ -4,6 +4,7 @@
 #include<wx/statline.h>
 #include<wx/filename.h>
 #include<wx/stdpaths.h>
+#include"../Theme/Theme.hpp"
 
 namespace{
 
@@ -29,7 +30,7 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     //元件调色板（类似 Logisim 顶部的图标工具栏）：**界面上只有 16px 图标**，
     //名字放进悬停提示（鼠标停住才出现），所以 10 个按钮两三行就排完，垂直空间留给资源树。
     //它不再压在画布上，所以也不用再把滚轮/移动事件转发给画布了。
-    SetBackgroundColour(wxColour(240, 240, 240));
+    SetBackgroundColour(UiTheme::Page);
     wxBoxSizer* outer = new wxBoxSizer(wxVERTICAL);
 
     //元件：10 个，2 行 5 列
@@ -66,14 +67,13 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
 }
 
 //建一个 32x30 的图标按钮：界面上只有图标，名字放进悬停提示（鼠标停住才出现）
-wxToggleButton* ToolBar::make_button(wxSizer* sizer, const wxString& tooltip,
-                                     const wxBitmapBundle& icon){
-    wxToggleButton* btn = new wxToggleButton(this, wxID_ANY, wxEmptyString,
-                                             wxDefaultPosition, wxSize(32, 30));
+ThemedButton* ToolBar::make_button(wxSizer* sizer, const wxString& tooltip,
+                                   const wxBitmapBundle& icon){
+    ThemedButton* btn = new ThemedButton(this, wxID_ANY, wxEmptyString);
+    btn->SetMinSize(wxSize(34, 32));
     if(icon.IsOk()){
         //render_svg 去掉 scale factor，否则 GetBitmap(16) 会按逻辑尺寸150绘制，图标又大又糊
-        btn->SetBitmap(wxBitmapBundle::FromBitmap(render_svg(icon, 16, 16)));
-        btn->SetBitmapMargins(2, 2);   //没有文字时让图标在按钮里更居中一点
+        btn->SetBitmap(render_svg(icon, 16, 16));
     }
     btn->SetToolTip(tooltip);          //鼠标在上面停一下才显示名字
     sizer->Add(btn, 0, 0, 0);
@@ -87,25 +87,16 @@ void ToolBar::add_tool(wxSizer* sizer, const std::string& label, ItemType type){
     if(bundle && bundle->IsOk()) icon = *bundle;
     else if(type == ItemType::WIRE) icon = tool_icon(wxT("wire.svg"), wxSize(16, 16));
 
-    wxToggleButton* btn = make_button(sizer, wxString::FromUTF8(label), icon);
-    //按下就进入放置模式（不等松开）：点一下图标虚影立刻跟着鼠标走。
-    //必须 event.Skip()：不 Skip 会截断原生按钮自己的按下处理，可能连松开时的
-    //点击事件都不再发（松开那次只是把虚影按当前位置重建，无副作用）。
-    btn->Bind(wxEVT_LEFT_DOWN, [this, label, type, btn](wxMouseEvent& event){
-        on_tool_click(label, type, btn);
-        event.Skip();
-    });
-    //松开时按钮自己会把按下态翻一下，这里再规范化一次选中态
-    btn->Bind(wxEVT_TOGGLEBUTTON, [this, label, type, btn](wxCommandEvent&){
+    ThemedButton* btn = make_button(sizer, wxString::FromUTF8(label), icon);
+    btn->SetClickHandler([this, label, type, btn]{
         on_tool_click(label, type, btn);
     });
 }
 
-void ToolBar::on_tool_click(const std::string& name, ItemType type, wxToggleButton* btn){
-    //当前工具高亮：主题按钮不认 SetBackgroundColour，所以用「按下态」表示选中
+void ToolBar::on_tool_click(const std::string& name, ItemType type, ThemedButton* btn){
     clear_selection();
     selected = btn;
-    if(!btn->GetValue()) btn->SetValue(true);
+    btn->SetSelected(true);
     //通知画布进入放置模式（门类元件产生虚影；导线进入画线模式）
     canvas->select_tool(name, type);
 }
@@ -117,23 +108,23 @@ void ToolBar::add_action_button(wxSizer* sizer, const std::string& label,
                              : (action == ToolAction::ACTIVATE) ? wxT("activate.svg")
                              : (action == ToolAction::ERASE)    ? wxT("delete.svg")
                                                                : wxT("clone.svg");
-    wxToggleButton* btn = make_button(sizer, wxString::FromUTF8(label),
-                                      tool_icon(icon_file, wxSize(16, 16)));
-    btn->Bind(wxEVT_TOGGLEBUTTON, [this, label, action, btn](wxCommandEvent&){
+    ThemedButton* btn = make_button(sizer, wxString::FromUTF8(label),
+                                    tool_icon(icon_file, wxSize(16, 16)));
+    btn->SetClickHandler([this, label, action, btn]{
         on_action_click(label, action, btn);
     });
 }
 
-void ToolBar::on_action_click(const std::string& label, ToolAction action, wxToggleButton* btn){
+void ToolBar::on_action_click(const std::string& label, ToolAction action, ThemedButton* btn){
     clear_selection();
     selected = btn;
-    if(!btn->GetValue()) btn->SetValue(true);
+    btn->SetSelected(true);
     canvas->select_action(action);
 }
 
 void ToolBar::clear_selection(){
     if(selected){
-        selected->SetValue(false);   //弹起 = 没有选中任何工具
+        selected->SetSelected(false);
         selected = nullptr;
     }
 }

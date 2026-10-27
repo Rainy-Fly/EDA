@@ -1,6 +1,7 @@
 #include"./Canvas.hpp"
 #include"./ItemSVG.hpp"
 #include"../Simulation/SimulationSession.hpp"
+#include"../Theme/Theme.hpp"
 #include<cmath>
 #include<algorithm>
 //wxAutoBufferedPaintDC：双缓冲。元件改成画布自绘后，拖动/跟随鼠标时整块画布每帧重画，
@@ -1077,7 +1078,7 @@ void Canvas::draw_wires(wxDC& dc){
     for(Linking* wire : wires){
         const bool selected = (wire == current_item);
         if(selected){
-            draw_wire_path(dc, wire->points, wxColour(0, 102, 204), 4);   //选中：粗蓝底
+            draw_wire_path(dc, wire->points, UiTheme::Brand100, 5);   //选中：浅青外描边
         }
 
         //仿真电平着色（类似 Logisim）：1=亮绿粗线(+淡绿外发光)、0=中灰粗线、X=蓝、
@@ -1108,7 +1109,7 @@ void Canvas::draw_wires(wxDC& dc){
             }
         }
         draw_wire_path(dc, wire->points,
-                       selected ? wxColour(0, 120, 255) : colour,
+                       selected ? UiTheme::Brand900 : colour,
                        selected ? 2 : width);
 
         //起点/终点实心圆：端点就是连接点，用线色画实心圆点
@@ -1120,7 +1121,7 @@ void Canvas::draw_wires(wxDC& dc){
         //跳线弧：交叉处画小半圆绕过另一条线（与线同色）
         const auto arcs = arcs_by_wire.find(wire);
         if(arcs != arcs_by_wire.end()){
-            dc.SetPen(wxPen(selected ? wxColour(0, 120, 255) : colour,
+            dc.SetPen(wxPen(selected ? UiTheme::Brand900 : colour,
                             std::max(width, 1)));
             //关键：DrawArc 在 GTK 会"填充"扇形区域（含两条半径线），
             //画弧前必须把画刷设回透明，否则跳线弧会变成实心半圆
@@ -1144,7 +1145,7 @@ void Canvas::draw_wires(wxDC& dc){
     //正在绘制的导线：已确定的折线（正交展开）+ 橡皮筋预览（正交拐角）+ 端点圆点
     if(wire_placing && !wire_points.empty()){
         if(wire_points.size() >= 2){
-            draw_wire_path(dc, orthogonal_expand(wire_points), wxColour(0, 120, 255), 2);
+            draw_wire_path(dc, orthogonal_expand(wire_points), UiTheme::Brand900, 2);
         }
         //橡皮筋：最后一个折点 -> 拐角 -> 鼠标（只走横竖段，无斜线）。
         //拐角方向已由首个鼠标移动方向锁定：鼠标方向改变后拐角不会中途突变
@@ -1157,11 +1158,11 @@ void Canvas::draw_wires(wxDC& dc){
         const wxPoint corner = horizontal_first
                                    ? wxPoint(mouse.x, last.y)   //先横后竖
                                    : wxPoint(last.x, mouse.y);  //先竖后横
-        dc.SetPen(wxPen(wxColour(0, 150, 255), 2, wxPENSTYLE_SHORT_DASH));
+        dc.SetPen(wxPen(UiTheme::Brand700, 2, wxPENSTYLE_SHORT_DASH));
         if(corner != last) dc.DrawLine(coords_to_pos_px(last), coords_to_pos_px(corner));
         if(mouse != corner) dc.DrawLine(coords_to_pos_px(corner), coords_to_pos_px(mouse));
         //端点圆点
-        dc.SetBrush(wxBrush(wxColour(0, 150, 255)));
+        dc.SetBrush(wxBrush(UiTheme::Brand700));
         dc.SetPen(*wxTRANSPARENT_PEN);
         for(const wxPoint& p : wire_points){
             dc.DrawCircle(coords_to_pos_px(p), 3);
@@ -1172,9 +1173,9 @@ void Canvas::draw_wires(wxDC& dc){
     if(placing && ghost){
         if(Linking* wire_ghost = dynamic_cast<Linking*>(ghost)){
             if(wire_ghost->points.size() >= 2){
-                draw_wire_path(dc, wire_ghost->points, wxColour(0, 150, 255), 2);
+                draw_wire_path(dc, wire_ghost->points, UiTheme::Brand700, 2);
             }
-            dc.SetBrush(wxBrush(wxColour(0, 150, 255)));
+            dc.SetBrush(wxBrush(UiTheme::Brand700));
             dc.SetPen(*wxTRANSPARENT_PEN);
             for(const wxPoint& p : wire_ghost->points){
                 dc.DrawCircle(coords_to_pos_px(p), 3);
@@ -1335,7 +1336,8 @@ void Canvas::draw_ghost(wxDC& dc){
     if(type == "IN_TERMINAL" || type == "OUT_TERMINAL"){
         const int inset = std::max(4, r.width / 8);
         dc.SetPen(*wxTRANSPARENT_PEN);
-        dc.SetBrush(wxBrush(wxColour(212, 224, 250, 128)));
+        dc.SetBrush(wxBrush(wxColour(UiTheme::Brand200.Red(), UiTheme::Brand200.Green(),
+                         UiTheme::Brand200.Blue(), 128)));
         dc.DrawRectangle(r.x + inset, r.y + inset,
                          r.width - inset * 2, r.height - inset * 2);
         dc.SetBrush(*wxTRANSPARENT_BRUSH);
@@ -1350,7 +1352,7 @@ void Canvas::onPaint(wxPaintEvent& event){
     const wxSize size = GetClientSize();
 
     //背景
-    dc.SetBackground(wxBrush(wxColour(255, 255, 255)));
+    dc.SetBackground(wxBrush(UiTheme::Surface));
     dc.Clear();
 
     //网格：每GridStep个逻辑坐标画一条浅色线（与吸附网格一致）
@@ -1360,7 +1362,7 @@ void Canvas::onPaint(wxPaintEvent& event){
     const float x1 = (float)offset_coords.x + (float)size.GetWidth()  / scale;
     const float y1 = (float)offset_coords.y + (float)size.GetHeight() / scale;
 
-    dc.SetPen(wxPen(wxColour(228, 228, 228), 1));
+    dc.SetPen(wxPen(UiTheme::BorderSubtle, 1));
     int gx0 = (int)std::floor(x0 / GRID_STEP) * GRID_STEP;
     int gx1 = (int)std::ceil (x1 / GRID_STEP) * GRID_STEP;
     for(int gx = gx0; gx <= gx1; gx += GRID_STEP){
@@ -1375,7 +1377,7 @@ void Canvas::onPaint(wxPaintEvent& event){
     }
 
     //坐标轴（逻辑原点）高亮
-    dc.SetPen(wxPen(wxColour(180, 180, 180), 1));
+    dc.SetPen(wxPen(UiTheme::BorderStrong, 1));
     const int ax = (int)std::lround((0 - offset_coords.x) * scale);
     const int ay = (int)std::lround((0 - offset_coords.y) * scale);
     dc.DrawLine(ax, 0, ax, size.GetHeight());

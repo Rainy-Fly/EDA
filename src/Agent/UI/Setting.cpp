@@ -4,6 +4,8 @@
 #include<wx/button.h>
 #include<wx/sizer.h>
 #include<wx/msgdlg.h>
+#include"../../Theme/Theme.hpp"
+#include"../../Theme/ThemedButton.hpp"
 
 namespace Agent{
 
@@ -15,6 +17,7 @@ BEGIN_EVENT_TABLE(SettingPanel, wxPanel)
 END_EVENT_TABLE()
 
 SettingPanel::SettingPanel(wxWindow* parent) : wxPanel(parent){
+    SetBackgroundColour(UiTheme::Page);
     //从用户配置文件读入多API配置
     const AppSettings::Settings s = AppSettings::Load();
     apis_ = s.apis;
@@ -33,6 +36,8 @@ SettingPanel::SettingPanel(wxWindow* parent) : wxPanel(parent){
     wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
 
     list_ = new wxListBox(this, wxID_ANY);
+    list_->SetBackgroundColour(UiTheme::Surface);
+    list_->SetForegroundColour(UiTheme::Text);
     root->Add(list_, 1, wxEXPAND | wxALL, 6);
 
     //输入区：名称 / 接口地址 / 模型 / Key
@@ -40,29 +45,41 @@ SettingPanel::SettingPanel(wxWindow* parent) : wxPanel(parent){
     grid->AddGrowableCol(1, 1);
     grid->Add(new wxStaticText(this, wxID_ANY, wxString::FromUTF8("名称:")), 0, wxALIGN_CENTER_VERTICAL);
     name_ctrl_ = new wxTextCtrl(this, wxID_ANY);
+    name_ctrl_->SetBackgroundColour(UiTheme::Surface);
+    name_ctrl_->SetForegroundColour(UiTheme::Text);
     grid->Add(name_ctrl_, 0, wxEXPAND);
 
     grid->Add(new wxStaticText(this, wxID_ANY, wxString::FromUTF8("接口地址:")), 0, wxALIGN_CENTER_VERTICAL);
     base_ctrl_ = new wxTextCtrl(this, wxID_ANY);
+    base_ctrl_->SetBackgroundColour(UiTheme::Surface);
+    base_ctrl_->SetForegroundColour(UiTheme::Text);
     grid->Add(base_ctrl_, 0, wxEXPAND);
 
     grid->Add(new wxStaticText(this, wxID_ANY, wxString::FromUTF8("模型:")), 0, wxALIGN_CENTER_VERTICAL);
     model_ctrl_ = new wxTextCtrl(this, wxID_ANY);
+    model_ctrl_->SetBackgroundColour(UiTheme::Surface);
+    model_ctrl_->SetForegroundColour(UiTheme::Text);
     grid->Add(model_ctrl_, 0, wxEXPAND);
 
     grid->Add(new wxStaticText(this, wxID_ANY, wxString::FromUTF8("API Key:")), 0, wxALIGN_CENTER_VERTICAL);
     key_ctrl_ = new wxTextCtrl(this, wxID_ANY);
+    key_ctrl_->SetBackgroundColour(UiTheme::Surface);
+    key_ctrl_->SetForegroundColour(UiTheme::Text);
     grid->Add(key_ctrl_, 0, wxEXPAND);
     root->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT, 6);
 
     //按钮行
     wxBoxSizer* btns = new wxBoxSizer(wxHORIZONTAL);
-    btns->Add(new wxButton(this, wxID_ADD,    wxString::FromUTF8("添加")), 0, wxRIGHT, 6);
-    btns->Add(new wxButton(this, wxID_DELETE, wxString::FromUTF8("删除")), 0, wxRIGHT, 6);
-    btns->Add(new wxButton(this, wxID_SAVE,   wxString::FromUTF8("保存并设为当前")), 0);
+    btns->Add(new ThemedButton(this, wxID_ADD, wxString::FromUTF8("添加")),
+              0, wxRIGHT, 6);
+    btns->Add(new ThemedButton(this, wxID_DELETE, wxString::FromUTF8("删除")),
+              0, wxRIGHT, 6);
+    btns->Add(new ThemedButton(this, wxID_SAVE,
+                               wxString::FromUTF8("保存并设为当前"), true), 0);
     root->Add(btns, 0, wxALL, 6);
 
     status_ = new wxStaticText(this, wxID_ANY, wxEmptyString);
+    status_->SetForegroundColour(UiTheme::Brand900);
     root->Add(status_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
     SetSizer(root);

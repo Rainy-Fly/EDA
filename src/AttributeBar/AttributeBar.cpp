@@ -3,12 +3,13 @@
 #include"../Canva/MetaData.hpp"
 
 #include<wx/statline.h>
+#include"../Theme/Theme.hpp"
 
 #include<vector>
 
 AttributeBar::AttributeBar(wxWindow* parent)
     : wxPanel(parent, wxID_ANY), current_item(nullptr), updating(false){
-    SetBackgroundColour(wxColour(245, 245, 248));
+    SetBackgroundColour(UiTheme::Page);
     SetMinSize(wxSize(200, 140));
 
     wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
@@ -19,7 +20,7 @@ AttributeBar::AttributeBar(wxWindow* parent)
     title_font.SetWeight(wxFONTWEIGHT_BOLD);
     title_font.SetPointSize(title_font.GetPointSize() + 1);
     title_text->SetFont(title_font);
-    title_text->SetForegroundColour(wxColour(40, 40, 60));
+    title_text->SetForegroundColour(UiTheme::Brand900);
     root->Add(title_text, 0, wxALL, 8);
 
     //分隔线
@@ -136,9 +137,9 @@ void AttributeBar::set_metadata_value(MetaData* md, const std::string& key,
 void AttributeBar::add_label_value(wxSizer* sizer, const wxString& label,
                                    const wxString& value){
     wxStaticText* lbl = new wxStaticText(this, wxID_ANY, label);
-    lbl->SetForegroundColour(wxColour(90, 90, 100));
+    lbl->SetForegroundColour(UiTheme::TextSecondary);
     wxStaticText* val = new wxStaticText(this, wxID_ANY, value);
-    val->SetForegroundColour(wxColour(20, 20, 30));
+    val->SetForegroundColour(UiTheme::Text);
     sizer->Add(lbl, 0, wxALIGN_TOP | wxRIGHT, 8);
     sizer->Add(val, 1, wxALIGN_TOP | wxEXPAND);
 }
@@ -148,10 +149,11 @@ void AttributeBar::add_editable_value(wxSizer* sizer, const wxString& label,
                                       const std::string& meta_key,
                                       const wxString& value){
     wxStaticText* lbl = new wxStaticText(this, wxID_ANY, label);
-    lbl->SetForegroundColour(wxColour(90, 90, 100));
+    lbl->SetForegroundColour(UiTheme::TextSecondary);
     wxTextCtrl* edit = new wxTextCtrl(this, wxID_ANY, value, wxDefaultPosition,
                                       wxSize(120, -1));
-    edit->SetBackgroundColour(wxColour(255, 255, 255));
+    edit->SetBackgroundColour(UiTheme::Surface);
+    edit->SetForegroundColour(UiTheme::Text);
     edit->Bind(wxEVT_TEXT, [this, meta_key](wxCommandEvent& e){
         if(updating) return;   //重建期SetValue触发的TEXT事件：忽略
         if(!current_item) return;

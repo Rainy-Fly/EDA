@@ -4,6 +4,7 @@
 #include<vector>
 #include<string>
 #include"../Controller.hpp"
+#include"../../Theme/ThemedButton.hpp"
 
 namespace Agent{
 
@@ -46,7 +47,7 @@ private:
     Controller* ctrl_ = nullptr;
     ChatHtmlWindow* html_;
     wxTextCtrl* input_;
-    wxButton* send_btn_;
+    ThemedButton* send_btn_;
     std::vector<ChatMsg> msgs_;
 };
 

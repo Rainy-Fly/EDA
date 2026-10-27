@@ -4,6 +4,7 @@
 #include "wx/clntdata.h"
 #include "../metadata/MetaDataJson.hpp"
 #include "../Canva/MetaData.hpp"
+#include "../Theme/Theme.hpp"
 
 #include <algorithm>
 #include <map>
@@ -55,6 +56,9 @@ ExplorerPane::ExplorerPane(wxWindow* parent)
     // 2. 创建树状控件
     m_treeCtrl = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
                                 wxTR_HAS_BUTTONS | wxTR_SINGLE | wxTR_LINES_AT_ROOT);
+    SetBackgroundColour(UiTheme::Page);
+    m_treeCtrl->SetBackgroundColour(UiTheme::Surface);
+    m_treeCtrl->SetForegroundColour(UiTheme::Text);
     
     InitTree(); // 调用封装好的节点初始化逻辑
     

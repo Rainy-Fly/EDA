@@ -2,6 +2,7 @@
 #include<wx/wx.h>
 #include<wx/tglbtn.h>   //wxToggleButton：用按下态表示"当前工具"
 #include"./CanvasItem.hpp"
+#include"../Theme/ThemedButton.hpp"
 
 class Canvas;
 
@@ -18,7 +19,7 @@ enum class ToolAction{
 // 工具条（元件调色板）：放在主窗口左侧栏、资源树上方。
 // **只显示 16px 图标**（类似 Logisim 顶部的图标工具栏），名字放在悬停提示里（鼠标停住才出现），
 // 这样 10 个按钮两三行就能放下，垂直空间留给下面的资源树。
-// 按钮用 wxToggleButton：主题按钮不认 SetBackgroundColour，用「按下态」表示当前工具。
+// 使用自绘 ThemedButton，确保跨平台的悬停/按压/选中状态一致。
 class ToolBar : public wxPanel{
 public:
     ToolBar(wxWindow* parent, Canvas* canvas);
@@ -26,12 +27,12 @@ public:
     void clear_selection();
 private:
     //建一个 32x30 的图标按钮（只有图标+提示），加进sizer并返回
-    wxToggleButton* make_button(wxSizer* sizer, const wxString& tooltip,
-                               const wxBitmapBundle& icon);
+    ThemedButton* make_button(wxSizer* sizer, const wxString& tooltip,
+                              const wxBitmapBundle& icon);
     void add_tool(wxSizer* sizer, const std::string& label, ItemType type);
     void add_action_button(wxSizer* sizer, const std::string& label, ToolAction action);
-    void on_tool_click(const std::string& name, ItemType type, wxToggleButton* btn);
-    void on_action_click(const std::string& label, ToolAction action, wxToggleButton* btn);
+    void on_tool_click(const std::string& name, ItemType type, ThemedButton* btn);
+    void on_action_click(const std::string& label, ToolAction action, ThemedButton* btn);
     Canvas* canvas;
-    wxToggleButton* selected;   //当前按下的按钮（nullptr=没有选中工具）
+    ThemedButton* selected;   //当前选中的按钮（nullptr=没有选中工具）
 };

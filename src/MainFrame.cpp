@@ -13,6 +13,7 @@
 #include"./Canva/SimulationBridge.hpp"
 #include"./Simulation/SimulationProject.hpp"
 #include"./Simulation/SimulationSession.hpp"
+#include"./Theme/Theme.hpp"
 
 //先摘掉属性栏的回调：它指向下面的FileActions，必须在成员析构前断开
 MainFrame::~MainFrame(){
@@ -47,6 +48,7 @@ wxString full_width_int(int value){
 MainFrame::MainFrame()
     : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8("TinyEDA "),
               wxDefaultPosition, wxSize(1280, 800)),
+              menu_bar(nullptr),
       splitter(nullptr),
       work_splitter(nullptr),
       right_splitter(nullptr),
@@ -58,6 +60,7 @@ MainFrame::MainFrame()
       verilog_panel(nullptr),
       attribute_bar(nullptr),
       agent_area(nullptr){
+        SetBackgroundColour(UiTheme::Page);
     //（代码面板默认隐藏，见下方 canvas_splitter 初始化）
     //中文字体：wx 默认界面字体是 "MS Shell Dlg 2"（Tahoma），它没有中文字形，
     //GDI 只能用字体链接回退到宋体 —— 宋体小字号是位图字形，在状态栏那种窄字段里会发虚，
@@ -104,6 +107,11 @@ MainFrame::MainFrame()
     }
     canvas->set_toolbar(palette);   //画布只借它的指针清按钮高亮（工具栏不再压在画布上）
     agent_area    = new Agent::AgentArea(work_splitter, canvas);
+    left_panel->SetBackgroundColour(UiTheme::Page);
+    splitter->SetBackgroundColour(UiTheme::Border);
+    work_splitter->SetBackgroundColour(UiTheme::Border);
+    right_splitter->SetBackgroundColour(UiTheme::Border);
+    canvas_splitter->SetBackgroundColour(UiTheme::Border);
 
     splitter->SetMinimumPaneSize(150);
     splitter->SplitVertically(left_panel, work_splitter, 250);
@@ -131,8 +139,9 @@ MainFrame::MainFrame()
     explorer->SetComponentSelectedCallback(
         [this](const std::string& type){ canvas->select_tool_by_name(type); });
 
-    //菜单栏：File/Edit/Simulate/View（文件菜单的打开/新建/保存由FileActions实现）
-    SetMenuBar(new MenuBar());
+    //菜单栏恢复为 wxWidgets 原生菜单，快捷键由菜单标签/系统菜单机制处理。
+    menu_bar = new MenuBar();
+    SetMenuBar(menu_bar);
     file_actions = std::make_unique<FileActions>(this, canvas);
 
     //视图菜单：切换 AI 助手面板显隐（勾选状态与面板实际状态同步）
@@ -150,6 +159,10 @@ MainFrame::MainFrame()
     //状态栏四个字段：① 状态/提示（FileActions 也往这里写）② 光标坐标 ③ 缩放/网格 ④ 仿真摘要。
     //坐标是「画布逻辑坐标且已吸附网格」，与放置元件、画导线、写进 XML 用的是同一个值
     CreateStatusBar(4);
+    if(GetStatusBar()){
+        GetStatusBar()->SetBackgroundColour(UiTheme::Subtle);
+        GetStatusBar()->SetForegroundColour(UiTheme::TextSecondary);
+    }
     //第三个字段给足宽度（全角文字约150px）：让它远离右端的尺寸手柄
     const int status_widths[4] = {-1, 150, 240, 175};
     SetStatusWidths(4, status_widths);
@@ -260,8 +273,8 @@ void MainFrame::OnRunPause(wxCommandEvent&){
     if(simulation->enabled()) simulation->evaluate();   //恢复运行时立刻出值
     if(canvas) canvas->refresh_simulation_display();
     UpdateSimulationStatus();
-    if(GetMenuBar()){
-        GetMenuBar()->SetLabel(ID_RUN_PAUSE, simulation->enabled()
+    if(menu_bar){
+        menu_bar->SetLabel(ID_RUN_PAUSE, simulation->enabled()
             ? wxString::FromUTF8("暂停仿真")
             : wxString::FromUTF8("继续运行"));
     }
@@ -278,8 +291,8 @@ void MainFrame::OnTick(wxCommandEvent&){
 //视图菜单：切换 AI 助手面板，并把菜单勾选同步为面板实际状态
 void MainFrame::OnToggleAgent(wxCommandEvent&){
     if(show) show->Toggle();
-    if(wxMenuBar* bar = GetMenuBar()){
-        bar->Check(ID_SHOW_AGENT, show && show->Visible());
+    if(menu_bar){
+        menu_bar->Check(ID_SHOW_AGENT, show && show->Visible());
     }
 }
 
@@ -303,7 +316,7 @@ void MainFrame::SetVerilogPanelVisible(bool visible){
         canvas_splitter->Unsplit(verilog_panel);
         verilog_panel->Hide();
     }
-    if(wxMenuBar* bar = GetMenuBar()){
-        bar->Check(ID_SHOW_VERILOG_PANEL, visible);
+    if(menu_bar){
+        menu_bar->Check(ID_SHOW_VERILOG_PANEL, visible);
     }
 }

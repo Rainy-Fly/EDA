@@ -4,6 +4,7 @@
 #include<string>
 #include<utility>
 #include<vector>
+#include"../Theme/ThemedButton.hpp"
 
 class Canvas;
 class wxStyledTextCtrl;
@@ -17,7 +18,7 @@ namespace VerilogPanelUI{
 //   - 编辑器基于 wxStyledTextCtrl（Scintilla）：Verilog 语法高亮、Tab 缩进、
 //     行号、缩进参考线、括号匹配、输入时自动补全（关键字 + 文档内标识符）
 //   - 显示当前画布生成的 Verilog；无法转换时在诊断区显示报错
-//   - 代码可编辑，点击【转化】后把代码解析并应用到画布
+//   - 代码可编辑：可由代码生成电路图，也可由当前画布重新生成代码
 class VerilogPanel : public wxPanel{
 public:
     VerilogPanel(wxWindow* parent, Canvas* canvas);
@@ -33,7 +34,8 @@ public:
     }
 
 private:
-    void on_convert(wxCommandEvent& event);
+    void on_generate_circuit(wxCommandEvent& event);
+    void on_generate_code(wxCommandEvent& event);
     void on_char_added(wxStyledTextEvent& event);   //输入标识符字符时弹出补全列表
     void on_update_ui(wxStyledTextEvent& event);    //光标移动时更新括号匹配高亮
     void show_diagnostics(const std::vector<Verilator::Diagnostic>& diagnostics);
@@ -42,7 +44,8 @@ private:
     Canvas* canvas_;
     wxStyledTextCtrl* code_;
     wxTextCtrl* diagnostics_;
-    wxButton* convert_button_;
+    ThemedButton* generate_circuit_button_;
+    ThemedButton* generate_code_button_;
     std::function<void()> applied_callback_;
 };
 

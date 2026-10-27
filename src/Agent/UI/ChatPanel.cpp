@@ -7,6 +7,7 @@
 #include<wx/filesys.h>
 #include<wx/image.h>
 #include<md4c-html.h>   // AI 回复的 Markdown -> HTML（md4c 第三方库）
+#include"../../Theme/Theme.hpp"
 
 namespace Agent{
 
@@ -61,20 +62,21 @@ std::string MarkdownToHtml(const std::string& md){
 } // namespace
 
 ChatHtmlWindow::ChatHtmlWindow(wxWindow* parent) : wxHtmlWindow(parent){
-    //全局注册一次：内存文件系统 + 两个圆形头像位图（用户蓝 / AI 绿）
+    //全局注册一次：内存文件系统 + 两个圆形头像位图（品牌青色系）
     static const bool init = []{
         wxInitAllImageHandlers();
         wxFileSystem::AddHandler(new wxMemoryFSHandler);
         wxMemoryFSHandler::AddFile("avatar_user.png",
-                                   MakeAvatar(wxColour(30, 120, 220)), wxBITMAP_TYPE_PNG);
+                       MakeAvatar(UiTheme::Brand900), wxBITMAP_TYPE_PNG);
         wxMemoryFSHandler::AddFile("avatar_ai.png",
-                                   MakeAvatar(wxColour(60, 170, 90)),  wxBITMAP_TYPE_PNG);
+                       MakeAvatar(UiTheme::Brand700),  wxBITMAP_TYPE_PNG);
         return true;
     }();
     (void)init;
 }
 
 ChatPanel::ChatPanel(wxWindow* parent) : wxPanel(parent){
+    SetBackgroundColour(UiTheme::Page);
     wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
 
     html_ = new ChatHtmlWindow(this);
@@ -84,8 +86,12 @@ ChatPanel::ChatPanel(wxWindow* parent) : wxPanel(parent){
     wxBoxSizer* row = new wxBoxSizer(wxHORIZONTAL);
     input_ = new wxTextCtrl(this, wxID_ANY, wxEmptyString,
                             wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
+    input_->SetBackgroundColour(UiTheme::Surface);
+    input_->SetForegroundColour(UiTheme::Text);
     row->Add(input_, 1, wxEXPAND | wxRIGHT, 6);
-    send_btn_ = new wxButton(this, wxID_ANY, wxString::FromUTF8("发送"));
+    send_btn_ = new ThemedButton(this, wxID_ANY, wxString::FromUTF8("发送"), true);
+    send_btn_->SetMinSize(wxSize(72, 32));
+    send_btn_->SetClickHandler([this]{ wxCommandEvent event; OnSend(event); });
     row->Add(send_btn_, 0, wxEXPAND);
     root->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
@@ -197,7 +203,7 @@ void ChatPanel::RemoveThinking(){
 
 void ChatPanel::RebuildHtml(){
     wxString h;
-    h += wxT("<html><body bgcolor=\"#F2F3F5\">");
+    h += wxT("<html><body bgcolor=\"#F6FAFB\"><font color=\"#0B2B2F\">");
     for(int i = 0; i < (int)msgs_.size(); ++i){
         const ChatMsg& m = msgs_[i];
         switch(m.kind){
@@ -206,7 +212,7 @@ void ChatPanel::RebuildHtml(){
                 h += wxString::Format(
                     wxT("<table width=\"100%%\" cellspacing=\"2\" cellpadding=\"0\"><tr>"
                         "<td align=\"right\"><table cellspacing=\"0\" cellpadding=\"6\"><tr>"
-                        "<td bgcolor=\"#D6EAF8\">%s</td>"
+                        "<td bgcolor=\"#D1F7FA\">%s</td>"
                         "<td><img src=\"memory:avatar_user.png\" width=\"36\" height=\"36\"></td>"
                         "</tr></table></td></tr></table>"),
                     U8(Text2Html(m.text)));
@@ -229,21 +235,21 @@ void ChatPanel::RebuildHtml(){
                     wxString block;
                     block += wxT("<table width=\"100%\" cellspacing=\"2\" cellpadding=\"0\"><tr><td>"
                                  "<table cellspacing=\"0\" cellpadding=\"6\"><tr>"
-                                 "<td bgcolor=\"#FFF6DD\">");
+                                 "<td bgcolor=\"#EEF6F7\">");
                     block += wxString::Format(
                         wxT("<b><a href=\"tool:%d\">%s</a></b>"),
                         i, U8(EscapeHtml(m.text)));
                     if(m.expanded){
                         if(!m.args.empty()){
-                            block += wxT("<br><font color=\"#8a6d1a\">参数: </font>");
+                            block += wxT("<br><font color=\"#4F6B70\">参数: </font>");
                             block += U8(EscapeHtml(Clamp(m.args, 200)));
                         }
                         if(!m.result.empty()){
-                            block += wxT("<br><font color=\"#666666\">结果: </font>");
+                            block += wxT("<br><font color=\"#4F6B70\">结果: </font>");
                             block += U8(EscapeHtml(Clamp(m.result, 400)));
                         }
                     }else{
-                        block += wxT(" <font color=\"#8a6d1a\">(已折叠)</font>");
+                        block += wxT(" <font color=\"#7F969B\">(已折叠)</font>");
                     }
                     block += wxT("</td></tr></table></td></tr></table>");
                     h += block;
@@ -255,9 +261,9 @@ void ChatPanel::RebuildHtml(){
                     wxString block;
                     block = wxT("<table width=\"100%\" cellspacing=\"2\" cellpadding=\"0\"><tr><td>"
                                 "<table cellspacing=\"0\" cellpadding=\"6\"><tr>"
-                                "<td bgcolor=\"#FDECEA\">");
-                    block += wxT("<b><font color=\"#C0392B\">错误</font></b><br>");
-                    block += wxT("<font color=\"#922B21\">");
+                                "<td bgcolor=\"#FDECEC\">");
+                    block += wxT("<b><font color=\"#C93636\">错误</font></b><br>");
+                    block += wxT("<font color=\"#0B2B2F\">");
                     block += U8(Text2Html(m.text));
                     block += wxT("</font></td></tr></table></td></tr></table>");
                     h += block;
@@ -266,12 +272,12 @@ void ChatPanel::RebuildHtml(){
 
             case ChatMsg::Kind::Thinking:
                 h += wxT("<table width=\"100%\" cellspacing=\"2\"><tr><td>"
-                         "<font color=\"#888888\"><i>AI 正在思考…</i></font>"
+                         "<font color=\"#7F969B\"><i>AI 正在思考…</i></font>"
                          "</td></tr></table>");
                 break;
         }
     }
-    h += wxT("</body></html>");
+    h += wxT("</font></body></html>");
     html_->SetPage(h);
 }
 

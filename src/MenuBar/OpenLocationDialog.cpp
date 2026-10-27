@@ -4,6 +4,7 @@
 #include<wx/statline.h>
 #include<wx/filefn.h>
 #include<wx/statbox.h>
+#include"../Theme/Theme.hpp"
 
 namespace{
 
@@ -29,7 +30,7 @@ Choice add_choice(wxWindow* parent, wxSizer* sizer,
 
     const wxString shown = c.usable ? dir : empty_hint;
     wxStaticText* path = new wxStaticText(parent, wxID_ANY, shown);
-    path->SetForegroundColour(c.usable ? wxColour(60, 60, 70) : wxColour(150, 150, 150));
+    path->SetForegroundColour(c.usable ? UiTheme::TextSecondary : UiTheme::TextDisabled);
     sizer->Add(path, 0, wxLEFT | wxRIGHT | wxBOTTOM, 34);   //缩进，看起来属于上面那个选项
     return c;
 }
@@ -42,6 +43,7 @@ wxString AskOpenLocation(wxWindow* parent,
                          const wxString& default_dir){
     wxDialog dlg(parent, wxID_ANY, wxString::FromUTF8("打开项目 - 选择位置"),
                  wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE);
+    dlg.SetBackgroundColour(UiTheme::Page);
 
     wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
 
@@ -50,6 +52,7 @@ wxString AskOpenLocation(wxWindow* parent,
     wxFont title_font = title->GetFont();
     title_font.SetWeight(wxFONTWEIGHT_BOLD);
     title->SetFont(title_font);
+    title->SetForegroundColour(UiTheme::Brand900);
     root->Add(title, 0, wxALL, 12);
 
     Choice recent = add_choice(&dlg, root, wxString::FromUTF8("从最近位置打开"),

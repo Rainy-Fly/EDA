@@ -1,9 +1,11 @@
 #include"./AgentArea.hpp"
+#include"../../Theme/Theme.hpp"
 
 namespace Agent{
 
 AgentArea::AgentArea(wxWindow* parent, Canvas* canvas)
     : wxPanel(parent){
+    SetBackgroundColour(UiTheme::Page);
     notebook_ = new wxNotebook(this, wxID_ANY);
 
     chat_ = new ChatPanel(notebook_);

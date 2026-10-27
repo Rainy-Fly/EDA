@@ -10,6 +10,7 @@
 #include <wx/button.h>
 #include <wx/stattext.h>
 #include <wx/stc/stc.h>
+#include "../Theme/Theme.hpp"
 
 #include <set>
 
@@ -37,13 +38,13 @@ wxString diagnostics_text(const std::vector<Verilator::Diagnostic>& diagnostics)
 void setup_editor_styles(wxStyledTextCtrl* stc){
     stc->StyleClearAll();
 
-    const wxColour kFg(0x1F, 0x1F, 0x1F);
-    const wxColour kKeyword(0x00, 0x00, 0xFF);
+    const wxColour kFg = UiTheme::Text;
+    const wxColour kKeyword = UiTheme::Brand900;
     const wxColour kWord2(0x7F, 0x00, 0x7F);
-    const wxColour kComment(0x00, 0x80, 0x00);
+    const wxColour kComment = UiTheme::Success;
     const wxColour kString(0xA3, 0x15, 0x15);
     const wxColour kOperator(0x33, 0x33, 0x33);
-    const wxColour kCaretLine(0xE8, 0xF0, 0xFE);
+    const wxColour kCaretLine(0xF6, 0xFA, 0xFB);
 
     stc->StyleSetForeground(wxSTC_V_DEFAULT, kFg);
     stc->StyleSetForeground(wxSTC_V_IDENTIFIER, kFg);
@@ -73,15 +74,15 @@ void setup_editor_styles(wxStyledTextCtrl* stc){
     stc->StyleSetForeground(wxSTC_STYLE_LINENUMBER,
                             wxColour(0x80, 0x80, 0x80));
     stc->StyleSetBackground(wxSTC_STYLE_LINENUMBER,
-                            wxColour(0xF0, 0xF0, 0xF0));
+                            UiTheme::Subtle);
 
     stc->StyleSetForeground(wxSTC_STYLE_DEFAULT, kFg);
-    stc->StyleSetBackground(wxSTC_STYLE_DEFAULT, *wxWHITE);
+    stc->StyleSetBackground(wxSTC_STYLE_DEFAULT, UiTheme::Surface);
     stc->StyleSetFont(wxSTC_STYLE_DEFAULT, stc->GetFont());
 
     //选择与当前行
     stc->SetSelForeground(true, *wxWHITE);
-    stc->SetSelBackground(true, wxColour(0x33, 0x99, 0xFF));
+    stc->SetSelBackground(true, UiTheme::Brand900);
     stc->SetCaretLineVisible(true);
     stc->SetCaretLineBackground(kCaretLine);
 }
@@ -103,11 +104,14 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
       canvas_(canvas),
       code_(nullptr),
       diagnostics_(nullptr),
-      convert_button_(nullptr){
+    generate_circuit_button_(nullptr),
+    generate_code_button_(nullptr){
+        SetBackgroundColour(UiTheme::Page);
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
     wxStaticText* title =
         new wxStaticText(this, wxID_ANY, wxString::FromUTF8("Verilog 代码"));
+    title->SetForegroundColour(UiTheme::Brand900);
     wxFont title_font = title->GetFont();
     title_font.SetWeight(wxFONTWEIGHT_BOLD);
     title->SetFont(title_font);
@@ -161,25 +165,43 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
 
     sizer->Add(code_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
-    diagnostics_ = new wxTextCtrl(this, wxID_ANY, wxString(),
-                                  wxDefaultPosition, wxSize(-1, 96),
-                                  wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
     wxFont mono = code_->GetFont();
     mono.SetFaceName(wxT("Consolas"));   //找不到时 wx 自动回退
     code_->SetFont(mono);
+
+    // 两个方向分开操作，按钮显式指定高度。
+    wxBoxSizer* buttons = new wxBoxSizer(wxVERTICAL);
+    generate_circuit_button_ = new ThemedButton(
+        this, wxID_ANY, wxString::FromUTF8("由代码生成电路图"), true);
+    generate_circuit_button_->SetMinSize(wxSize(-1, 36));
+    buttons->Add(generate_circuit_button_, 0, wxEXPAND | wxBOTTOM, 6);
+
+    generate_code_button_ = new ThemedButton(
+        this, wxID_ANY, wxString::FromUTF8("由图生成代码"));
+    generate_code_button_->SetMinSize(wxSize(-1, 36));
+    buttons->Add(generate_code_button_, 0, wxEXPAND);
+    sizer->Add(buttons, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+
+    // 诊断框只读，放在操作按钮下方，避免与可编辑代码区混淆。
+    diagnostics_ = new wxTextCtrl(this, wxID_ANY, wxString(),
+                                  wxDefaultPosition, wxSize(-1, 96),
+                                  wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
+    diagnostics_->SetBackgroundColour(UiTheme::Subtle);
+    diagnostics_->SetForegroundColour(UiTheme::TextSecondary);
     diagnostics_->SetFont(mono);
     sizer->Add(diagnostics_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
-
-    wxBoxSizer* buttons = new wxBoxSizer(wxHORIZONTAL);
-    buttons->AddStretchSpacer(1);
-    convert_button_ = new wxButton(this, wxID_ANY, wxString::FromUTF8("转化"));
-    buttons->Add(convert_button_, 0);
-    sizer->Add(buttons, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
     SetSizer(sizer);
     SetMinSize(wxSize(260, 240));
 
-    convert_button_->Bind(wxEVT_BUTTON, &VerilogPanel::on_convert, this);
+    generate_circuit_button_->SetClickHandler([this]{
+        wxCommandEvent event;
+        on_generate_circuit(event);
+    });
+    generate_code_button_->SetClickHandler([this]{
+        wxCommandEvent event;
+        on_generate_code(event);
+    });
 }
 
 void VerilogPanel::refresh_from_canvas(){
@@ -238,8 +260,12 @@ void VerilogPanel::convert_to_canvas(){
     if(applied_callback_) applied_callback_();
 }
 
-void VerilogPanel::on_convert(wxCommandEvent&){
+void VerilogPanel::on_generate_circuit(wxCommandEvent&){
     convert_to_canvas();
+}
+
+void VerilogPanel::on_generate_code(wxCommandEvent&){
+    refresh_from_canvas();
 }
 
 //输入标识符字符后弹出补全列表：候选 = Verilog 关键字 + 文档内已有标识符。
