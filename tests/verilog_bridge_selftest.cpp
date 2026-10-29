@@ -269,6 +269,33 @@ bool segments_overlap(const wxPoint& a, const wxPoint& b,
     return (hi - lo) + (hi_y - lo_y) > 0;   //任一轴上区间重叠即重合
 }
 
+// 复刻 Canvas.cpp 的线段内部交叉求交：返回 true 并给出交点（t/u 严格在 (0,1) 内）
+bool seg_intersection(const wxPoint& a, const wxPoint& b,
+                      const wxPoint& c, const wxPoint& d, wxPoint* out){
+    const long abx = b.x - a.x, aby = b.y - a.y;
+    const long cdx = d.x - c.x, cdy = d.y - c.y;
+    const long denom = abx * cdy - aby * cdx;
+    if(denom == 0) return false;
+    const long acx = c.x - a.x, acy = c.y - a.y;
+    const double t = (double)(acx * cdy - acy * cdx) / denom;
+    const double u = (double)(acx * aby - acy * abx) / denom;
+    if(t <= 0.0 || t >= 1.0 || u <= 0.0 || u >= 1.0) return false;
+    if(out){
+        out->x = a.x + (int)std::lround(t * abx);
+        out->y = a.y + (int)std::lround(t * aby);
+    }
+    return true;
+}
+
+// 点是否位于正交线段内部/端点（返回 0 表示在线上）
+bool point_on_segment(const wxPoint& p, const wxPoint& a, const wxPoint& b){
+    if(p.x == a.x && p.y == a.y) return true;
+    if(p.x == b.x && p.y == b.y) return true;
+    if(a.x == b.x) return (p.x == a.x && p.y >= std::min(a.y, b.y) && p.y <= std::max(a.y, b.y));
+    if(a.y == b.y) return (p.y == a.y && p.x >= std::min(a.x, b.x) && p.x <= std::max(a.x, b.x));
+    return false;
+}
+
 //生成电路时导线不允许线段重合（点相交允许）。用扇出场景验证：
 //同一输入端子驱动门的两路输入、同一门输出驱动两个输出端子。
 void test_wires_do_not_overlap(){
@@ -315,6 +342,160 @@ void test_wires_do_not_overlap(){
     check(!overlap, "generated wires do not overlap");
 }
 
+//生成电路时导线必须全程正交、无重复折点；且所有交叉点必须真实落在两条导线段上
+//（曾因 try_detour 垂直段绕行点计算错误产生斜线段与重复点，弧画在斜线上"乱飞"）。
+//用真实用户模块（4 输入 XOR）验证。
+void test_wires_are_orthogonal(){
+    const std::string source =
+        "module top(\n"
+        "    input in1,\n"
+        "    input in2,\n"
+        "    input in3,\n"
+        "    input in4,\n"
+        "    output out1\n"
+        ");\n"
+        "    wire net5;\n"
+        "    wire net6;\n"
+        "    assign net5 = ~(in1 & in2);\n"
+        "    assign net6 = ~(in3 & in4);\n"
+        "    assign out1 = (net5 ^ net6);\n"
+        "endmodule\n";
+
+    const Verilator::ParseResult parsed = Verilator::parse_verilog(source);
+    check(parsed.ok, "orthogonal source parses");
+    if(!parsed.ok) return;
+
+    //origin 故意用非网格坐标：布局起点必须被吸附到网格
+    const VerilogBridge::ModuleToProjectResult project =
+        VerilogBridge::BuildProjectFromModule(parsed.module, wxPoint(37, 53));
+    check(project.ok, "module builds a project");
+    if(!project.ok) return;
+
+    const auto& wires = project.project.wires;
+    check(!wires.empty(), "project has wires");
+
+    bool diagonal = false;
+    bool duplicate = false;
+    bool off_grid = false;
+    bool overlap = false;
+    for(size_t i = 0; i < wires.size(); ++i){
+        const auto& pts = wires[i].points;
+        for(const auto& p : pts){
+            if(p.x % 10 != 0 || p.y % 10 != 0) off_grid = true;
+        }
+        for(size_t s = 1; s < pts.size(); ++s){
+            if(pts[s].x != pts[s - 1].x && pts[s].y != pts[s - 1].y){
+                diagonal = true;
+            }
+            if(pts[s] == pts[s - 1]) duplicate = true;
+        }
+        for(size_t j = i + 1; j < wires.size(); ++j){
+            const auto& pj = wires[j].points;
+            for(size_t si = 1; si < pts.size(); ++si){
+                for(size_t sj = 1; sj < pj.size(); ++sj){
+                    if(segments_overlap(pts[si - 1], pts[si], pj[sj - 1], pj[sj])){
+                        overlap = true;
+                    }
+                }
+            }
+        }
+    }
+    check(!diagonal, "generated wires are all orthogonal (no diagonal segments)");
+    check(!duplicate, "generated wires have no duplicate bend points");
+    check(!off_grid, "generated wire points all lie on the grid");
+    check(!overlap, "generated wires have no overlapping segments (point crossings allowed)");
+
+    //交叉点必须真实落在两条导线段上（否则弧会画到导线外面）
+    bool bad_cross = false;
+    for(size_t i = 0; i < wires.size(); ++i){
+        const auto& pi = wires[i].points;
+        for(size_t j = i + 1; j < wires.size(); ++j){
+            const auto& pj = wires[j].points;
+            for(size_t si = 1; si < pi.size(); ++si){
+                for(size_t sj = 1; sj < pj.size(); ++sj){
+                    wxPoint p;
+                    if(!seg_intersection(pi[si - 1], pi[si], pj[sj - 1], pj[sj], &p)) continue;
+                    if(!point_on_segment(p, pi[si - 1], pi[si]) ||
+                       !point_on_segment(p, pj[sj - 1], pj[sj])){
+                        bad_cross = true;
+                    }
+                }
+            }
+        }
+    }
+    check(!bad_cross, "every wire crossing lies on both wire segments");
+}
+
+//更复杂模块：8 输入、3 层逻辑、11 条导线，验证 lane 循环与绕行兜底下
+//仍然全程正交、网格对齐、无重复点、无线段重合（允许点相交）。
+void test_complex_module_clean(){
+    const std::string source =
+        "module top(\n"
+        "    input a1, input a2, input a3, input a4,\n"
+        "    input b1, input b2, input b3, input b4,\n"
+        "    output y\n"
+        ");\n"
+        "    wire n1, n2, n3, n4, m1, m2;\n"
+        "    assign n1 = ~(a1 & a2);\n"
+        "    assign n2 = ~(a3 & a4);\n"
+        "    assign n3 = ~(b1 & b2);\n"
+        "    assign n4 = ~(b3 & b4);\n"
+        "    assign m1 = (n1 ^ n2);\n"
+        "    assign m2 = (n3 ^ n4);\n"
+        "    assign y = (m1 & m2);\n"
+        "endmodule\n";
+
+    const Verilator::ParseResult parsed = Verilator::parse_verilog(source);
+    check(parsed.ok, "complex source parses");
+    if(!parsed.ok) return;
+
+    const VerilogBridge::ModuleToProjectResult project =
+        VerilogBridge::BuildProjectFromModule(parsed.module, wxPoint(27, 63));
+    check(project.ok, "complex module builds a project");
+    if(!project.ok) return;
+
+    const auto& wires = project.project.wires;
+    //NAND 展开为 AND+NOT 两门，故实际 19 条导线
+    check(wires.size() == 19, "complex module has 19 wires");
+
+    bool diagonal = false;
+    bool duplicate = false;
+    bool off_grid = false;
+    bool overlap = false;
+    bool bad_cross = false;
+    for(size_t i = 0; i < wires.size(); ++i){
+        const auto& pts = wires[i].points;
+        for(const auto& p : pts){
+            if(p.x % 10 != 0 || p.y % 10 != 0) off_grid = true;
+        }
+        for(size_t s = 1; s < pts.size(); ++s){
+            if(pts[s].x != pts[s - 1].x && pts[s].y != pts[s - 1].y) diagonal = true;
+            if(pts[s] == pts[s - 1]) duplicate = true;
+        }
+        for(size_t j = i + 1; j < wires.size(); ++j){
+            const auto& pj = wires[j].points;
+            for(size_t si = 1; si < pts.size(); ++si){
+                for(size_t sj = 1; sj < pj.size(); ++sj){
+                    if(segments_overlap(pts[si - 1], pts[si], pj[sj - 1], pj[sj])){
+                        overlap = true;
+                    }
+                    wxPoint p;
+                    if(seg_intersection(pts[si - 1], pts[si], pj[sj - 1], pj[sj], &p) &&
+                       (!point_on_segment(p, pts[si - 1], pts[si]) ||
+                        !point_on_segment(p, pj[sj - 1], pj[sj]))){
+                        bad_cross = true;
+                    }
+                }
+            }
+        }
+    }
+    check(!diagonal, "complex wires are all orthogonal");
+    check(!duplicate, "complex wires have no duplicate bend points");
+    check(!off_grid, "complex wire points all lie on the grid");
+    check(!overlap, "complex wires have no overlapping segments");
+    check(!bad_cross, "complex wire crossings all lie on both segments");
+}
+
 } // namespace
 
 int main(int argc, char** argv){
@@ -330,6 +511,8 @@ int main(int argc, char** argv){
     test_round_trip_constant();
     test_empty_module_rejected();
     test_wires_do_not_overlap();
+    test_wires_are_orthogonal();
+    test_complex_module_clean();
 
     std::cout << "verilog_bridge_selftest: " << checks << " checks, "
               << failures << " failure(s)\n";
