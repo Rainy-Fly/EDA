@@ -1,6 +1,6 @@
 {
   "file": "terminals.json",
-  "description": "仿真用输入/输出端子：输入端子单击切换 0/1 驱动网络，输出端子显示所接网络电平",
+  "description": "仿真用输入/输出端子（仅用于仿真测试；封装和导出时不允许出现，请导出前删除）",
   "components": [
     {
       "id": 401,
@@ -8,7 +8,7 @@
       "name_en": "Input Terminal",
       "type": "IN_TERMINAL",
       "category": "Simulation",
-      "description": "输入端子：单击在 0/1 之间切换，向右驱动所接网络",
+      "description": "输入端子：单击在 0/1 之间切换，向右驱动所接网络。仅用于仿真测试；封装和导出时不允许出现，请导出前删除。",
       "DataBits": 1,
       "definition_version": "1",
       "reference_prefix": "IN",
@@ -19,7 +19,7 @@
           "number": "1",
           "direction": "output",
           "electrical_type": "output",
-          "x": 50,
+          "x": 20,
           "y": 0,
           "width": 1
         }
@@ -31,7 +31,7 @@
       "name_en": "Output Terminal",
       "type": "OUT_TERMINAL",
       "category": "Simulation",
-      "description": "输出端子：显示所接网络当前电平（0/1/X）",
+      "description": "输出端子：显示所接网络当前电平（0/1/X）。仅用于仿真测试；封装和导出时不允许出现，请导出前删除。",
       "DataBits": 1,
       "definition_version": "1",
       "reference_prefix": "OUT",
@@ -42,7 +42,7 @@
           "number": "1",
           "direction": "input",
           "electrical_type": "input",
-          "x": -50,
+          "x": -20,
           "y": 0,
           "width": 1
         }

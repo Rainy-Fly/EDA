@@ -17,7 +17,7 @@ BEGIN_EVENT_TABLE(SettingPanel, wxPanel)
 END_EVENT_TABLE()
 
 SettingPanel::SettingPanel(wxWindow* parent) : wxPanel(parent){
-    SetBackgroundColour(UiTheme::Page);
+    SetBackgroundColour(UiTheme::Surface);
     //从用户配置文件读入多API配置
     const AppSettings::Settings s = AppSettings::Load();
     apis_ = s.apis;

@@ -74,6 +74,10 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       edit_tool(EditTool::NONE),
       select_follow_item(nullptr){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    SetBackgroundColour(UiTheme::Surface);
+    //画布每帧由 onPaint 自行清屏；禁止系统先擦背景，否则分栏 resize / 鼠标拖动时
+    //会先闪一帧默认底色。配合所有 Refresh(false) 使用。
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent&){});
     //元件状态徽标（0/1/X）用小号粗体：小尺寸下也不至于压住符号
     badge_font = GetFont();
     badge_font.SetPointSize(7);
@@ -97,14 +101,14 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
             bool handled = false;
             if(wire_placing){
                 if(wire_points.size() >= 2) finish_wire();
-                else{ cancel_wire(); if(toolbar) toolbar->clear_selection(); Refresh(); }
+                else{ cancel_wire(); if(toolbar) toolbar->clear_selection(); Refresh(false); }
                 handled = true;
             }else if(select_follow_item || edit_tool != EditTool::NONE){
                 //退出编辑工具，或结束「单击跟随」（元件留在当前位置）
                 edit_tool = EditTool::NONE;
                 stop_select_follow();
                 if(toolbar) toolbar->clear_selection();
-                Refresh();
+                Refresh(false);
                 handled = true;
             }
             if(handled){ update_status(); return; }
@@ -162,7 +166,7 @@ void Canvas::set_changed_callback(std::function<void()> callback){
 
 void Canvas::set_simulation(Simulation::SimulationSession* session){
     simulation = session;
-    Refresh();
+    Refresh(false);
 }
 
 void Canvas::set_simulation_dirty_callback(std::function<void()> callback){
@@ -170,7 +174,7 @@ void Canvas::set_simulation_dirty_callback(std::function<void()> callback){
 }
 
 void Canvas::refresh_simulation_display(){
-    Refresh();
+    Refresh(false);
     update_status();
 }
 
@@ -250,10 +254,10 @@ void Canvas::on_mouse_scroll(wxMouseEvent& event){
     scale = new_scale;
     if(view_callback) view_callback(scale, GridStep);   //状态栏：缩放比例
 
-    //性能关键：这里不做同步重渲染。Refresh()把重绘交给事件循环，
+    //性能关键：这里不做同步重渲染。Refresh(false)把重绘交给事件循环，
     //连续多次滚轮会合并成少数几次onPaint，由onPaint统一对元件重渲染图片，
     //避免每次滚轮都同步对全部元件做图片缩放导致的卡顿
-    Refresh();
+    Refresh(false);
 }
 
 void Canvas::on_middle_down(wxMouseEvent& event){
@@ -281,7 +285,7 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         offset_coords.y -= (int)std::lround(delta.y / scale);
         middle_last_pos = pos;
         reput();
-        Refresh();
+        Refresh(false);
         return;
     }
 
@@ -297,14 +301,14 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
                     move_dirty = true;   //位置真的变了：关窗口/新建时要提示保存
                 }
             }
-            Refresh();
+            Refresh(false);
         }else{
             if(coords.x != select_follow_item->coords_x ||
                coords.y != select_follow_item->coords_y){
                 select_follow_item->coords_x = coords.x;
                 select_follow_item->coords_y = coords.y;
                 move_dirty = true;
-                Refresh();   //元件由画布自绘（不再有子窗口），位置变了要重画
+                Refresh(false);   //元件由画布自绘（不再有子窗口），位置变了要重画
             }
         }
         return;
@@ -324,14 +328,14 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
                     move_dirty = true;
                 }
             }
-            Refresh();   //导线由onPaint绘制
+            Refresh(false);   //导线由onPaint绘制
             return;
         }
         if(coords.x != dragging_item->coords_x || coords.y != dragging_item->coords_y){
             dragging_item->coords_x = coords.x;
             dragging_item->coords_y = coords.y;
             move_dirty = true;
-            Refresh();   //元件由画布自绘（不再有子窗口），位置变了要重画
+            Refresh(false);   //元件由画布自绘（不再有子窗口），位置变了要重画
         }
         return;
     }
@@ -351,7 +355,7 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
                     std::abs(coords.x - last.x) >= std::abs(coords.y - last.y);
                 wire_corner_locked = true;
             }
-            Refresh();   //重绘预览线
+            Refresh(false);   //重绘预览线
         }
         return;
     }
@@ -365,13 +369,13 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
                 const wxPoint delta = coords - wire_ghost->points.front();
                 for(wxPoint& p : wire_ghost->points) p = p + delta;
             }
-            Refresh();
+            Refresh(false);
             return;
         }
         ghost->coords_x = coords.x;
         ghost->coords_y = coords.y;
         ghost->update_bitmap(scale);
-        Refresh();   //虚影由画布自绘（不再有子窗口），位置变了要重画
+        Refresh(false);   //虚影由画布自绘（不再有子窗口），位置变了要重画
     }
 }
 
@@ -381,7 +385,7 @@ void Canvas::on_left_down(wxMouseEvent& event){
 
     if(select_follow_item){
         stop_select_follow();   //内部会：若move_dirty则notify_changed，清空指针
-        Refresh();
+        Refresh(false);
         return;
     }
 
@@ -449,7 +453,7 @@ void Canvas::on_left_up(wxMouseEvent& event){
 void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
      if(select_follow_item){
         stop_select_follow();
-        Refresh();
+        Refresh(false);
         return;
     }
     
@@ -505,7 +509,7 @@ void Canvas::on_wire_left_down(const wxMouseEvent& event){
     wire_points.push_back(coords);
     wire_mouse_pos = coords;
     wire_corner_locked = false;   //新折点后拐角方向重新按首个移动方向决定
-    Refresh();
+    Refresh(false);
 }
 
 //右键：已有足够折点时提交当前导线，否则丢弃本段；
@@ -518,7 +522,7 @@ void Canvas::on_wire_right_down(wxMouseEvent& event){
     }else{
         wire_points.clear();
         wire_corner_locked = false;
-        Refresh();
+        Refresh(false);
         update_status();
     }
 }
@@ -571,7 +575,7 @@ void Canvas::select_tool(const std::string& name, ItemType type){
         //导线：进入绘制模式——左键加点（点回起点/双击/右键/Esc完成），移动时橡皮筋预览
         wire_placing = true;
         wire_points.clear();
-        Refresh();
+        Refresh(false);
         update_status();
         return;
     }
@@ -588,7 +592,7 @@ void Canvas::select_tool_by_name(const std::string& name){
     stop_select_follow();
     set_current_item(nullptr);
     if(toolbar) toolbar->clear_selection();
-    if(!ItemSVG_bundle(name)){ Refresh(); update_status(); return; }   //导线/总线等无SVG：忽略（清掉旧虚影的残影）
+    if(!ItemSVG_bundle(name)){ Refresh(false); update_status(); return; }   //导线/总线等无SVG：忽略（清掉旧虚影的残影）
     begin_placement(name);
 }
 
@@ -605,7 +609,10 @@ void Canvas::begin_placement(const std::string& name){
     ghost->coords_x = coords.x;
     ghost->coords_y = coords.y;
     ghost->update_bitmap(scale);
-    Refresh();       //让虚影立刻显示出来
+    //放置前就把 ghost 作为“当前元件”通知属性栏：点选元件后立即显示其属性，
+    //编辑结果会随 place_at_mouse() 复制到正式实例。
+    set_current_item(ghost);
+    Refresh(false);       //让虚影立刻显示出来
     update_status(); //状态栏：提示"在画布上单击放下"
 }
 
@@ -623,7 +630,7 @@ void Canvas::select_action(ToolAction action){
         case ToolAction::ERASE:    edit_tool = EditTool::ERASE;    break;
         case ToolAction::CLONE:    edit_tool = EditTool::CLONE;    break;
     }
-    Refresh();   //虚影是画布自绘的：clear_ghost后必须显式重画，否则残影留在屏幕上
+    Refresh(false);   //虚影是画布自绘的：clear_ghost后必须显式重画，否则残影留在屏幕上
     update_status();
 }
 
@@ -643,7 +650,7 @@ void Canvas::finish_wire(){
     wire_placing = false;
     wire_corner_locked = false;
     if(toolbar) toolbar->clear_selection();
-    Refresh();
+    Refresh(false);
     update_status();
 }
 
@@ -669,7 +676,7 @@ void Canvas::commit_wire(){
     }
     wire_points.clear();
     wire_corner_locked = false;
-    Refresh();
+    Refresh(false);
     update_status();
 }
 
@@ -694,7 +701,7 @@ void Canvas::set_view(wxPoint offset, float s){
     scale = s;
     reput();
     if(view_callback) view_callback(scale, GridStep);   //状态栏：打开项目后同步缩放比例
-    Refresh();
+    Refresh(false);
 }
 
 //插入元件：创建UI节点、绑定事件转发、按当前视口摆放（导线无UI节点，仅入集合由onPaint绘制）
@@ -702,7 +709,7 @@ void Canvas::add_item(CanvasItem* item){
     if(!item) return;
     item->update_bitmap(scale);   //按当前scale渲染好位图（画布自绘）
     canvasItemCollection->insert(item);
-    Refresh();
+    Refresh(false);
     //加载项目时走这条路（批量 add_item）：主窗口会去抖后统一重建一次仿真
     if(simulation_dirty_callback) simulation_dirty_callback();
 }
@@ -722,7 +729,7 @@ void Canvas::clear_all_items(){
     no_connects.clear();
     libraries.clear();
     set_current_item(nullptr);
-    Refresh();
+    Refresh(false);
     if(simulation_dirty_callback) simulation_dirty_callback();   //新建项目：仿真也要清空
 }
 
@@ -749,7 +756,7 @@ void Canvas::delete_item(CanvasItem* item){
     if(ghost == item) ghost = nullptr;   //模式互斥，正常不会发生
     delete item;
     notify_changed();   //删除也是内容修改
-    Refresh();
+    Refresh(false);
 }
 
 //选择模式：点击元件后开始跟随鼠标（“重新回到跟随移动状态”），吸附网格；
@@ -770,12 +777,12 @@ void Canvas::start_select_follow(CanvasItem* item){
                 move_dirty = true;   //点击瞬间就把导线挪走了，这也是一次修改
             }
         }
-        Refresh();
+        Refresh(false);
     }else{
         if(coords.x != item->coords_x || coords.y != item->coords_y) move_dirty = true;
         item->coords_x = coords.x;
         item->coords_y = coords.y;
-        Refresh();   //元件由画布自绘，位置变了要重画
+        Refresh(false);   //元件由画布自绘，位置变了要重画
     }
     update_status();   //状态栏：提示"单击放下 / Esc 取消"
 }
@@ -811,7 +818,7 @@ void Canvas::start_clone(CanvasItem* item){
         ghost->coords_y = coords.y;
         ghost->update_bitmap(scale);
     }
-    Refresh();
+    Refresh(false);
     update_status();   //状态栏：提示"单击放下"
 }
 
@@ -850,6 +857,8 @@ CanvasItem* Canvas::clone_item(const CanvasItem* item) const{
 }
 
 void Canvas::clear_ghost(){
+    //属性栏可能正引用 ghost；先清空当前元件，避免删除后留下悬空指针。
+    if(ghost && current_item == ghost) set_current_item(nullptr);
     //没有子窗口要销毁：位图随对象一起释放，画布下一次重画就看不到它了
     delete ghost;
     ghost = nullptr;
@@ -873,7 +882,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
         edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（一次性）
         set_current_item(item);
         notify_changed();             //放置了新内容
-        Refresh();
+        Refresh(false);
         update_status();
         return;
     }
@@ -897,7 +906,7 @@ void Canvas::place_at_mouse(const wxMouseEvent& event){
     edit_tool = EditTool::NONE;   //克隆放置完成：退出克隆模式（对门类放置无影响，本来就为NONE）
     set_current_item(item);  //刚放置的元件成为当前选中（通知属性栏）
     notify_changed();        //项目内容变了（供菜单栏标记“未保存”）
-    Refresh();
+    Refresh(false);
     update_status();         //结束放置：状态栏回到"就绪"
 }
 
@@ -938,7 +947,8 @@ bool Canvas::wire_hit(Linking* wire, const wxPoint& pos){
 }
 
 //绘制所有元件的引脚：小圆点，位置=锚点coords+引脚偏移（均为网格的倍数⇒在网格上）
-//仿真开启时按引脚所在网络的电平着色（1=亮绿、0=深绿、X=蓝），直观看出每个脚的电平
+//仿真开启时按引脚所在网络的电平着色（1=亮绿、0=深绿、X=蓝），直观看出每个脚的电平。
+//放在元件之后绘制：门的引脚位于符号边缘，先画会被 SVG 本体盖住半颗。
 void Canvas::draw_pins(wxDC& dc){
     dc.SetPen(*wxTRANSPARENT_PEN);
     for(CanvasItem* item : *canvasItemCollection){
@@ -978,7 +988,7 @@ void Canvas::toggle_switch(CanvasItem* item){
     std::string& state = item->metadata->params["State"];
     state = (state == "1") ? "0" : "1";
     notify_changed();
-    Refresh();
+    Refresh(false);
     update_status();
 }
 
@@ -1188,7 +1198,11 @@ void Canvas::draw_wires(wxDC& dc){
 void Canvas::draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                             const wxColour& colour, int width){
     if(points.size() < 2) return;
-    dc.SetPen(wxPen(colour, width));
+    //圆头圆角：折线由多段 DrawLine 组成，圆头端点会让拐角自然衔接，不再出现方角缺口
+    wxPen pen(colour, width);
+    pen.SetCap(wxCAP_ROUND);
+    pen.SetJoin(wxJOIN_ROUND);
+    dc.SetPen(pen);
     for(size_t i = 1; i < points.size(); ++i){
         dc.DrawLine(coords_to_pos_px(points[i-1]), coords_to_pos_px(points[i]));
     }
@@ -1383,15 +1397,21 @@ void Canvas::onPaint(wxPaintEvent& event){
     dc.DrawLine(ax, 0, ax, size.GetHeight());
     dc.DrawLine(0, ay, size.GetWidth(), ay);
 
-    //引脚（网格之上、导线之下：小圆点，网格对齐）
-    draw_pins(dc);
-
     //导线（在网格之上、元件之下绘制）
     draw_wires(dc);
 
     //元件与虚影：画布自绘（不再有子窗口）。缩放后先按当前scale刷新位图缓存
     reput_items();
     draw_items(dc);
+    //引脚在元件之上：门/端子的引脚点正好在符号边缘，后画才不会被本体盖住
+    draw_pins(dc);
     draw_state_overlay(dc);   //第二遍：端子数值/状态徽标/灯亮光晕（不会被位图盖住）
     draw_ghost(dc);
+
+    //画布与 Page 背景之间的 1px 分界：不改变坐标映射，只描最外圈
+    if(size.x > 1 && size.y > 1){
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.SetPen(wxPen(UiTheme::BorderSubtle, 1));
+        dc.DrawRectangle(0, 0, size.x - 1, size.y - 1);
+    }
 }
