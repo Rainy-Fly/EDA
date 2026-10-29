@@ -1,6 +1,7 @@
 #pragma once
 #include<wx/wx.h>
 #include<unordered_set>
+#include<map>
 #include<functional>
 #include<vector>
 #include<tuple>
@@ -179,6 +180,10 @@ private:
     void draw_wires(wxDC& dc);  //在画布上绘制所有导线+预览+选中高亮
     void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制
+    void draw_wire_path_gapped(wxDC& dc, const std::vector<wxPoint>& points,
+                               const wxColour& colour, int width,
+                               const std::map<size_t,
+                                              std::vector<std::pair<int, int>>>& gaps);  //带缺口折线绘制
     void draw_items(wxDC& dc);  //绘制所有元件的位图（带alpha ⇒ 真透明；画在导线之上）
     void draw_state_overlay(wxDC& dc);   //第二遍：端子方框数值/状态徽标/灯亮光晕/不支持标记
     void draw_item_state(wxDC& dc, const CanvasItem* item, const wxRect& rect); //单个元件的状态标注
