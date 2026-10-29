@@ -233,7 +233,7 @@ void load_json_file(const wxString& path,
                     pin.number = std::to_string(i + 1);
                     pin.direction = "input";
                     pin.electrical_type = "input";
-                    pin.x = -50;
+                    pin.x = -40;
                     pin.y = (2 * i - (d.inputs - 1)) * 10;
                     d.pins.push_back(pin);
                 }
@@ -242,7 +242,7 @@ void load_json_file(const wxString& path,
                 out.number = std::to_string(d.inputs + 1);
                 out.direction = "output";
                 out.electrical_type = "output";
-                out.x = 50;
+                out.x = 40;
                 out.y = 0;
                 d.pins.push_back(out);
             }

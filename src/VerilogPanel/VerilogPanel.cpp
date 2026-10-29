@@ -100,22 +100,14 @@ bool is_id_char(wchar_t c){
 namespace VerilogPanelUI{
 
 VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
-    : wxPanel(parent, wxID_ANY),
+    : CardPanel(parent, wxID_ANY, wxString::FromUTF8("Verilog 代码"), true,
+                parent->FromDIP(UiTheme::SpaceXs)),
       canvas_(canvas),
       code_(nullptr),
       diagnostics_(nullptr),
-    generate_circuit_button_(nullptr),
-    generate_code_button_(nullptr){
-        SetBackgroundColour(UiTheme::Page);
-    wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
-
-    wxStaticText* title =
-        new wxStaticText(this, wxID_ANY, wxString::FromUTF8("Verilog 代码"));
-    title->SetForegroundColour(UiTheme::Brand900);
-    wxFont title_font = title->GetFont();
-    title_font.SetWeight(wxFONTWEIGHT_BOLD);
-    title->SetFont(title_font);
-    sizer->Add(title, 0, wxALL, 6);
+      generate_circuit_button_(nullptr),
+      generate_code_button_(nullptr){
+    wxBoxSizer* sizer = Content();
 
     //---- 编辑器（Scintilla）----
     code_ = new wxStyledTextCtrl(this, wxID_ANY);
@@ -163,7 +155,7 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
     code_->Bind(wxEVT_STC_CHARADDED, &VerilogPanel::on_char_added, this);
     code_->Bind(wxEVT_STC_UPDATEUI, &VerilogPanel::on_update_ui, this);
 
-    sizer->Add(code_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+    sizer->Add(code_, 1, wxEXPAND | wxBOTTOM, FromDIP(6));
 
     wxFont mono = code_->GetFont();
     mono.SetFaceName(wxT("Consolas"));   //找不到时 wx 自动回退
@@ -173,14 +165,14 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
     wxBoxSizer* buttons = new wxBoxSizer(wxVERTICAL);
     generate_circuit_button_ = new ThemedButton(
         this, wxID_ANY, wxString::FromUTF8("由代码生成电路图"), true);
-    generate_circuit_button_->SetMinSize(wxSize(-1, 36));
-    buttons->Add(generate_circuit_button_, 0, wxEXPAND | wxBOTTOM, 6);
+    generate_circuit_button_->SetMinSize(wxSize(-1, FromDIP(38)));
+    buttons->Add(generate_circuit_button_, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
 
     generate_code_button_ = new ThemedButton(
         this, wxID_ANY, wxString::FromUTF8("由图生成代码"));
-    generate_code_button_->SetMinSize(wxSize(-1, 36));
+    generate_code_button_->SetMinSize(wxSize(-1, FromDIP(38)));
     buttons->Add(generate_code_button_, 0, wxEXPAND);
-    sizer->Add(buttons, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+    sizer->Add(buttons, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
 
     // 诊断框只读，放在操作按钮下方，避免与可编辑代码区混淆。
     diagnostics_ = new wxTextCtrl(this, wxID_ANY, wxString(),
@@ -189,9 +181,8 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
     diagnostics_->SetBackgroundColour(UiTheme::Subtle);
     diagnostics_->SetForegroundColour(UiTheme::TextSecondary);
     diagnostics_->SetFont(mono);
-    sizer->Add(diagnostics_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+    sizer->Add(diagnostics_, 0, wxEXPAND);
 
-    SetSizer(sizer);
     SetMinSize(wxSize(260, 240));
 
     generate_circuit_button_->SetClickHandler([this]{

@@ -48,15 +48,14 @@ const std::map<std::string, CategoryInfo>& category_info(){
 } // namespace
 
 ExplorerPane::ExplorerPane(wxWindow* parent)
-    : wxPanel(parent, wxID_ANY), m_callback(nullptr)
+    : CardPanel(parent, wxID_ANY, wxString::FromUTF8("元件库"), false,
+                parent->FromDIP(UiTheme::SpaceXs)),
+      m_callback(nullptr)
 {
-    // 使用垂直布局管理器 (Sizer) 来排列内部控件
-    wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
-
-    // 2. 创建树状控件
-    m_treeCtrl = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
-                                wxTR_HAS_BUTTONS | wxTR_SINGLE | wxTR_LINES_AT_ROOT);
-    SetBackgroundColour(UiTheme::Page);
+    // 创建树状控件：去掉原生 3D 边框，让树和卡片内容区自然融合
+    m_treeCtrl = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                wxTR_HAS_BUTTONS | wxTR_SINGLE |
+                                wxTR_LINES_AT_ROOT | wxBORDER_NONE);
     m_treeCtrl->SetBackgroundColour(UiTheme::Surface);
     m_treeCtrl->SetForegroundColour(UiTheme::Text);
     
@@ -64,11 +63,8 @@ ExplorerPane::ExplorerPane(wxWindow* parent)
     
     m_treeCtrl->Bind(wxEVT_TREE_SEL_CHANGED, &ExplorerPane::OnItemClick, this);
 
-    // 将树状控件加入布局，比例为 1，标志为 wxEXPAND，这意味着它会填满下方所有剩余空间
-    mainSizer->Add(m_treeCtrl, 1, wxEXPAND | wxALL, 0);
-
-    // 应用布局
-    this->SetSizer(mainSizer);
+    // 将树状控件加入卡片内容区，比例为 1，填满剩余空间
+    Content()->Add(m_treeCtrl, 1, wxEXPAND);
 }
 
 void ExplorerPane::SetComponentSelectedCallback(ComponentSelectedCallback cb){

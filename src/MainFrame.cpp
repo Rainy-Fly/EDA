@@ -14,6 +14,7 @@
 #include"./Simulation/SimulationProject.hpp"
 #include"./Simulation/SimulationSession.hpp"
 #include"./Theme/Theme.hpp"
+#include"./Theme/ThemedSplitter.hpp"
 
 //先摘掉属性栏的回调：它指向下面的FileActions，必须在成员析构前断开
 MainFrame::~MainFrame(){
@@ -86,12 +87,13 @@ MainFrame::MainFrame()
     //  right_splitter(内层竖分) = canvas_splitter | attribute_bar
     //  canvas_splitter(内层竖分) = canvas | verilog_panel（Verilog代码面板，默认隐藏）
     //统一带 wxSP_LIVE_UPDATE：不加这个样式时，拖动分栏画的是一条 2px 纯黑的"跟踪线"
-    //（wxSplitterWindow 默认的 m_sashTrackerPen 就是 wxBLACK）；加上后窗格实时缩放、没有黑线
-    const long split_style = wxSP_3D | wxSP_LIVE_UPDATE;
-    splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
-    work_splitter = new wxSplitterWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
-    right_splitter = new wxSplitterWindow(work_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
-    canvas_splitter = new wxSplitterWindow(right_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    //（wxSplitterWindow 默认的 m_sashTrackerPen 就是 wxBLACK）；加上后窗格实时缩放、没有黑线。
+    //不再用 wxSP_3D：原生 3D 边框太粗、颜色也不受主题控制；ThemedSplitter 自己画抓手。
+    const long split_style = wxSP_LIVE_UPDATE;
+    splitter = new ThemedSplitter(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    work_splitter = new ThemedSplitter(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    right_splitter = new ThemedSplitter(work_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
+    canvas_splitter = new ThemedSplitter(right_splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, split_style);
     left_panel    = new wxPanel(splitter);
     canvas        = new Canvas(canvas_splitter);
     verilog_panel = new VerilogPanelUI::VerilogPanel(canvas_splitter, canvas);
@@ -108,10 +110,11 @@ MainFrame::MainFrame()
     canvas->set_toolbar(palette);   //画布只借它的指针清按钮高亮（工具栏不再压在画布上）
     agent_area    = new Agent::AgentArea(work_splitter, canvas);
     left_panel->SetBackgroundColour(UiTheme::Page);
-    splitter->SetBackgroundColour(UiTheme::Border);
-    work_splitter->SetBackgroundColour(UiTheme::Border);
-    right_splitter->SetBackgroundColour(UiTheme::Border);
-    canvas_splitter->SetBackgroundColour(UiTheme::Border);
+    //分隔条区域用页面底色；卡片自己的外边距再形成留白，避免整块灰边
+    splitter->SetBackgroundColour(UiTheme::Page);
+    work_splitter->SetBackgroundColour(UiTheme::Page);
+    right_splitter->SetBackgroundColour(UiTheme::Page);
+    canvas_splitter->SetBackgroundColour(UiTheme::Page);
 
     splitter->SetMinimumPaneSize(150);
     splitter->SplitVertically(left_panel, work_splitter, 250);
@@ -128,8 +131,12 @@ MainFrame::MainFrame()
     verilog_panel->set_applied_callback([this]{ file_actions->mark_modified(); });
 
     work_splitter->SetMinimumPaneSize(120);
-    //AI 面板：建立右分栏布局并默认隐藏（视图菜单可切换）
+    //AI 面板：建立右分栏布局并默认隐藏（功能面板菜单可切换）
     show = std::make_unique<Agent::Show>(work_splitter, right_splitter, agent_area);
+
+    //面板右上角“×”也走同一套显隐逻辑，菜单勾选由 SyncPanelMenu() 统一回写
+    agent_area->SetCloseHandler([this]{ SetAgentVisible(false); });
+    verilog_panel->SetCloseHandler([this]{ SetVerilogPanelVisible(false); });
 
     //联动：画布选中/放置/清空元件时，属性栏显示对应元件的元数据
     canvas->set_current_item_callback(
@@ -144,10 +151,12 @@ MainFrame::MainFrame()
     SetMenuBar(menu_bar);
     file_actions = std::make_unique<FileActions>(this, canvas);
 
-    //视图菜单：切换 AI 助手面板显隐（勾选状态与面板实际状态同步）
+    //功能面板菜单：切换 AI 助手面板显隐（勾选状态与面板实际状态同步）
     Bind(wxEVT_MENU, &MainFrame::OnToggleAgent, this, ID_SHOW_AGENT);
-    //Verilog菜单：切换代码面板显隐（勾选状态与面板实际状态同步）
+    //功能面板菜单：切换代码面板显隐（勾选状态与面板实际状态同步）
     Bind(wxEVT_MENU, &MainFrame::OnToggleVerilogPanel, this, ID_SHOW_VERILOG_PANEL);
+    //菜单展开前再同步一次：面板可能被关闭按钮或快捷键改过
+    Bind(wxEVT_MENU_OPEN, &MainFrame::OnMenuOpen, this);
 
     //联动：属性栏里改过的属性也算改项目 -> 标记“未保存”
     attribute_bar->set_edited_callback([this]{ file_actions->mark_modified(); });
@@ -196,6 +205,13 @@ MainFrame::MainFrame()
     simulation_timer.SetOwner(this, 1);
     Bind(wxEVT_TIMER, &MainFrame::OnSimulationTimer, this, 1);
     RebuildSimulation();   //启动时先算一次（空画布会显示"无可仿真元件"）
+    SyncPanelMenu();       //初始化菜单勾选（AI/Verilog 默认都隐藏）
+
+    //属性栏内部改成滚动容器后，首次布局时其 best size 可能让分隔器重新分配高度；
+    //等首轮 Layout 之后再钉一次默认位置，保证画布/属性栏的初始比例稳定。
+    CallAfter([this]{
+        if(right_splitter) right_splitter->SetSashPosition(560);
+    });
 
     Center();
 }
@@ -288,17 +304,31 @@ void MainFrame::OnTick(wxCommandEvent&){
     UpdateSimulationStatus();
 }
 
-//视图菜单：切换 AI 助手面板，并把菜单勾选同步为面板实际状态
+//功能面板菜单：切换 AI 助手面板
 void MainFrame::OnToggleAgent(wxCommandEvent&){
-    if(show) show->Toggle();
+    if(show) SetAgentVisible(!show->Visible());
+}
+
+void MainFrame::SetAgentVisible(bool visible){
+    if(!show) return;
+    show->SetVisible(visible);
+    SyncPanelMenu();
+}
+
+//功能面板菜单：切换代码面板
+void MainFrame::OnToggleVerilogPanel(wxCommandEvent&){
+    SetVerilogPanelVisible(!verilog_visible);
+}
+
+void MainFrame::SyncPanelMenu(){
     if(menu_bar){
-        menu_bar->Check(ID_SHOW_AGENT, show && show->Visible());
+        menu_bar->SyncPanelStates(show && show->Visible(), verilog_visible);
     }
 }
 
-//Verilog菜单：切换代码面板，并把菜单勾选同步为面板实际状态
-void MainFrame::OnToggleVerilogPanel(wxCommandEvent&){
-    SetVerilogPanelVisible(!verilog_visible);
+void MainFrame::OnMenuOpen(wxMenuEvent& event){
+    SyncPanelMenu();
+    event.Skip();
 }
 
 void MainFrame::SetVerilogPanelVisible(bool visible){
@@ -316,7 +346,5 @@ void MainFrame::SetVerilogPanelVisible(bool visible){
         canvas_splitter->Unsplit(verilog_panel);
         verilog_panel->Hide();
     }
-    if(menu_bar){
-        menu_bar->Check(ID_SHOW_VERILOG_PANEL, visible);
-    }
+    SyncPanelMenu();
 }

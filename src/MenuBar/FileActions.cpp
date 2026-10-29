@@ -37,6 +37,25 @@ wxString project_wildcard(){
     return wxString::FromUTF8("TinyEDA 项目文件 (*.xml)|*.xml|所有文件 (*.*)|*.*");
 }
 
+// 收集仅用于仿真的输入/输出端子。它们不能参与 KiCad/PCB 封装网表导出。
+std::vector<wxString> simulation_only_terminals(const DealProjectXML::ProjectData& project){
+    std::vector<wxString> names;
+    for(const DealProjectXML::ComponentData& component : project.components){
+        const bool terminal = component.type == "IN_TERMINAL" ||
+                              component.type == "OUT_TERMINAL" ||
+                              component.category == "Simulation";
+        if(!terminal) continue;
+        wxString label = wxString::FromUTF8(component.name.empty()
+                                                ? component.type.c_str()
+                                                : component.name.c_str());
+        if(component.id > 0){
+            label += wxString::Format(wxT(" (ID %d)"), component.id);
+        }
+        names.push_back(std::move(label));
+    }
+    return names;
+}
+
 // 把网表校验/写入诊断整理成可读文本。
 wxString format_diagnostics(const std::vector<NetlistData::Diagnostic>& diagnostics){
     std::ostringstream out;
@@ -154,6 +173,21 @@ void FileActions::on_export_kicad_netlist(wxCommandEvent& event){
     if(!canvas) return;
 
     const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
+    // 端子只是仿真测试点，不能进封装/BOM；在生成网表前就用明确的警告拦住，
+    // 而不是让用户拿到一个缺端子、缺网络的 .net 文件。
+    const std::vector<wxString> terminals = simulation_only_terminals(project);
+    if(!terminals.empty()){
+        wxString list;
+        for(const wxString& terminal : terminals){
+            list += wxT("- ") + terminal + wxT("\n");
+        }
+        wxMessageBox(
+            wxString::FromUTF8("画布中存在仅用于仿真的输入/输出端子：\n\n") + list +
+                wxString::FromUTF8("\n这些元件不能参与 KiCad/PCB 封装网表导出。请先删除它们，再重新导出。"),
+            wxString::FromUTF8("无法导出 KiCad 网表"),
+            wxOK | wxICON_WARNING, frame);
+        return;
+    }
     const NetlistData::PcbProjectSnapshot snapshot =
         NetlistData::BuildPcbSnapshotFromProject(project);
     const NetlistData::PcbNetlistBuildResult build =

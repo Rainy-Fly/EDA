@@ -2,6 +2,7 @@
 #include<wx/wx.h>
 #include<wx/tglbtn.h>   //wxToggleButton：用按下态表示"当前工具"
 #include"./CanvasItem.hpp"
+#include"../Theme/CardPanel.hpp"
 #include"../Theme/ThemedButton.hpp"
 
 class Canvas;
@@ -17,16 +18,16 @@ enum class ToolAction{
 };
 
 // 工具条（元件调色板）：放在主窗口左侧栏、资源树上方。
-// **只显示 16px 图标**（类似 Logisim 顶部的图标工具栏），名字放在悬停提示里（鼠标停住才出现），
+// **只显示 24px 图标**（类似 Logisim 顶部的图标工具栏），名字放在悬停提示里（鼠标停住才出现），
 // 这样 10 个按钮两三行就能放下，垂直空间留给下面的资源树。
-// 使用自绘 ThemedButton，确保跨平台的悬停/按压/选中状态一致。
-class ToolBar : public wxPanel{
+// 继承 CardPanel：外侧统一圆角卡片 + “元件”标题；按钮使用扁平 ThemedButton。
+class ToolBar : public CardPanel{
 public:
     ToolBar(wxWindow* parent, Canvas* canvas);
     //取消当前按钮高亮（由Canvas在放置结束后调用）
     void clear_selection();
 private:
-    //建一个 32x30 的图标按钮（只有图标+提示），加进sizer并返回
+    //建一个 36x36 的扁平图标按钮（只有图标+提示），加进sizer并返回
     ThemedButton* make_button(wxSizer* sizer, const wxString& tooltip,
                               const wxBitmapBundle& icon);
     void add_tool(wxSizer* sizer, const std::string& label, ItemType type);

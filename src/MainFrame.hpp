@@ -20,7 +20,7 @@ namespace VerilogPanelUI{ class VerilogPanel; }
 //              下：资源树(ExplorerPane，按类别列出通用元件)
 //   中间上   = 画布(Canvas)
 //   中间下   = 属性栏(AttributeBar)
-//   最右侧   = 可折叠的 AI 助手面板（AgentArea，视图菜单/F12 切换）
+//   最右侧   = 可折叠的 AI 助手面板（AgentArea，功能面板菜单/F12 切换）
 //   底部状态栏 = ① 状态/提示 ② 光标逻辑坐标 ③ 缩放比例与网格
 class MainFrame : public wxFrame{
 public:
@@ -28,9 +28,12 @@ public:
     //必须在.cpp里定义：FileActions在此只是前向声明，unique_ptr的析构需要完整类型
     ~MainFrame() override;
 private:
-    void OnToggleAgent(wxCommandEvent& e);   //视图菜单：显示/隐藏 AI 助手面板
-    void OnToggleVerilogPanel(wxCommandEvent& e);   //Verilog菜单：显示/隐藏代码面板
+    void OnToggleAgent(wxCommandEvent& e);   //功能面板菜单：显示/隐藏 AI 助手面板
+    void OnToggleVerilogPanel(wxCommandEvent& e);   //功能面板菜单：显示/隐藏代码面板
+    void SetAgentVisible(bool visible);
     void SetVerilogPanelVisible(bool visible);
+    void SyncPanelMenu();                    //把面板实际可见性回写到菜单勾选
+    void OnMenuOpen(wxMenuEvent& e);         //菜单展开前再同步一次，防止状态漂移
 
     //---- 仿真（模拟菜单）----
     void OnRunPause(wxCommandEvent& e);      //模拟 - 运行/暂停
@@ -41,8 +44,8 @@ private:
     void RebuildSimulation();                //采集画布 → 适配 → 求值 → 刷新
     void UpdateSimulationStatus();           //状态栏第4段：运行状态/网络数/错误数
 
-    MenuBar* menu_bar;                 //自绘菜单栏：顶部命令入口
-    wxSplitterWindow* splitter;        //外层分栏：左侧栏 / 右侧工作区
+    MenuBar* menu_bar;                 //原生菜单栏：顶部命令入口
+    wxSplitterWindow* splitter;        //外层分栏（ThemedSplitter）：左侧栏 / 右侧工作区
     wxSplitterWindow* work_splitter;   //中层分栏：画布区 / AI助手区（右侧可拉伸）
     wxSplitterWindow* right_splitter;  //内层分栏：上Canvas / 下AttributeBar
     wxSplitterWindow* canvas_splitter; //画布 / Verilog代码面板（右侧可挤出）

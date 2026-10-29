@@ -76,10 +76,11 @@ ChatHtmlWindow::ChatHtmlWindow(wxWindow* parent) : wxHtmlWindow(parent){
 }
 
 ChatPanel::ChatPanel(wxWindow* parent) : wxPanel(parent){
-    SetBackgroundColour(UiTheme::Page);
+    SetBackgroundColour(UiTheme::Surface);
     wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
 
     html_ = new ChatHtmlWindow(this);
+    html_->SetBackgroundColour(UiTheme::Surface);
     root->Add(html_, 1, wxEXPAND | wxALL, 6);
 
     //输入行：单行输入 + 发送按钮
@@ -90,12 +91,15 @@ ChatPanel::ChatPanel(wxWindow* parent) : wxPanel(parent){
     input_->SetForegroundColour(UiTheme::Text);
     row->Add(input_, 1, wxEXPAND | wxRIGHT, 6);
     send_btn_ = new ThemedButton(this, wxID_ANY, wxString::FromUTF8("发送"), true);
-    send_btn_->SetMinSize(wxSize(72, 32));
+    send_btn_->SetMinSize(wxSize(FromDIP(76), FromDIP(34)));
     send_btn_->SetClickHandler([this]{ wxCommandEvent event; OnSend(event); });
     row->Add(send_btn_, 0, wxEXPAND);
     root->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
     SetSizer(root);
+
+    //首次进入显示空状态提示（否则 wxHtmlWindow 直到第一条消息前都是纯白）
+    RebuildHtml();
 
     //事件：AI 事件更新显示；发送按钮/回车发送；工具块链接折叠
     Bind(wxEVT_AGENT, &ChatPanel::OnAgentEvent, this);
@@ -203,7 +207,10 @@ void ChatPanel::RemoveThinking(){
 
 void ChatPanel::RebuildHtml(){
     wxString h;
-    h += wxT("<html><body bgcolor=\"#F6FAFB\"><font color=\"#0B2B2F\">");
+    h += wxT("<html><body bgcolor=\"#FFFFFF\"><font color=\"#0B2B2F\">");
+    if(msgs_.empty()){
+        h += wxT("<p><font color=\"#7F969B\">向AI提问，或让它修改当前电路。</font></p>");
+    }
     for(int i = 0; i < (int)msgs_.size(); ++i){
         const ChatMsg& m = msgs_[i];
         switch(m.kind){

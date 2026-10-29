@@ -192,17 +192,20 @@ std::vector<Pin> item_pins_for(const MetaData* metadata, const std::string& name
     // 2) 兼容旧元数据：按类型/类别生成启发式引脚。
     // 逻辑门：左输入/右输出
     if(const LogicGateMetaData* g = dynamic_cast<const LogicGateMetaData*>(metadata)){
+        // 门的 SVG 在 80px 显示下正好占满 ±40；引脚放在符号边缘，才能贴在引脚线上。
+        // 其他通用元件仍沿用 ±50 的旧启发式，避免影响电阻/晶体管等非门符号。
+        constexpr int GATE_PIN_X = 40;
         const int n = std::max(1, g->get_inputs());
         for(int i = 0; i < n; ++i){
             const int y = (2 * i - (n - 1)) * 10;
             const std::string id = "IN" + std::to_string(i + 1);
-            pins.push_back({id, id, std::to_string(i + 1), wxPoint(-PIN_X, y)});
+            pins.push_back({id, id, std::to_string(i + 1), wxPoint(-GATE_PIN_X, y)});
         }
         const int o = std::max(1, g->get_outputs());
         for(int i = 0; i < o; ++i){
             const int y = (o == 1) ? 0 : (2 * i - (o - 1)) * 10;
             const std::string id = (o == 1) ? "OUT" : "OUT" + std::to_string(i + 1);
-            pins.push_back({id, id, std::to_string(n + i + 1), wxPoint(PIN_X, y)});
+            pins.push_back({id, id, std::to_string(n + i + 1), wxPoint(GATE_PIN_X, y)});
         }
         return pins;
     }

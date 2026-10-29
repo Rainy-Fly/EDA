@@ -36,3 +36,8 @@ MenuBar::MenuBar(){
     Append(simulate_menu, wxString::FromUTF8("模拟"));
     Append(panels_menu, wxString::FromUTF8("功能面板"));
 }
+
+void MenuBar::SyncPanelStates(bool agent_visible, bool verilog_visible){
+    Check(ID_SHOW_AGENT, agent_visible);
+    Check(ID_SHOW_VERILOG_PANEL, verilog_visible);
+}
