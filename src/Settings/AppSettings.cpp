@@ -40,8 +40,11 @@ namespace AppSettings{
 //            （尊重 XDG_CONFIG_HOME 环境变量；不依赖 wxApp，可被测试直接调用）
 wxString UserConfigDir(){
 #if defined(_WIN32)
-    // Windows：%APPDATA%（Roaming），与 wx msw 的 CSIDL_APPDATA 一致
-    return wxStandardPaths::Get().GetUserConfigDir();
+    // Windows：%APPDATA%（Roaming）下的 TinyEDA 子目录。
+    // 注意必须拼上 TinyEDA：GetUserConfigDir() 返回的就是 %APPDATA% 本身，
+    // 不拼的话配置会直接落在 Roaming 根目录（%APPDATA%\settings.xml），
+    // 与上面注释、以及 Linux/macOS 分支的布局都不一致。
+    return wxStandardPaths::Get().GetUserConfigDir() + wxFILE_SEP_PATH + wxT("TinyEDA");
 #elif defined(__WXMAC__)
     // macOS 惯例：~/Library/Preferences
     return wxStandardPaths::Get().GetUserConfigDir();

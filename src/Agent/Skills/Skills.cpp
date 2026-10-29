@@ -46,6 +46,7 @@ bool LoadToolDefs(const std::string& xml_path, std::vector<ToolDef>& out){
         t.handler = to_utf8(n->GetAttribute(wxT("handler"), wxString()));
         if(t.name.empty()) continue;             //无名的工具跳过
         if(t.handler.empty()) t.handler = t.name;  //未指定处理函数名：默认同名
+        t.read_only = n->GetAttribute(wxT("read-only"), wxString()) == wxT("true");
 
         for(wxXmlNode* c = n->GetChildren(); c; c = c->GetNext()){
             if(c->GetType() != wxXML_ELEMENT_NODE) continue;

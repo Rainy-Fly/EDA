@@ -21,6 +21,10 @@ struct ToolDef{
     std::string description; //函数说明（发给模型）
     std::string when_to_use; //何时使用（并入 description 发给模型）
     Json::Value parameters;  //JSON Schema 参数定义（object）
+    //只读工具（get_canvas_state / list_available_components / check_connectivity）：
+    //它们的结果会随画布变化而变化，同一轮里重复调用是正常且必要的，
+    //不能当成“原地打转”跳过（list.xml 里用 read-only="true" 标记）
+    bool read_only = false;
 };
 
 // 解析工具注册表 xml；成功返回true并填充 out（失败返回false且清空 out）。

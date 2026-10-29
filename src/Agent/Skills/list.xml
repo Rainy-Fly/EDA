@@ -8,16 +8,23 @@
 <agent-tools version="1">
 
   <!-- 只读：画布现状 -->
-  <tool name="get_canvas_state" handler="get_canvas_state">
-    <description>返回画布当前状态：视口（offset/scale/网格步长）、全部元件（id/类型/名称/位置/参数）与导线（id/类型/折点）。适合在动手修改前先查看现状。</description>
-    <when-to-use>用户询问画布上有什么、或 AI 需要知道现有元件布局后再决定如何修改时。</when-to-use>
+  <tool name="get_canvas_state" handler="get_canvas_state" read-only="true">
+    <description>返回画布当前状态：视口（offset/scale/网格步长）、全部元件、全部导线。每个元件含 id/类型/名称/位置/旋转(rotation)/镜像(mirror)/位号(reference)/值(value)/封装(footprint)/参数(params)，以及 pins 数组——每个引脚的绝对逻辑坐标（x,y）、引脚id(id)和焊盘号(number)。每根导线含折点(points)与电气端点(start/end：接在哪个元件的哪个引脚，或 junction/标签)。动手修改前先调用它。</description>
+    <when-to-use>用户询问画布上有什么、或 AI 需要知道现有元件布局/引脚坐标后再决定如何修改时。画导线前必须用 pins 里的坐标当折点，否则接不上引脚。</when-to-use>
     <parameters>{"type":"object","properties":{},"required":[]}</parameters>
   </tool>
 
   <!-- 只读：可放置的元件清单 -->
-  <tool name="list_available_components" handler="list_available_components">
+  <tool name="list_available_components" handler="list_available_components" read-only="true">
     <description>返回元件库中所有可放置的元件：类型串（type，place_component 用它）、名称、英文名、类别、元数据id。类型串是放置元件的唯一键。</description>
     <when-to-use>用户让 AI 放置某个元件、或 AI 需要知道有哪些元件可用时。先调用它拿到合法 type 再放置。</when-to-use>
+    <parameters>{"type":"object","properties":{},"required":[]}</parameters>
+  </tool>
+
+  <!-- 只读：连通性自查（复用网表模块的校验，只读不改电路） -->
+  <tool name="check_connectivity" handler="check_connectivity" read-only="true">
+    <description>检查当前画布的电气连通性，返回：component_count/net_count、nets（每个网络的名字与该网络上的引脚，形如 "U1.3"）、problems（真正的连通性问题：引脚悬空、导线端点搭在另一条线中间而没接上、导线两端没接引脚、端点引用了不存在的引脚/junction 等）、hints（只是 PCB 导出信息不全，例如缺封装/缺位号，不代表电路画错）、summary（一句话汇总）。画完线或改完元件后应当调用它自查，有问题就修正后再次调用。</description>
+    <when-to-use>每次放置元件/连线/移动/删除之后，确认电路是否真的连上时；用户问"这个电路连对了吗/有没有悬空"时。</when-to-use>
     <parameters>{"type":"object","properties":{},"required":[]}</parameters>
   </tool>
 
@@ -54,6 +61,26 @@
     <description>调整画布视口：offset_x/offset_y 是视口左上角的逻辑坐标，scale 是缩放比例（0.01~100）。</description>
     <when-to-use>用户要求缩放/平移/聚焦某处时；放置元件后可把视口移过去方便用户查看。</when-to-use>
     <parameters>{"type":"object","properties":{"offset_x":{"type":"number"},"offset_y":{"type":"number"},"scale":{"type":"number"}},"required":["offset_x","offset_y","scale"]}</parameters>
+  </tool>
+  <!-- 写：改实例属性（位号/值/封装/参数） -->
+  <tool name="set_component_property" handler="set_component_property">
+    <description>修改已放置元件的实例属性，只改传入的字段、其余保持不变：reference（位号，如 R1/U1）、value（值，如 10k/74HC08）、footprint（封装，如 Resistor_THT:R_Axial_...）、params（参数键值对对象，如 {"resistance":"10k"}）。返回改后的元件状态和最新引脚坐标。</description>
+    <when-to-use>用户要求改元件的值/位号/封装/参数时（例如"把 R1 改成 10k""给这个门加上封装"）。</when-to-use>
+    <parameters>{"type":"object","properties":{"id":{"type":"number","description":"元件id（get_canvas_state 返回）"},"reference":{"type":"string","description":"位号，如 R1"},"value":{"type":"string","description":"值，如 10k"},"footprint":{"type":"string","description":"封装名，如 LED_THT:LED_D5.0mm"},"params":{"type":"object","description":"参数键值对，如 {\"resistance\":\"10k\"}"}},"required":["id"]}</parameters>
+  </tool>
+
+  <!-- 写：旋转（绝对角度） -->
+  <tool name="rotate_component" handler="rotate_component">
+    <description>把元件旋转到指定角度（绝对角度，不是增量）：0/90/180/270，顺时针。旋转会改变引脚位置，返回新的引脚绝对坐标；原来连到该元件的导线不会自动跟随，需要删除后用新的引脚坐标重画。</description>
+    <when-to-use>用户要求旋转元件，或为了布局让引脚朝向不同方向时。</when-to-use>
+    <parameters>{"type":"object","properties":{"id":{"type":"number","description":"元件id"},"rotation":{"type":"number","description":"0 / 90 / 180 / 270"}},"required":["id","rotation"]}</parameters>
+  </tool>
+
+  <!-- 写：镜像 -->
+  <tool name="mirror_component" handler="mirror_component">
+    <description>镜像翻转元件：none（取消镜像）、x（水平翻转）、y（垂直翻转）。翻转会改变引脚位置，返回新的引脚绝对坐标。</description>
+    <when-to-use>用户要求水平/垂直翻转元件时。</when-to-use>
+    <parameters>{"type":"object","properties":{"id":{"type":"number","description":"元件id"},"mirror":{"type":"string","enum":["none","x","y"],"description":"none / x / y"}},"required":["id","mirror"]}</parameters>
   </tool>
 
 </agent-tools>

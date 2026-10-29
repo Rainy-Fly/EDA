@@ -91,6 +91,11 @@ public:
     //（供菜单栏标记“有未保存的修改”）
     void set_changed_callback(std::function<void()> callback);
 
+    //手动触发“内容已修改”。鼠标路径（放置/删除/拖动/画线）由画布内部自动调用；
+    //Agent 工具等直接改元件字段（旋转/镜像/改属性）的路径需要自己调一次，
+    //否则项目被改了但标题栏不会出现“未保存”标记。
+    void notify_changed();
+
     //----- 仿真联动（类似 Logisim：元件状态与导线电平直接画在画布上）-----
     //注入仿真会话（不转移所有权；主窗口负责生命周期，析构前需设回 nullptr）
     void set_simulation(Simulation::SimulationSession* session);
@@ -145,8 +150,6 @@ private:
 
     //更新当前元件并触发回调（指针未变化时不触发）
     void set_current_item(CanvasItem* item);
-    //触发内容变化回调（供菜单栏标记“未保存”）
-    void notify_changed();
     //把当前模式（放置/画线/编辑工具/跟随）转成一句提示发给 status_callback
     void update_status();
 

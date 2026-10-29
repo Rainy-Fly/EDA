@@ -63,6 +63,11 @@ private:
     void update_title();
     //记住这次打开/保存的位置，并写回配置文件
     void remember_path(const wxString& path);
+    //把本类负责的三个字段（上次文件/最近目录/默认目录）写回配置文件。
+    //必须“先读磁盘、只覆盖自己的字段”再写：本类构造时加载的 settings 是启动那一刻的副本，
+    //直接整体 Save 会把别处（例如 AI 助手设置面板）刚写进去的 apis/active_api 覆盖成空。
+    //written 非空时带回实际写成功的路径。
+    bool persist_settings(wxString* written = nullptr);
     //“另存为/打开”文件对话框的起始目录：最近位置 > 默认目录 > 文档目录
     wxString start_dir() const;
 };

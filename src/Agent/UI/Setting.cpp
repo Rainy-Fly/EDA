@@ -1,5 +1,7 @@
 #include"./Setting.hpp"
 
+#include<set>
+#include<string>
 #include<wx/stattext.h>
 #include<wx/button.h>
 #include<wx/sizer.h>
@@ -93,7 +95,11 @@ void SettingPanel::SetProfileConsumer(std::function<void(const AppSettings::ApiP
 
 void SettingPanel::ReloadList(){
     list_->Clear();
-    for(const auto& p : apis_) list_->Append(wxString::FromUTF8(p.name));
+    for(const auto& p : apis_){
+        //当前使用的那条前面加个圆点：列表里存在同名/相似配置时也能一眼看出在用哪一条
+        const wxString mark = (p.name == active_name_) ? wxString::FromUTF8("● ") : wxString();
+        list_->Append(mark + wxString::FromUTF8(p.name));
+    }
     //选中当前 active 的配置（列表第一项作为兜底）
     int sel = 0;
     for(int i = 0; i < (int)apis_.size(); ++i){
@@ -132,8 +138,17 @@ void SettingPanel::OnSelect(wxCommandEvent&){
 
 void SettingPanel::OnAdd(wxCommandEvent&){
     UiToSelected();
-    //新配置：DeepSeek 默认值，名字不重名
+    //新配置沿用当前选中项的接口地址/模型（Key 不继承：避免把一个 key 复制到多条配置里）
     AppSettings::ApiProfile p;
+    const int sel = list_->GetSelection();
+    if(sel >= 0 && sel < (int)apis_.size()){
+        p.base_url = apis_[sel].base_url;
+        p.model    = apis_[sel].model;
+    }else{
+        p.base_url = "https://api.deepseek.com";
+        p.model    = "deepseek-chat";
+    }
+    //名字不重名
     int n = 1;
     while(true){
         p.name = "API " + std::to_string(n);
@@ -142,8 +157,6 @@ void SettingPanel::OnAdd(wxCommandEvent&){
         if(!dup) break;
         ++n;
     }
-    p.base_url = "https://api.deepseek.com";
-    p.model = "deepseek-chat";
     apis_.push_back(p);
     ReloadList();
     list_->SetSelection((int)apis_.size() - 1);
@@ -180,6 +193,32 @@ void SettingPanel::OnSave(wxCommandEvent&){
                      wxOK | wxICON_WARNING, this);
         return;
     }
+
+    //同名去重：重名会让“当前使用哪一条”变得不确定（列表里也分不开），这里自动加后缀
+    {
+        std::set<std::string> used;
+        for(int i = 0; i < (int)apis_.size(); ++i){
+            if(i != (int)list_->GetSelection() && !apis_[i].name.empty()) used.insert(apis_[i].name);
+        }
+        if(used.count(p.name)){
+            const std::string base = p.name;
+            int n = 2;
+            std::string candidate;
+            do{ candidate = base + " (" + std::to_string(n++) + ")"; }while(used.count(candidate));
+            p.name = candidate;
+        }
+    }
+
+    //Key 为空：明确提醒一次（否则发消息只会拿到服务端的 401，看不出原因）
+    if(p.api_key.empty()){
+        const int answer = wxMessageBox(
+            wxString::FromUTF8("这条配置还没有填 API Key。\n"
+                               "保存并设为当前后，发消息会被服务端拒绝（HTTP 401）。\n\n"
+                               "仍然要保存吗？"),
+            wxString::FromUTF8("API Key 为空"), wxYES_NO | wxICON_WARNING, this);
+        if(answer != wxYES) return;
+    }
+
     active_name_ = p.name;
     ReloadList();
     LoadFieldsToUi();

@@ -29,6 +29,23 @@ void ThemedButton::SetSelected(bool selected){
     Refresh();
 }
 
+// 按内容（前导文字 + 图标 + 文字 + 尾部文字）计算最佳宽度。
+// 内边距与 OnPaint 里的布局一致：文字默认居中、最小 8px；这里每侧留 12px 更从容。
+wxSize ThemedButton::DoGetBestClientSize() const{
+    int width = 0;
+    if(!leading_text_.empty()) width += GetTextExtent(leading_text_).x + 6;
+    if(bitmap_.IsOk()){
+        width += bitmap_.GetWidth();
+        if(!label_.empty()) width += 6;
+    }
+    width += GetTextExtent(label_).x;
+    if(!accessory_text_.empty()) width += GetTextExtent(accessory_text_).x + 6;
+
+    width += 24;                    //左右各 12px 内边距
+    width = std::max(width, 56);    //再短的文字也保证一个可点中的最小宽度
+    return wxSize(width, 32);       //高度与 SetMinSize 保持一致
+}
+
 void ThemedButton::SetLabel(const wxString& label){
     label_ = label;
     Refresh();

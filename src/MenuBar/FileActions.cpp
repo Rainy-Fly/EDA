@@ -295,7 +295,7 @@ void FileActions::on_set_default_dir(wxCommandEvent& event){
     settings.default_dir = to_utf8(dlg.GetPath());
 
     wxString written;
-    if(!AppSettings::Save(settings, &written)){
+    if(!persist_settings(&written)){
         wxMessageBox(wxString::FromUTF8("配置保存失败（没有写入权限）：") +
                          AppSettings::ConfigPath(),
                      wxString::FromUTF8("保存设置失败"), wxOK | wxICON_WARNING, frame);
@@ -319,7 +319,7 @@ void FileActions::on_close(wxCloseEvent& event){
         event.Veto();   //用户取消：窗口保持打开
         return;
     }
-    AppSettings::Save(settings);   //退出前把设置落盘（默认目录/最近位置）
+    persist_settings();            //退出前把设置落盘（默认目录/最近位置）
     event.Skip();                  //交给默认处理：真正销毁窗口
 }
 
@@ -454,7 +454,22 @@ void FileActions::update_title(){
 void FileActions::remember_path(const wxString& path){
     settings.last_file = to_utf8(path);
     settings.last_dir  = to_utf8(wxFileName(path).GetPath());
-    AppSettings::Save(settings);
+    persist_settings();
+}
+
+bool FileActions::persist_settings(wxString* written){
+    if(written) written->clear();
+
+    //先读磁盘上的最新配置，只覆盖本类负责的三个字段：
+    //别处（AI 助手设置面板）可能刚写过 apis/active_api，整体 Save 会把它们清空。
+    AppSettings::Settings disk = AppSettings::Load();
+    disk.last_file   = settings.last_file;
+    disk.last_dir    = settings.last_dir;
+    disk.default_dir = settings.default_dir;
+
+    const bool ok = AppSettings::Save(disk, written);
+    if(ok) settings = disk;   //本地副本同步为“磁盘上的完整内容”，后续保存不会再把 apis 丢掉
+    return ok;
 }
 
 wxString FileActions::start_dir() const{
