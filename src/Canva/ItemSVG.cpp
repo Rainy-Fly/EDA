@@ -30,6 +30,7 @@ std::string simple_name_of(ItemType type){
         case ItemType::OR:   return "OR.svg";
         case ItemType::NOR:  return "NOR.svg";
         case ItemType::XOR:  return "XOR.svg";
+        case ItemType::XNOR: return "XNOR.svg";
         case ItemType::NOT:  return "NOT.svg";
         default: return "";
     }
@@ -97,10 +98,13 @@ std::vector<wxString> candidate_paths(ItemType type, const std::string& generic_
 }
 
 //按候选路径提取SVG为wxBitmapBundle；全部缺失返回空bundle（不报错）。
-//默认尺寸取80×80（比电子符号库viewBox的150小，元件默认显示更小巧，
-//且配合±5格的引脚偏移，引脚落在符号本体外侧、与网格对齐）。
+//默认尺寸取80×80（比电子符号库viewBox的150小，元件默认显示更小巧）。
+//输入/输出端子仅用于仿真，显示尺寸减半到40×40，避免模拟测试点喧宾夺主。
 const wxBitmapBundle extract_svg(ItemType type, const std::string& generic_file){
-    const wxSize default_size(80, 80);
+    const wxSize default_size =
+        (generic_file == "IN_TERMINAL" || generic_file == "OUT_TERMINAL")
+            ? wxSize(40, 40)
+            : wxSize(80, 80);
     for(const wxString& path : candidate_paths(type, generic_file)){
         if(!wxFileExists(path)) continue;
         wxBitmapBundle bundle = wxBitmapBundle::FromSVGFile(path, default_size);

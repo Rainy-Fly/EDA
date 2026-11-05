@@ -229,7 +229,36 @@ curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、
   同名 label（同 `scope`）视为同一网络；旧 1.0 项目按坐标重合兜底
 - 状态栏第 4 段：`仿真：运行　网络 １２　错误 ０`（全角数字，避免状态栏字体链接把中文渲染坏）
 
+> **输入/输出端子只用于仿真测试**：它们是测试点，不是物理元件。属性表会显示这一提示；
+> 导出 KiCad/PCB 封装网表时，只要画布上还有 `IN_TERMINAL` / `OUT_TERMINAL`，程序会弹出警告并**中止导出**，
+> 需要先删除端子再导出。Verilog 导出仍把端子作为模块输入/输出端口（否则模块没有接口）。
+
 约束：本阶段只做**组合逻辑**。时钟/触发器/寄存器/时序、传播延迟与波形、总线位宽、子电路、模拟量都留到后续。
+
+### 功能面板
+
+顶部菜单的「功能面板」统一放置“需要呼出/收起”的侧面板，目前有两项：
+
+| 菜单项 | 快捷键 | 行为 |
+|---|---|---|
+| AI 助手面板 | F12 | 展开/收起最右侧的 AI 助手；对话与设置用分段页签切换 |
+| Verilog 代码面板 | F11 | 展开/收起画布右侧的 Verilog 代码面板 |
+
+- 两个面板标题栏右上角都有 `×`，关闭后菜单勾选同步取消。
+- 菜单展开前会按面板实际可见性重新同步勾选，避免快捷键/关闭按钮与菜单状态不一致。
+- 菜单位置固定在「文件 / 编辑 / 模拟 / 功能面板」，不再单独占用「视图」「Verilog」两个一级菜单。
+
+### 界面主题与动效
+
+- 颜色、圆角、间距、动效时长集中在 `src/Theme/Theme.hpp`；仿真电平颜色仍由画布单独管理。
+- 按钮使用 `ThemedButton`：GDI+ 画抗锯齿圆角/阴影/焦点环，GDI 画文字，避免中文发虚；悬停、按压、选中有 80–160ms 的过渡。
+- 左侧栏（元件调色板、资源树）、属性栏、AI 面板、Verilog 面板统一用 `CardPanel`：页面底色 + 圆角卡片 + 1px 描边 + 轻阴影。
+- 调色板按钮保持 36×36，门/端子/工具图标按 24px 渲染；按钮本身不再放大，避免挤出左侧栏。
+- 四个分栏用 `ThemedSplitter`：去掉原生 3D 边框，拖动时实时缩放，悬停显示圆角抓手；分隔器开启窗口级双缓冲（MSW `WS_EX_COMPOSITED`），Canvas 关闭系统擦背景并全部使用 `Refresh(false)`，避免拖动分栏时画布白闪/黑闪。
+- 属性栏内容放在可滚动容器里；参数多时出现纵向滚动条，不会被卡片底边截断。
+- 从调色板/资源树点选元件时，属性栏立即显示该元件的“待放置”预览（名称/类型/描述），编辑结果会随放置复制到正式实例。
+- 门的逻辑引脚与 SVG 引脚线对齐：80px 显示下输入/输出引脚位于 `x=±40`、`y=±10/0`，引脚圆点在符号之上绘制。
+- 系统关闭“在 Windows 中显示动画”时，按钮直接跳到终态，不启动定时器。
 
 ## 代码结构
 
@@ -237,15 +266,16 @@ curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、
 |---|---|
 | `src/DealProjectXML/` | **项目文件（.xml）读写**。上层统一调用这里的 `SaveProject` / `LoadProject` / `CollectFromCanvas` / `ApplyToCanvas` / `ReadXml` / `WriteXml`，格式见下节 |
 | `src/Settings/` | 用户配置文件（settings.xml）的读写、项目根目录识别 |
-| `src/MenuBar/` | `MenuBar` 负责菜单结构；`FileActions` 实现新建/打开/保存/另存为/设置默认目录/退出与未保存确认；`OpenLocationDialog` 是「从哪开始找」的三选一对话框 |
-| `src/Canva/` | 画布：逻辑坐标系与缩放/平移，元件与导线的放置、选中、拖动、删除、克隆、网格与导线绘制；`CanvasItem`/`Symbol`/`Linking` 数据模型；`ItemSVG` 按类型串加载 SVG 与元数据（共享缓存）；`ToolBar` 是左侧栏里的**元件调色板**（与非门…导线 + 选择/删除/克隆），位置由 `MainFrame` 摆放，画布只借它清按钮高亮；`assets/Tools/*.svg` 是调色板里导线/选择/删除/克隆的小图标（16px） |
+| `src/Theme/` | 共享浅色主题：`Theme.hpp` 的颜色/圆角/间距/动效 token 与绘制工具，`ThemedButton`（抗锯齿圆角 + 阴影 + 动效），`ThemedSplitter`（自绘分隔条抓手），`CardPanel`（统一圆角卡片容器与关闭按钮） |
+| `src/MenuBar/` | `MenuBar` 负责菜单结构（含「功能面板」勾选同步）；`FileActions` 实现新建/打开/保存/另存为/设置默认目录/退出与未保存确认；`OpenLocationDialog` 是「从哪开始找」的三选一对话框 |
+| `src/Canva/` | 画布：逻辑坐标系与缩放/平移，元件与导线的放置、选中、拖动、删除、克隆、网格与导线绘制；`CanvasItem`/`Symbol`/`Linking` 数据模型；`ItemSVG` 按类型串加载 SVG 与元数据（共享缓存）；`ToolBar` 是左侧栏里的**元件调色板**（与非门…导线 + 选择/删除/克隆），继承 `CardPanel`，画布只借它清按钮高亮；`assets/Tools/*.svg` 是调色板里导线/选择/删除/克隆的小图标（渲染为 24px） |
 | `src/metadata/` | 元件元数据 JSON（每个元件一条定义，`type` 是主键）+ JSON 读取器 |
 | `src/Simulation/` | **仿真核心**（与 GUI/wx 无关，可独立自检）：三值逻辑 `LogicValue`、电路/结果类型、结构校验 `SimulationValidator`、迭代求值 `Simulator`、项目适配 `SimulationAdapter`（连通性并查集 + 元件→角色映射）、会话 `SimulationSession`；自检在 `tests/simulation_selftest.cpp`（61 项）与 `tests/simulation_adapter_selftest.cpp`（47 项） |
 | `src/Canva/SimulationBridge.*` | 项目数据 → 仿真输入的桥接：解析元件引脚并按实例旋转/镜像变换成绝对坐标，搬运导线端点/junction/label/no-connect |
-| `src/Explorer/` | 左侧栏下半部分的资源树：按类别列出所有元件，点击后进入放置模式 |
-| `src/AttributeBar/` | 画布下方的属性栏：显示并编辑当前元件的元数据 |
+| `src/Explorer/` | 左侧栏下半部分的资源树（`CardPanel`）：按类别列出所有元件，点击后进入放置模式 |
+| `src/AttributeBar/` | 画布下方的属性栏（`CardPanel` + `wxScrolledWindow`）：显示并编辑当前元件的元数据；端子会显示“仅用于仿真”提示；调色板/资源树点选时显示待放置预览 |
 | `src/App.cpp`、`src/App.hpp` | 程序入口（`wxIMPLEMENT_APP`，注册图片格式处理器后创建主窗口） |
-| `src/MainFrame.*` | 主窗口布局（类似 Logisim）：左侧栏 = 元件调色板 + 资源树，中间 = 画布 + 属性栏，最右 = 可折叠的 AI 助手面板；底部状态栏四段：① 状态/提示 ② 光标逻辑坐标 ③ 缩放与网格 ④ 仿真摘要（数字用**全角**、提示语不混半角字母 —— 状态栏是原生控件，中文与半角字符混排会被 GDI 的字体链接渲染得发虚发花）；同时持有仿真会话、绑定模拟菜单并按内容变化去抖重建仿真 |
+| `src/MainFrame.*` | 主窗口布局（类似 Logisim）：左侧栏 = 元件调色板 + 资源树，中间 = 画布 + 属性栏，最右 = 可折叠的 AI 助手面板；四个分栏统一使用 `ThemedSplitter`。底部状态栏四段：① 状态/提示 ② 光标逻辑坐标 ③ 缩放与网格 ④ 仿真摘要（数字用**全角**、提示语不混半角字母 —— 状态栏是原生控件，中文与半角字符混排会被 GDI 的字体链接渲染得发虚发花）；同时持有仿真会话、绑定模拟菜单并按内容变化去抖重建仿真，负责「功能面板」菜单勾选同步 |
 | `src/TinyEDA.rc`、`src/TinyEDA.manifest` | **Windows 资源脚本**：往 exe 里嵌 comctl32 v6 清单。有了它控件才用现代主题外观，`wxButton::SetBitmap` 依赖的 `BCM_SETIMAGELIST` 才被支持（否则左侧调色板的图标不显示）。CMake 里 `enable_language(RC)` + `target_sources` 挂上，只在 `WIN32` 下生效 |
 
 > 约定：项目文件（`.xml`）的读写**只有 `src/DealProjectXML` 一处实现**，其它模块不要再各写一套；

@@ -3,35 +3,26 @@
 #include"../Canva/MetaData.hpp"
 
 #include<wx/statline.h>
+#include<wx/scrolwin.h>
 #include"../Theme/Theme.hpp"
 
 #include<vector>
 
 AttributeBar::AttributeBar(wxWindow* parent)
-    : wxPanel(parent, wxID_ANY), current_item(nullptr), updating(false){
-    SetBackgroundColour(UiTheme::Page);
+    : CardPanel(parent, wxID_ANY, wxString::FromUTF8("属性"), false,
+                parent->FromDIP(UiTheme::SpaceXs)),
+      current_item(nullptr), updating(false){
     SetMinSize(wxSize(200, 140));
 
-    wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
-
-    //标题：显示当前元件名（或占位提示）
-    title_text = new wxStaticText(this, wxID_ANY, wxString::FromUTF8("属性"));
-    wxFont title_font = title_text->GetFont();
-    title_font.SetWeight(wxFONTWEIGHT_BOLD);
-    title_font.SetPointSize(title_font.GetPointSize() + 1);
-    title_text->SetFont(title_font);
-    title_text->SetForegroundColour(UiTheme::Brand900);
-    root->Add(title_text, 0, wxALL, 8);
-
-    //分隔线
-    wxStaticLine* line = new wxStaticLine(this);
-    root->Add(line, 0, wxEXPAND | wxLEFT | wxRIGHT, 8);
-
-    //属性行容器：每次 set_item 时清空重建
+    //属性行容器：参数多时（IC/继电器/端子提示）可以纵向滚动，而不是被卡片底边截断。
+    //标题/卡片边框由 CardPanel 统一画。
+    scroller_ = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition,
+                                     wxDefaultSize, wxVSCROLL);
+    scroller_->SetBackgroundColour(UiTheme::Surface);
+    scroller_->SetScrollRate(0, FromDIP(8));
+    Content()->Add(scroller_, 1, wxEXPAND);
     content_sizer = new wxBoxSizer(wxVERTICAL);
-    root->Add(content_sizer, 1, wxEXPAND | wxALL, 8);
-
-    SetSizer(root);
+    scroller_->SetSizer(content_sizer);
     rebuild();
 }
 
@@ -52,28 +43,58 @@ void AttributeBar::rebuild(){
     if(!current_item){
         add_label_value(grid, wxString::FromUTF8("提示"), wxString::FromUTF8("未选择元件\n在画布上点击元件查看属性"));
         content_sizer->Add(grid, 0, wxEXPAND);
+        content_sizer->Layout();
+        scroller_->FitInside();
         Layout();
         updating = false;
         return;
     }
 
+    MetaData* md = current_item->metadata;
+
     // 元件基本信息（只读：名称/ID是元件身份标识，坐标非元数据）
     add_label_value(grid, wxString::FromUTF8("名称"),
                     wxString::FromUTF8(current_item->name.c_str()));
-    add_label_value(grid, wxString::FromUTF8("ID"),
-                    wxString::Format(wxT("%d"), current_item->id));
+
+    // 输入/输出端子只是仿真测试点，不是物理元件；提示放在最上面，避免参数多时被滚出视野。
+    const std::string meta_type = md ? md->get_type() : std::string();
+    const bool simulation_terminal =
+        meta_type == "IN_TERMINAL" || meta_type == "OUT_TERMINAL" ||
+        (md && md->get_category() == "Simulation");
+    if(simulation_terminal){
+        add_label_value(grid, wxString::FromUTF8("用途"),
+                        wxString::FromUTF8("仅用于仿真测试；封装和导出时不允许出现，请导出前删除。"),
+                        UiTheme::Warning);
+    }
+
+    // 放置预览：从调色板/资源树点选元件后，ghost 还没有正式实例 ID 和固定坐标
+    if(current_item->ghost_mode){
+        add_label_value(grid, wxString::FromUTF8("状态"),
+                        wxString::FromUTF8("待放置（单击画布放下）"),
+                        UiTheme::Brand700);
+        add_label_value(grid, wxString::FromUTF8("ID"),
+                        wxString::FromUTF8("—（放置后分配）"));
+    }else{
+        add_label_value(grid, wxString::FromUTF8("ID"),
+                        wxString::Format(wxT("%d"), current_item->id));
+    }
+
     // 类型：通用元件显示元数据类型串（如 "Resistor-IEC-Standard"），门类显示中文名
     wxString type_label = wxString::FromUTF8(item_type_label(current_item->type));
     if(current_item->type == ItemType::GENERIC && current_item->metadata){
         type_label = wxString::FromUTF8(current_item->metadata->get_type().c_str());
     }
     add_label_value(grid, wxString::FromUTF8("类型"), type_label);
-    add_label_value(grid, wxString::FromUTF8("坐标"),
-                    wxString::Format(wxT("(%d, %d)"),
-                                     current_item->coords_x, current_item->coords_y));
+    if(current_item->ghost_mode){
+        add_label_value(grid, wxString::FromUTF8("坐标"),
+                        wxString::FromUTF8("跟随鼠标"));
+    }else{
+        add_label_value(grid, wxString::FromUTF8("坐标"),
+                        wxString::Format(wxT("(%d, %d)"),
+                                         current_item->coords_x, current_item->coords_y));
+    }
 
     // 元数据信息（可编辑，写回该元件自己的MetaData）
-    MetaData* md = current_item->metadata;
     if(md){
         add_label_value(grid, wxString::FromUTF8("类别"),
                         wxString::FromUTF8(md->get_category().c_str()));   //类别只读（结构性）
@@ -111,6 +132,8 @@ void AttributeBar::rebuild(){
     }
 
     content_sizer->Add(grid, 0, wxEXPAND);
+    content_sizer->Layout();
+    scroller_->FitInside();
     Layout();
     updating = false;
 }
@@ -135,11 +158,13 @@ void AttributeBar::set_metadata_value(MetaData* md, const std::string& key,
 
 //只读行“标签: 值”
 void AttributeBar::add_label_value(wxSizer* sizer, const wxString& label,
-                                   const wxString& value){
-    wxStaticText* lbl = new wxStaticText(this, wxID_ANY, label);
+                                   const wxString& value,
+                                   const wxColour& value_colour){
+    wxWindow* parent = scroller_ ? static_cast<wxWindow*>(scroller_) : this;
+    wxStaticText* lbl = new wxStaticText(parent, wxID_ANY, label);
     lbl->SetForegroundColour(UiTheme::TextSecondary);
-    wxStaticText* val = new wxStaticText(this, wxID_ANY, value);
-    val->SetForegroundColour(UiTheme::Text);
+    wxStaticText* val = new wxStaticText(parent, wxID_ANY, value);
+    val->SetForegroundColour(value_colour.IsOk() ? value_colour : UiTheme::Text);
     sizer->Add(lbl, 0, wxALIGN_TOP | wxRIGHT, 8);
     sizer->Add(val, 1, wxALIGN_TOP | wxEXPAND);
 }
@@ -148,9 +173,10 @@ void AttributeBar::add_label_value(wxSizer* sizer, const wxString& label,
 void AttributeBar::add_editable_value(wxSizer* sizer, const wxString& label,
                                       const std::string& meta_key,
                                       const wxString& value){
-    wxStaticText* lbl = new wxStaticText(this, wxID_ANY, label);
+    wxWindow* parent = scroller_ ? static_cast<wxWindow*>(scroller_) : this;
+    wxStaticText* lbl = new wxStaticText(parent, wxID_ANY, label);
     lbl->SetForegroundColour(UiTheme::TextSecondary);
-    wxTextCtrl* edit = new wxTextCtrl(this, wxID_ANY, value, wxDefaultPosition,
+    wxTextCtrl* edit = new wxTextCtrl(parent, wxID_ANY, value, wxDefaultPosition,
                                       wxSize(120, -1));
     edit->SetBackgroundColour(UiTheme::Surface);
     edit->SetForegroundColour(UiTheme::Text);

@@ -4,6 +4,7 @@
 #include<string>
 #include<utility>
 #include<vector>
+#include"../Theme/CardPanel.hpp"
 #include"../Theme/ThemedButton.hpp"
 
 class Canvas;
@@ -19,7 +20,7 @@ namespace VerilogPanelUI{
 //     行号、缩进参考线、括号匹配、输入时自动补全（关键字 + 文档内标识符）
 //   - 显示当前画布生成的 Verilog；无法转换时在诊断区显示报错
 //   - 代码可编辑：可由代码生成电路图，也可由当前画布重新生成代码
-class VerilogPanel : public wxPanel{
+class VerilogPanel : public CardPanel{
 public:
     VerilogPanel(wxWindow* parent, Canvas* canvas);
 

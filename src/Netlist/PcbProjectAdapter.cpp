@@ -99,7 +99,14 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
         component.category = !componentData.category.empty()
                                  ? componentData.category
                                  : (metadata ? metadata->get_category() : std::string());
-        component.exportable = component.category != "Ground" && component.category != "Source";
+        // 输入/输出端子只是仿真的测试点，不是物理元件；标记出来让 PCB 构建器
+        // 明确拒绝导出，而不是当作“缺封装”的普通元件。
+        component.simulationOnly =
+            component.type == "IN_TERMINAL" || component.type == "OUT_TERMINAL" ||
+            component.category == "Simulation";
+        component.exportable = !component.simulationOnly &&
+                               component.category != "Ground" &&
+                               component.category != "Source";
 
         // 实例覆盖优先；没有覆盖时使用 2.0 元数据中的定义默认值。
         component.reference = !componentData.reference.empty()

@@ -1,14 +1,15 @@
 #pragma once
 #include "wx/wx.h"
 #include "wx/treectrl.h"
+#include "../Theme/CardPanel.hpp"
 #include <functional>
 #include <string>
 
-// 继承自 wxPanel，它是一个可以容纳其他控件的通用容器。
+// 继承自 CardPanel：统一圆角卡片 + “元件库”标题，树控件填满卡片内容区。
 // 资源树：从 src/metadata/ 加载所有元件元数据，按类别分组为文件夹
 // （天线/音频/电容/二极管/…/晶体管，与电子符号库SVG目录分类一致），
 // 每个文件夹下是该类的各个元件；点击元件通过回调通知外部（画布放置）。
-class ExplorerPane : public wxPanel 
+class ExplorerPane : public CardPanel
 {
 public:
     // 元件被点击回调：参数为元件的类型字符串（如 "Resistor-IEC-Standard"），

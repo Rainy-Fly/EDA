@@ -34,6 +34,8 @@ struct PcbSnapshotComponent {
     std::string referencePrefix; // 位号前缀（如 "R"）
     std::string value;
     std::string footprint;
+    // 仿真用输入/输出端子：参与画布连通/仿真，但绝不允许进入封装网表。
+    bool simulationOnly = false;
     // 电源/地等非物理符号：参与连通性，但不导出为 PCB 元件。
     bool exportable = true;
     std::vector<PcbSnapshotPin> pins;

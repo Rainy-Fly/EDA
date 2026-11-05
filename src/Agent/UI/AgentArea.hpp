@@ -1,18 +1,20 @@
 #pragma once
 #include<wx/wx.h>
-#include<wx/notebook.h>
 #include<memory>
 #include"../Controller.hpp"
+#include"../../Theme/CardPanel.hpp"
+#include"../../Theme/ThemedButton.hpp"
 #include"./ChatPanel.hpp"
 #include"./Setting.hpp"
 
 class Canvas;
+class wxSimplebook;
 
 namespace Agent{
 
-// AI 窗口整体：一个带“对话/设置”两个标签页的面板，
+// AI 窗口整体：一个带“对话/设置”两个分段页签的卡片面板，
 // 持有 ChatPanel、SettingPanel 与 Controller，并在销毁时安全回收 Controller。
-class AgentArea : public wxPanel{
+class AgentArea : public CardPanel{
 public:
     AgentArea(wxWindow* parent, Canvas* canvas);
     ~AgentArea() override;
@@ -22,9 +24,13 @@ public:
     Controller* Ctl(){ return ctl_.get(); }
 
 private:
-    wxNotebook* notebook_;
+    void SelectTab(int index);
+
+    wxSimplebook* book_;
     ChatPanel* chat_;
     SettingPanel* setting_;
+    ThemedButton* tab_chat_;
+    ThemedButton* tab_setting_;
     std::unique_ptr<Controller> ctl_;
 };
 

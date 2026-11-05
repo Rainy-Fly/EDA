@@ -19,6 +19,6 @@ struct ModuleToProjectResult{
 };
 
 ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
-                                             const wxPoint& origin);
+                                             wxPoint origin);
 
 } // namespace VerilogBridge

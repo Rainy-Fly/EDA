@@ -182,7 +182,11 @@ PcbNetlistBuildResult PcbNetlistBuilder::build(const PcbProjectSnapshot& project
             sink.error("PCB_NETLIST_COMPONENT_TYPE_MISSING",
                        "Component type is required for PCB export.", component.instanceId);
         }
-        if (!component.exportable) {
+        if (component.simulationOnly) {
+            sink.error("PCB_NETLIST_SIMULATION_ONLY_COMPONENT",
+                       "Input/output terminals are simulation-only test points and must not appear in a PCB netlist; delete them before exporting.",
+                       component.instanceId);
+        } else if (!component.exportable) {
             sink.warning("PCB_NETLIST_NON_PHYSICAL_COMPONENT",
                          "Non-physical symbol participates in connectivity but is not exported as a PCB component.",
                          component.instanceId);
