@@ -99,11 +99,12 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
         component.category = !componentData.category.empty()
                                  ? componentData.category
                                  : (metadata ? metadata->get_category() : std::string());
-        // 输入/输出端子只是仿真的测试点，不是物理元件；标记出来让 PCB 构建器
-        // 明确拒绝导出，而不是当作“缺封装”的普通元件。
-        component.simulationOnly =
+        // 输入/输出端子是仿真测试点；导出时把它们当作 KiCad 测试点(Test Point)
+        // 元件，而不是拒绝导出（位号用元数据里的 IN/OUT 前缀自动编号）。
+        const bool isTerminal =
             component.type == "IN_TERMINAL" || component.type == "OUT_TERMINAL" ||
             component.category == "Simulation";
+        component.simulationOnly = false;
         component.exportable = !component.simulationOnly &&
                                component.category != "Ground" &&
                                component.category != "Source";
@@ -128,6 +129,14 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
                                   : param_of(componentData, metadata.get(), "footprint");
         if (component.footprint.empty() && metadata) component.footprint = metadata->footprint;
         if (component.value.empty() && metadata) component.value = metadata->get_type();
+
+        // 端子没有物理封装，导出时统一按 KiCad 测试点(Test Point)处理：
+        // 默认封装 TestPoint、默认值 IN/OUT，位号沿用元数据的 reference_prefix 自动编号。
+        if (isTerminal) {
+            if (component.footprint.empty()) component.footprint = "TestPoint";
+            if (component.value.empty() || component.value == component.type)
+                component.value = (component.type == "IN_TERMINAL") ? "IN" : "OUT";
+        }
 
         if (!metadata) {
             Diagnostic diagnostic;

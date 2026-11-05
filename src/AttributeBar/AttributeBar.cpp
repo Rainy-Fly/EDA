@@ -63,7 +63,7 @@ void AttributeBar::rebuild(){
         (md && md->get_category() == "Simulation");
     if(simulation_terminal){
         add_label_value(grid, wxString::FromUTF8("用途"),
-                        wxString::FromUTF8("仅用于仿真测试；封装和导出时不允许出现，请导出前删除。"),
+                        wxString::FromUTF8("仿真测试点；导出 KiCad 网表时作为测试点(Test Point)元件导出。"),
                         UiTheme::Warning);
     }
 
