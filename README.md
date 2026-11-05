@@ -254,6 +254,11 @@ curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、
 - 按钮使用 `ThemedButton`：GDI+ 画抗锯齿圆角/阴影/焦点环，GDI 画文字，避免中文发虚；悬停、按压、选中有 80–160ms 的过渡。
 - 左侧栏（元件调色板、资源树）、属性栏、AI 面板、Verilog 面板统一用 `CardPanel`：页面底色 + 圆角卡片 + 1px 描边 + 轻阴影。
 - 调色板按钮保持 36×36，门/端子/工具图标按 24px 渲染；按钮本身不再放大，避免挤出左侧栏。
+- 调色板保持 **2 行 5 列**（按钮 36×36、间隔 3px），两行图标列位严格对齐；第二行是
+  `同或门 非门 │ 导线 │ 输入端子 输出端子`，两条 1px 浅色竖线（`UiTheme::Border`，与卡片描边同色系）
+  **插在网格间隔正中**、不额外占列，把 门 | 导线 | 输入/输出端子 三种类型划开——
+  它们在画布上行为不同（逻辑元件 / 连线 / 仿真激励与观测），比只靠图标区分直观。
+  竖线高度与按钮等高（36px），实现见 `ToolBar::make_vertical_rule()`。
 - 四个分栏用 `ThemedSplitter`：去掉原生 3D 边框，拖动时实时缩放，悬停显示圆角抓手；分隔器开启窗口级双缓冲（MSW `WS_EX_COMPOSITED`），Canvas 关闭系统擦背景并全部使用 `Refresh(false)`，避免拖动分栏时画布白闪/黑闪。
 - 属性栏内容放在可滚动容器里；参数多时出现纵向滚动条，不会被卡片底边截断。
 - 从调色板/资源树点选元件时，属性栏立即显示该元件的“待放置”预览（名称/类型/描述），编辑结果会随放置复制到正式实例。
@@ -272,7 +277,7 @@ curl 用 Schannel（直接读系统证书库），所以**不需要** OpenSSL、
 | `src/metadata/` | 元件元数据 JSON（每个元件一条定义，`type` 是主键）+ JSON 读取器 |
 | `src/Simulation/` | **仿真核心**（与 GUI/wx 无关，可独立自检）：三值逻辑 `LogicValue`、电路/结果类型、结构校验 `SimulationValidator`、迭代求值 `Simulator`、项目适配 `SimulationAdapter`（连通性并查集 + 元件→角色映射）、会话 `SimulationSession`；自检在 `tests/simulation_selftest.cpp`（61 项）与 `tests/simulation_adapter_selftest.cpp`（47 项） |
 | `src/Canva/SimulationBridge.*` | 项目数据 → 仿真输入的桥接：解析元件引脚并按实例旋转/镜像变换成绝对坐标，搬运导线端点/junction/label/no-connect |
-| `src/Explorer/` | 左侧栏下半部分的资源树（`CardPanel`）：按类别列出所有元件，点击后进入放置模式 |
+| `src/Explorer/` | 左侧栏下半部分的资源树（`CardPanel`）：按类别列出所有元件（天线/音频/…/**门**/…/晶体管 共 16 类，类别名沿用英文类别名的字母序；「门」= `LogicGate`，收纳 `gates.json` 里 7 个逻辑门），点击后进入放置模式 |
 | `src/AttributeBar/` | 画布下方的属性栏（`CardPanel` + `wxScrolledWindow`）：显示并编辑当前元件的元数据；端子会显示“仅用于仿真”提示；调色板/资源树点选时显示待放置预览 |
 | `src/App.cpp`、`src/App.hpp` | 程序入口（`wxIMPLEMENT_APP`，注册图片格式处理器后创建主窗口） |
 | `src/MainFrame.*` | 主窗口布局（类似 Logisim）：左侧栏 = 元件调色板 + 资源树，中间 = 画布 + 属性栏，最右 = 可折叠的 AI 助手面板；四个分栏统一使用 `ThemedSplitter`。底部状态栏四段：① 状态/提示 ② 光标逻辑坐标 ③ 缩放与网格 ④ 仿真摘要（数字用**全角**、提示语不混半角字母 —— 状态栏是原生控件，中文与半角字符混排会被 GDI 的字体链接渲染得发虚发花）；同时持有仿真会话、绑定模拟菜单并按内容变化去抖重建仿真，负责「功能面板」菜单勾选同步 |

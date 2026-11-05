@@ -20,27 +20,33 @@ public:
     wxString type_str;
 };
 
-// 资源树展示的15个分类：英文类别 -> (中文文件夹名, 显示顺序)。
+// 资源树展示的16个分类：英文类别 -> (中文文件夹名, 显示顺序)。
 // 与 src/assets/electronic-symbols/SVG/ 的文件名前缀分类一致；
-// 其余类别（LogicGate/Wire/Passive/Source/Connector 等）不在此列，不显示在资源树
+// 其余类别（Wire/Passive/Source/Connector/Simulation 等）不在此列，不显示在资源树
 struct CategoryInfo{ std::string cn; int order; };
 const std::map<std::string, CategoryInfo>& category_info(){
+    // 顺序沿用英文类别名的字母序（Antenna→Audio→…→Transistor），
+    // 新增分类只要把 order 插到字母序对应的位置，其余依次后移。
+    // 「门」= LogicGate（元数据见 src/metadata/gates.json），
+    // 是与非门/与门/或门/或非门/异或门/同或门/非门这一组逻辑门，
+    // 此前只出现在上方工具栏里，资源树没有对应文件夹
     static const std::map<std::string, CategoryInfo> m = {
         {"Antenna",      {"天线",         0}},
         {"Audio",        {"音频",         1}},
         {"Capacitor",    {"电容",         2}},
         {"Diode",        {"二极管",       3}},
         {"Fuse",         {"保险丝",       4}},
-        {"Ground",       {"接地",         5}},
-        {"IC",           {"集成电路",     6}},
-        {"Inductor",     {"电感",         7}},
-        {"Miscellaneous",{"杂项",         8}},
-        {"Relay",        {"继电器",       9}},
-        {"Resistor",     {"电阻",        10}},
-        {"Source",       {"电源/信号源", 11}},
-        {"Switch",       {"开关",        12}},
-        {"Transformer",  {"变压器",      13}},
-        {"Transistor",   {"晶体管",      14}},
+        {"LogicGate",    {"门",           5}},
+        {"Ground",       {"接地",         6}},
+        {"IC",           {"集成电路",     7}},
+        {"Inductor",     {"电感",         8}},
+        {"Miscellaneous",{"杂项",         9}},
+        {"Relay",        {"继电器",      10}},
+        {"Resistor",     {"电阻",        11}},
+        {"Source",       {"电源/信号源", 12}},
+        {"Switch",       {"开关",        13}},
+        {"Transformer",  {"变压器",      14}},
+        {"Transistor",   {"晶体管",      15}},
     };
     return m;
 }
@@ -81,7 +87,7 @@ void ExplorerPane::InitTree()
 
     wxTreeItemId rootId = m_treeCtrl->AddRoot(wxT("Untitled*"), 0, 0);
 
-    // 从元数据枚举所有元件，只取资源树展示的15个分类，
+    // 从元数据枚举所有元件，只取资源树展示的16个分类，
     // 按“分类 -> 元件列表”分组（顺序稳定：分类按定义顺序、元件按id）
     std::vector<MetaData*> all = load_all_metadata();
     std::map<std::string, std::vector<MetaData*>> by_category;
