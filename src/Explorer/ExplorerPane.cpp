@@ -36,7 +36,7 @@ const std::map<std::string, CategoryInfo>& category_info(){
         {"Capacitor",    {"电容",         2}},
         {"Diode",        {"二极管",       3}},
         {"Fuse",         {"保险丝",       4}},
-        {"LogicGate",    {"门",           5}},
+        {"LogicGate",    {"逻辑门",       5}},
         {"Ground",       {"接地",         6}},
         {"IC",           {"集成电路",     7}},
         {"Inductor",     {"电感",         8}},
