@@ -19,6 +19,7 @@ Makefile
 
 # IDE/editor files
 .vscode/
+.trae
 
 # addional images
 /src/assets/electronic-symbols/JPG-ICO/
@@ -31,5 +32,5 @@ run_TinyEDA.bat
 
 local/*
 
-*.md
+/*.md
 !README.md
