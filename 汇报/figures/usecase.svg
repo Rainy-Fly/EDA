@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="540" viewBox="0 0 920 540" font-family="sans-serif">
+  <rect width="920" height="540" fill="#ffffff"/>
+  <!-- 系统边界 -->
+  <rect x="180" y="60" width="700" height="450" rx="14" fill="#F4F7FB" stroke="#7C93B5" stroke-width="1.5"/>
+  <text x="530" y="88" text-anchor="middle" font-size="17" font-weight="bold" fill="#334155">TinyEDA 系统</text>
+
+  <!-- 参与者：电路设计者 -->
+  <circle cx="90" cy="200" r="14" fill="none" stroke="#1E293B" stroke-width="2"/>
+  <line x1="90" y1="214" x2="90" y2="262" stroke="#1E293B" stroke-width="2"/>
+  <line x1="58" y1="238" x2="122" y2="238" stroke="#1E293B" stroke-width="2"/>
+  <line x1="90" y1="262" x2="64" y2="302" stroke="#1E293B" stroke-width="2"/>
+  <line x1="90" y1="262" x2="116" y2="302" stroke="#1E293B" stroke-width="2"/>
+  <text x="90" y="330" text-anchor="middle" font-size="14" fill="#1E293B">电路设计者</text>
+
+  <!-- 参与者与用例的连线 -->
+  <g stroke="#94A3B8" stroke-width="1.2">
+    <line x1="122" y1="240" x2="228" y2="140"/>
+    <line x1="122" y1="240" x2="228" y2="235"/>
+    <line x1="122" y1="240" x2="228" y2="330"/>
+    <line x1="122" y1="240" x2="228" y2="425"/>
+    <line x1="122" y1="240" x2="568" y2="140"/>
+    <line x1="122" y1="240" x2="568" y2="235"/>
+    <line x1="122" y1="240" x2="568" y2="330"/>
+    <line x1="122" y1="240" x2="568" y2="425"/>
+  </g>
+
+  <!-- 用例：左列 -->
+  <g fill="#ffffff" stroke="#2563EB" stroke-width="1.4">
+    <ellipse cx="340" cy="140" rx="112" ry="30"/>
+    <ellipse cx="340" cy="235" rx="112" ry="30"/>
+    <ellipse cx="340" cy="330" rx="112" ry="30"/>
+    <ellipse cx="340" cy="425" rx="112" ry="30"/>
+  </g>
+  <g font-size="13" fill="#1E293B" text-anchor="middle">
+    <text x="340" y="135">编辑电路图</text>
+    <text x="340" y="152" font-size="11" fill="#64748B">放置·连线·克隆·删除</text>
+    <text x="340" y="230">查看/编辑属性</text>
+    <text x="340" y="247" font-size="11" fill="#64748B">元件参数与描述</text>
+    <text x="340" y="325">电路仿真</text>
+    <text x="340" y="342" font-size="11" fill="#64748B">运行·暂停·单步·诊断</text>
+    <text x="340" y="420">AI 助手对话</text>
+    <text x="340" y="437" font-size="11" fill="#64748B">自然语言画图/改图</text>
+  </g>
+
+  <!-- 用例：右列 -->
+  <g fill="#ffffff" stroke="#2563EB" stroke-width="1.4">
+    <ellipse cx="680" cy="140" rx="112" ry="30"/>
+    <ellipse cx="680" cy="235" rx="112" ry="30"/>
+    <ellipse cx="680" cy="330" rx="112" ry="30"/>
+    <ellipse cx="680" cy="425" rx="112" ry="30"/>
+  </g>
+  <g font-size="13" fill="#1E293B" text-anchor="middle">
+    <text x="680" y="135">保存与打开项目</text>
+    <text x="680" y="152" font-size="11" fill="#64748B">XML 工程文件</text>
+    <text x="680" y="230">导出 KiCad 网表</text>
+    <text x="680" y="247" font-size="11" fill="#64748B">S-expression (.net)</text>
+    <text x="680" y="325">生成 Verilog 代码</text>
+    <text x="680" y="342" font-size="11" fill="#64748B">电路图 → 代码</text>
+    <text x="680" y="420">导入代码生成电路</text>
+    <text x="680" y="437" font-size="11" fill="#64748B">代码 → 电路图</text>
+  </g>
+
+  <text x="20" y="525" font-size="12" fill="#64748B">图1-1 TinyEDA 系统用例图</text>
+</svg>

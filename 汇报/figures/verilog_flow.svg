@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="430" viewBox="0 0 880 430" font-family="sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <polygon points="0 0, 9 4.5, 0 9" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="880" height="430" fill="#ffffff"/>
+
+  <text x="440" y="36" text-anchor="middle" font-size="16" font-weight="bold" fill="#334155">TinyEDA Verilog 双向转换数据流</text>
+
+  <!-- 节点 -->
+  <g fill="#EFF6FF" stroke="#2563EB" stroke-width="1.5">
+    <rect x="40" y="150" width="200" height="86" rx="10"/>
+    <rect x="340" y="150" width="200" height="86" rx="10"/>
+    <rect x="640" y="150" width="200" height="86" rx="10"/>
+  </g>
+  <g text-anchor="middle" fill="#1E293B">
+    <text x="140" y="182" font-size="14" font-weight="bold">电路图（画布）</text>
+    <text x="140" y="204" font-size="11.5" fill="#64748B">元件 + 导线 + 端子</text>
+    <text x="440" y="182" font-size="14" font-weight="bold">电路模型</text>
+    <text x="440" y="204" font-size="11.5" fill="#64748B">CircuitModel</text>
+    <text x="740" y="182" font-size="14" font-weight="bold">Verilog 代码</text>
+    <text x="740" y="204" font-size="11.5" fill="#64748B">module … endmodule</text>
+  </g>
+
+  <!-- 上箭头：图 -> 模型 -> 码 -->
+  <g stroke="#475569" stroke-width="1.7" fill="none" marker-end="url(#arr)">
+    <path d="M240,185 L340,185"/>
+    <path d="M540,185 L640,185"/>
+  </g>
+  <text x="290" y="173" text-anchor="middle" font-size="12" fill="#1E40AF">ProjectToModule</text>
+  <text x="290" y="190" text-anchor="middle" font-size="10.5" fill="#64748B">采集（诊断不静默）</text>
+  <text x="590" y="173" text-anchor="middle" font-size="12" fill="#1E40AF">VerilogGenerator</text>
+  <text x="590" y="190" text-anchor="middle" font-size="10.5" fill="#64748B">代码生成</text>
+
+  <!-- 下箭头：码 -> 模型 -> 图 -->
+  <g stroke="#DC2626" stroke-width="1.7" fill="none" marker-end="url(#arr)">
+    <path d="M640,236 L540,236"/>
+    <path d="M340,236 L240,236"/>
+  </g>
+  <text x="590" y="256" text-anchor="middle" font-size="12" fill="#B91C1C">Parser 解析</text>
+  <text x="590" y="273" text-anchor="middle" font-size="10.5" fill="#64748B">词法/语法 → AST</text>
+  <text x="290" y="256" text-anchor="middle" font-size="12" fill="#B91C1C">ModuleToProject</text>
+  <text x="290" y="273" text-anchor="middle" font-size="10.5" fill="#64748B">拓扑分层自动布局</text>
+
+  <!-- 说明 -->
+  <g font-size="12" fill="#64748B">
+    <text x="440" y="330" text-anchor="middle">支持：AND/OR/NOT/NAND/NOR/XOR/XNOR + INPUT/OUTPUT/WIRE</text>
+    <text x="440" y="352" text-anchor="middle">语法子集：module / input / output / wire / assign（单比特、组合逻辑）</text>
+    <text x="440" y="400" text-anchor="middle" fill="#334155">图3-3 电路图 ↔ Verilog 代码双向转换流程</text>
+  </g>
+</svg>

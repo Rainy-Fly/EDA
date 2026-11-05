@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="sans-serif">
+  <defs>
+    <marker id="ih" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="900" height="560" fill="#ffffff"/>
+
+  <!-- 类：CanvasItem -->
+  <rect x="310" y="50" width="250" height="130" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.4"/>
+  <rect x="310" y="50" width="250" height="26" rx="6" fill="#DBEAFE" stroke="#334155" stroke-width="1.4"/>
+  <text x="435" y="68" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#1E3A8A">CanvasItem</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="322" y="96">id : int</text>
+    <text x="322" y="116">coords_x/y : int</text>
+    <text x="322" y="136">meta : MetaData*</text>
+    <text x="322" y="156">rot/mirror : bool</text>
+  </g>
+
+  <!-- 类：MetaData -->
+  <rect x="610" y="50" width="250" height="130" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.4"/>
+  <rect x="610" y="50" width="250" height="26" rx="6" fill="#DBEAFE" stroke="#334155" stroke-width="1.4"/>
+  <text x="735" y="68" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#1E3A8A">MetaData</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="622" y="96">type : string（主键）</text>
+    <text x="622" y="116">name/category : string</text>
+    <text x="622" y="136">params : map&lt;string,string&gt;</text>
+    <text x="622" y="156">description : string</text>
+  </g>
+
+  <!-- 类：Symbol / Linking -->
+  <rect x="60" y="300" width="220" height="110" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.4"/>
+  <rect x="60" y="300" width="220" height="26" rx="6" fill="#E0F2FE" stroke="#334155" stroke-width="1.4"/>
+  <text x="170" y="318" text-anchor="middle" font-size="13" font-weight="bold" fill="#075985">Symbol（元件）</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="72" y="344">+ type : string</text>
+    <text x="72" y="364">+ svg 符号（ItemSVG 缓存）</text>
+    <text x="72" y="384">+ pins : 引脚定义</text>
+  </g>
+
+  <rect x="310" y="300" width="220" height="110" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.4"/>
+  <rect x="310" y="300" width="220" height="26" rx="6" fill="#E0F2FE" stroke="#334155" stroke-width="1.4"/>
+  <text x="420" y="318" text-anchor="middle" font-size="13" font-weight="bold" fill="#075985">Linking（导线）</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="322" y="344">+ type : WIRE / BUS</text>
+    <text x="322" y="364">+ points : vector&lt;Point&gt;</text>
+    <text x="322" y="384">+ 折点序列（≥2）</text>
+  </g>
+
+  <!-- 类：ProjectData -->
+  <rect x="580" y="300" width="290" height="130" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.4"/>
+  <rect x="580" y="300" width="290" height="26" rx="6" fill="#EDE9FE" stroke="#334155" stroke-width="1.4"/>
+  <text x="725" y="318" text-anchor="middle" font-size="13" font-weight="bold" fill="#5B21B6">ProjectData（项目）</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="592" y="344">components : vector&lt;CanvasItem*&gt;</text>
+    <text x="592" y="364">wires : vector&lt;Linking*&gt;</text>
+    <text x="592" y="384">info : 名称/作者/视口</text>
+    <text x="592" y="404">schema-version : string</text>
+  </g>
+
+  <!-- 领域模型：PcbNetlist / CircuitModel -->
+  <rect x="60" y="470" width="250" height="100" rx="6" fill="#ffffff" stroke="#16A34A" stroke-width="1.3"/>
+  <text x="185" y="495" text-anchor="middle" font-size="13" font-weight="bold" fill="#166534">PcbNetlist（PCB 网表）</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="72" y="520">instances / nets / pins</text>
+    <text x="72" y="540">位号·封装·网络节点</text>
+    <text x="72" y="560">→ KiCad S-expression</text>
+  </g>
+
+  <rect x="360" y="470" width="250" height="100" rx="6" fill="#ffffff" stroke="#F59E0B" stroke-width="1.3"/>
+  <text x="485" y="495" text-anchor="middle" font-size="13" font-weight="bold" fill="#B45309">CircuitModel（电路模型）</text>
+  <g font-family="monospace" font-size="12.5" fill="#1E293B">
+    <text x="372" y="520">signals / ports / gates</text>
+    <text x="372" y="540">单比特组合逻辑子集</text>
+    <text x="372" y="560">→ Verilog 生成/解析</text>
+  </g>
+
+  <!-- 关联线 -->
+  <g stroke="#475569" stroke-width="1.4" fill="none">
+    <!-- 继承：Symbol -> CanvasItem -->
+    <path d="M170,300 L170,180"/>
+    <polygon points="170,180 158,192 182,192" fill="#ffffff" stroke="#475569" stroke-width="1.3"/>
+    <!-- 继承：Linking -> CanvasItem -->
+    <path d="M420,300 L420,180"/>
+    <polygon points="420,180 408,192 432,192" fill="#ffffff" stroke="#475569" stroke-width="1.3"/>
+    <!-- 聚合：CanvasItem -> MetaData -->
+    <path d="M560,105 L610,105"/>
+    <polygon points="560,105 548,113 560,121 572,113" fill="#ffffff" stroke="#475569" stroke-width="1.3"/>
+    <!-- 聚合：ProjectData -> CanvasItem / Linking -->
+    <path d="M580,330 L510,330 L510,160"/>
+    <polygon points="580,330 568,338 580,346 592,338" fill="#ffffff" stroke="#475569" stroke-width="1.3"/>
+  </g>
+
+  <text x="20" y="20" font-size="13" fill="#334155">▲ 继承（空心三角）　◆ 聚合（空心菱形）　→ 关联</text>
+  <text x="20" y="548" font-size="12" fill="#64748B">图3-1 核心数据结构（UML 类图简版）</text>
+</svg>
