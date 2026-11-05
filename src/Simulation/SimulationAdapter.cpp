@@ -7,10 +7,12 @@
 
 // 元件 ↔ 仿真角色 的映射表（以后新增可仿真元件，只需要改这里）：
 //
-//   LOGIC GATE   type = NOT / AND / OR / NAND / NOR / XOR（category=LogicGate）
+//   LOGIC GATE   type = NOT / AND / OR / NAND / NOR / XOR / XNOR（category=LogicGate）
 //                引脚 direction=input 顺序即输入顺序，direction=output 为输出
+//   IN_TERMINAL  输入端子（1 脚，direction=output）：单端驱动源，单击切换 0/1
+//   OUT_TERMINAL 输出端子（1 脚，direction=input）：观察该脚网络电平
 //   SWITCH       category=Switch 或 type 以 "Switch-COM-" 开头（SPST/按钮/SPDT…）
-//                两脚只取"已接线"的那一脚作为被驱动网络；状态存实例参数 State=0/1
+//                两脚开关：闭合时两端导通（Buffer 把有信号一侧送到另一侧），断开时都不驱动
 //   POWER        引脚 "+"=1、"-"=0（常量源）
 //   GND          引脚 "GND"=0（常量源）
 //   PROBE        Miscellaneous-COM-Probe_Point（1 脚）：观察该脚网络

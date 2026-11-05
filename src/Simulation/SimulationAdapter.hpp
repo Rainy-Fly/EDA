@@ -20,7 +20,7 @@ namespace Simulation{
 
 // 元件在仿真里的角色
 enum class SimRole{
-    Gate,         //逻辑门（AND/OR/NOT/NAND/NOR/XOR）
+    Gate,         //逻辑门（AND/OR/NOT/NAND/NOR/XOR/XNOR）
     InputSwitch,  //可点击的输入开关：0/1 由用户点击切换
     Constant,     //常量源：POWER 的 "+"=1、"-"=0，GND 的 "GND"=0
     Probe,        //输出探针（Miscellaneous-COM-Probe_Point）

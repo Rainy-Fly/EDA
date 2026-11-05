@@ -74,12 +74,16 @@ struct SimulationCircuit{
 };
 
 //门类型名称（诊断信息用）
+//注意：新增 GateKind 枚举值时，这个 switch 和下面的 gate_input_count_range 都必须同步加 case，
+//否则 -Wall 的 -Wswitch 会警告，而且 gate_input_count_range 返回 false 会让校验器把该门
+//判成"不支持的类型"（error），导致整张电路都不求值（同或门曾经就是这样）
 inline const char* gate_kind_name(GateKind kind){
     switch(kind){
         case GateKind::Not:  return "NOT";
         case GateKind::And:  return "AND";
         case GateKind::Or:   return "OR";
         case GateKind::Xor:  return "XOR";
+        case GateKind::Xnor: return "XNOR";
         case GateKind::Nand: return "NAND";
         case GateKind::Nor:  return "NOR";
         case GateKind::Buffer: return "BUF";   //单刀开关闭合时把一侧电平送到另一侧
@@ -97,6 +101,7 @@ inline bool gate_input_count_range(GateKind kind, std::size_t& minInputs, std::s
         case GateKind::And:
         case GateKind::Or:
         case GateKind::Xor:
+        case GateKind::Xnor:
         case GateKind::Nand:
         case GateKind::Nor:   minInputs = 2; maxInputs = static_cast<std::size_t>(-1); return true;
         case GateKind::Buffer: minInputs = 1; maxInputs = 1; return true;

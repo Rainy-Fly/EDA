@@ -427,6 +427,40 @@ void test_switch_passthrough(){
     }
 }
 
+// ---- 用例11：同或门 XNOR 走完整链路（元数据 type="XNOR" -> 角色 Gate -> 求值） ----
+void test_xnor_type(){
+    const auto build = [](const std::string& a, const std::string& b){
+        SimProject project;
+        project.components.push_back(in_terminal(1, 0, 0, a));     // A=(20,0)
+        project.components.push_back(in_terminal(2, 0, 80, b));    // A=(20,80)
+        project.components.push_back(comp(3, "XNOR", "LogicGate",
+            {pin("IN1", "input", 260, 30), pin("IN2", "input", 260, 50),
+             pin("OUT", "output", 340, 40)}));
+        project.components.push_back(out_terminal(4, 480, 40));    // A=(460,40)
+        project.wires.push_back(wire(10, P(20, 0), P(260, 30), pin_end(1, "A"), pin_end(3, "IN1")));
+        project.wires.push_back(wire(11, P(20, 80), P(260, 50), pin_end(2, "A"), pin_end(3, "IN2")));
+        project.wires.push_back(wire(12, P(340, 40), P(460, 40), pin_end(3, "OUT"), pin_end(4, "A")));
+        return project;
+    };
+
+    {   // 1 XNOR 1 = 1，且整张电路不能有 error（当初 XNOR 被判成"不支持"会导致整图不求值）
+        SimProject project = build("1", "1");
+        SimulationSession session;
+        check(session.rebuild(project), "XNOR：建模型成功");
+        check(session.errorCount() == 0, "XNOR：没有 error 级诊断");
+        check(session.componentValue(3) == LogicValue::One, "1 XNOR 1 => 门输出 1");
+        check(session.componentValue(4) == LogicValue::One, "输出端子读到 1");
+        check(session.wireValue(12) == LogicValue::One, "输出导线 = 1");
+    }
+    {   // 1 XNOR 0 = 0
+        SimProject project = build("1", "0");
+        SimulationSession session;
+        check(session.rebuild(project), "XNOR 混合输入：建模型成功");
+        check(session.componentValue(3) == LogicValue::Zero, "1 XNOR 0 => 门输出 0");
+        check(session.componentValue(4) == LogicValue::Zero, "输出端子读到 0");
+    }
+}
+
 } // namespace
 
 int main(){
@@ -440,6 +474,7 @@ int main(){
     test_empty_and_pause();
     test_terminals();
     test_switch_passthrough();
+    test_xnor_type();
 
     if(failures == 0){
         std::cout << "Simulation adapter self-test passed (" << checks << " checks).\n";
