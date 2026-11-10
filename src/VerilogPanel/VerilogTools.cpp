@@ -9,10 +9,21 @@
 #include <wx/utils.h>
 
 #include <cstdio>
+#include <cstdlib>
+#include <mutex>
+#include <string>
+
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 
 namespace VerilogTools {
 
 namespace {
+
+// 所有会写共享临时文件（lint_check.v / top.v / tb_top.v / obj_dir）并执行
+// verilator 的操作都要串行化：并发调用会互相覆盖临时文件导致结果错乱。
+std::mutex s_tool_mutex;
 
 // 命令参数用双引号包裹（路径可能含空格）
 wxString quote(const wxString& s){
@@ -28,6 +39,20 @@ bool write_file(const wxString& path, const wxString& content){
     return ok;
 }
 
+bool read_file(const wxString& path, std::string& content){
+    FILE* file = std::fopen(path.ToUTF8().data(), "rb");
+    if(!file) return false;
+    std::string out;
+    char buf[4096];
+    std::size_t n;
+    while((n = std::fread(buf, 1, sizeof(buf), file)) > 0){
+        out.append(buf, n);
+    }
+    std::fclose(file);
+    content = std::move(out);
+    return true;
+}
+
 // 工作目录：系统临时目录下的 tinyeda_verilator（自动创建）
 wxString work_dir(){
     wxString dir = wxStandardPaths::Get().GetTempDir();
@@ -38,28 +63,97 @@ wxString work_dir(){
     return dir;
 }
 
-// 执行命令并收集 stdout+stderr，返回退出码
+// 通过 /bin/sh（Windows 用 cmd）执行命令并收集 stdout+stderr。
+// 用 libc 的 popen 而不是 wxExecute：wxExecute 只能从主线程调用，
+// 而本模块会在后台工作线程里执行 verilator 编译/仿真，必须线程安全。
 int run_command(const wxString& command, wxString& output){
-    wxArrayString out;
-    wxArrayString err;
-    const int code = wxExecute(command, out, err, wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE);
-    wxString combined;
-    for(const wxString& line : out) combined += line + wxT("\n");
-    for(const wxString& line : err) combined += line + wxT("\n");
-    output = combined;
+#ifdef _WIN32
+    FILE* pipe = _popen((command + wxT(" 2>&1")).ToUTF8().data(), "r");
+#else
+    FILE* pipe = popen((command + wxT(" 2>&1")).ToUTF8().data(), "r");
+#endif
+    if(!pipe) return -1;
+
+    std::string out;
+    char buf[4096];
+    std::size_t n;
+    while((n = std::fread(buf, 1, sizeof(buf), pipe)) > 0){
+        out.append(buf, n);
+    }
+#ifdef _WIN32
+    const int status = _pclose(pipe);
+    const int code = status;   //Windows 下 _pclose 直接返回退出码
+#else
+    const int status = pclose(pipe);
+    const int code = (status == -1) ? -1 : WEXITSTATUS(status);
+#endif
+    output = wxString::FromUTF8(out.c_str(), out.size());
     return code;
 }
 
-// 带自定义环境的命令执行（env 为空时环境不变）
-int run_command_env(const wxString& command, const wxExecuteEnv& env, wxString& output){
-    wxArrayString out;
-    wxArrayString err;
-    const int code = wxExecute(command, out, err, wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &env);
-    wxString combined;
-    for(const wxString& line : out) combined += line + wxT("\n");
-    for(const wxString& line : err) combined += line + wxT("\n");
-    output = combined;
-    return code;
+// 生成 GTKWave 保存文件(.gtkw)：解析 VCD 中最外层 scope 的信号名，
+// gtkwave 打开时会自动把这些信号加入波形区（否则默认只显示空波形，
+// 用户必须手动导入信号）。格式参照 GTKWave 官方示例 save file。
+// 返回 true 表示文件写成功。
+bool write_gtkw_save(const wxString& vcd_path){
+    std::string vcd;
+    if(!read_file(vcd_path, vcd)) return false;
+
+    std::vector<std::string> scopes;        //scope 名栈
+    std::vector<std::string> top_signals;   //最外层 scope 的信号全名
+    int depth = 0;
+    std::size_t pos = 0;
+    while(pos < vcd.size()){
+        const std::size_t nl = vcd.find('\n', pos);
+        std::string line = vcd.substr(pos, (nl == std::string::npos ? vcd.size() : nl) - pos);
+        pos = (nl == std::string::npos) ? vcd.size() : nl + 1;
+        if(!line.empty() && line.back() == '\r') line.pop_back();
+
+        std::vector<std::string> tokens;
+        std::size_t p = 0;
+        while(p < line.size()){
+            while(p < line.size() && (line[p] == ' ' || line[p] == '\t')) ++p;
+            if(p >= line.size()) break;
+            std::size_t q = p;
+            while(q < line.size() && line[q] != ' ' && line[q] != '\t') ++q;
+            tokens.push_back(line.substr(p, q - p));
+            p = q;
+        }
+        if(tokens.empty()) continue;
+
+        if(tokens[0] == "$scope"){
+            scopes.push_back(tokens.size() >= 3 ? tokens[2] : std::string());
+            ++depth;
+        }else if(tokens[0] == "$upscope"){
+            if(!scopes.empty()) scopes.pop_back();
+            if(depth > 0) --depth;
+        }else if(tokens[0] == "$var" && depth == 1 && tokens.size() >= 4){
+            //$var 行：$var wire 1 " a $end，信号名是倒数第二个 token
+            const std::string name = tokens[tokens.size() - 2];
+            std::string full;
+            for(const std::string& s : scopes){ full += s; full += '.'; }
+            full += name;
+            top_signals.push_back(full);
+        }
+    }
+
+    const wxString gtkw_path = vcd_path.BeforeLast(wxT('.')) + wxT(".gtkw");
+    wxString content;
+    content += wxT("[*]\n[*] GTKWave save file (TinyEDA)\n[*]\n");
+    content += wxT("[dumpfile] ") + quote(vcd_path) + wxT("\n");
+    content += wxT("[timestart] 0\n");
+    content += wxT("[size] 1100 600\n");
+    content += wxT("[pos] -1 -1\n");
+    content += wxT("*-3.973790 10 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n");
+    content += wxT("[sst_width] 220\n");
+    content += wxT("[signals_width] 107\n");
+    content += wxT("[sst_expanded] 1\n");
+    content += wxT("[sst_vpaned_height] 152\n");
+    for(const std::string& signal : top_signals){
+        content += wxT("@28\n");
+        content += wxString::FromUTF8(signal.c_str(), signal.size()) + wxT("\n");
+    }
+    return write_file(gtkw_path, content);
 }
 
 // 根据模块端口自动生成 testbench：
@@ -100,8 +194,7 @@ wxString build_testbench(const Verilator::Module& module, const wxString& vcd_pa
     tb += wxT(");\n");
 
     //激励：遍历输入组合
-    tb += wxT("\n  integer t;\n");
-    tb += wxT("  initial begin\n");
+    tb += wxT("\n  initial begin\n");
     tb += wxT("    $dumpfile(") + quote(vcd_path) + wxT(");\n");
     tb += wxT("    $dumpvars(0, tb_top);\n");
 
@@ -152,6 +245,7 @@ bool find_tool(const wxString& name, wxString& found_path){
 }
 
 int lint_verilog(const wxString& source, wxString& report, wxString& err){
+    std::lock_guard<std::mutex> lock(s_tool_mutex);
     wxString top;
     if(!find_tool(wxT("verilator"), top)){
         err = wxString::FromUTF8("未找到 verilator 可执行程序。请先安装："
@@ -166,9 +260,11 @@ int lint_verilog(const wxString& source, wxString& report, wxString& err){
         return -1;
     }
 
-    //-Wall 打开全部警告；--quiet 去掉“编译中”噪音，保留问题报告
+    //-Wall 打开全部警告；--quiet 去掉“编译中”噪音，保留问题报告。
+    //-Wno-DECLFILENAME：lint 临时文件叫 lint_check.v，与模块名不匹配会刷警告
     const int code = run_command(
-        top + wxT(" --lint-only -Wall --quiet --timing -Wno-fatal ") + quote(file),
+        top + wxT(" --lint-only -Wall --quiet --timing -Wno-fatal "
+                  "-Wno-DECLFILENAME ") + quote(file),
         report);
     if(report.IsEmpty()){
         report = wxString::FromUTF8(code == 0 ? "（verilator 无输出）"
@@ -182,6 +278,7 @@ bool generate_waveform(const wxString& verilog_source,
                        const wxString& vcd_path,
                        wxString& report,
                        wxString& err){
+    std::lock_guard<std::mutex> lock(s_tool_mutex);
     wxString verilator;
     if(!find_tool(wxT("verilator"), verilator)){
         err = wxString::FromUTF8("未找到 verilator 可执行程序。请先安装："
@@ -222,20 +319,18 @@ bool generate_waveform(const wxString& verilog_source,
 
     //3) verilator --binary 编译（--timing 支持 #delay；--trace 才能产生 VCD；
     //   --top-module 指定 tb 为顶层）
-    //   CCACHE_DISABLE=1：verilator 内部 make 会用 ccache 加速，但缓存目录不可写
-    //   时会导致编译失败（只读 HOME/沙箱环境），禁用后一定可用。
+    //   CCACHE_DISABLE=1（shell 前缀）：verilator 内部 make 会用 ccache 加速，
+    //   但缓存目录不可写时会导致编译失败（只读 HOME/沙箱环境），禁用后一定可用。
     //   --timescale 统一时间单位，避免 TIMESCALEMOD 警告。
     const wxString obj_dir = dir + wxT("/obj_dir");
     wxString compile_cmd = verilator
         + wxT(" --binary --timing --trace --timescale \"1ns/1ps\" -Wno-fatal -Wno-lint "
               "--quiet --top-module tb_top -Mdir ") + quote(obj_dir) + wxT(" ")
         + quote(top_file) + wxT(" ") + quote(tb_file);
-    wxExecuteEnv compile_env;
 #ifndef _WIN32
-    wxGetEnvMap(&compile_env.env);
-    compile_env.env[wxT("CCACHE_DISABLE")] = wxT("1");
+    compile_cmd = wxT("CCACHE_DISABLE=1 ") + compile_cmd;
 #endif
-    const int compile_code = run_command_env(compile_cmd, compile_env, report);
+    const int compile_code = run_command(compile_cmd, report);
     if(compile_code != 0){
         report = wxString::FromUTF8("verilator 编译失败（退出码 ")
                + wxString::Format(wxT("%d）：\n"), compile_code) + report;
@@ -269,8 +364,36 @@ bool open_waveform(const wxString& vcd_path, wxString& err){
                                  "Windows 从官网下载安装包。");
         return false;
     }
-    //异步打开，不阻塞本程序
-    wxExecute(gtkwave + wxT(" ") + quote(vcd_path), wxEXEC_ASYNC | wxEXEC_HIDE_CONSOLE);
+    //生成保存文件(.gtkw)：gtkwave 打开时自动把信号加载到波形区，
+    //否则默认只显示空波形（用户必须手动导入信号）。
+    //同时生成 rc 配置文件：do_initial_zoom_fit 让打开时自动缩放铺满整个
+    //波形，避免初始缩放把几十 ns 的波形压缩成一条直线。
+    //（不用 Tcl 脚本 -S：gtkwave 启动执行脚本出错会直接退出进程。）
+    const wxString gtkw_path = vcd_path.BeforeLast(wxT('.')) + wxT(".gtkw");
+    const wxString rc_path   = vcd_path.BeforeLast(wxT('.')) + wxT(".rc");
+    write_gtkw_save(vcd_path);
+    write_file(rc_path, wxT("do_initial_zoom_fit 1\n"));
+
+    //后台启动 gtkwave 并立即返回，不阻塞：Unix 用 shell 的 &，Windows 用 start。
+    //不能用 wxExecute(ASYNC)——wxExecute 只能从主线程调用，这里可能在工作线程。
+    wxString cmd = gtkwave + wxT(" -r ") + quote(rc_path)
+                 + wxT(" ") + quote(vcd_path) + wxT(" ") + quote(gtkw_path);
+    char buf[64];
+#ifdef _WIN32
+    cmd = wxT("start \"\" ") + cmd;
+    FILE* pipe = _popen(cmd.ToUTF8().data(), "r");
+#else
+    cmd += wxT(" >/dev/null 2>&1 &");
+    FILE* pipe = popen(cmd.ToUTF8().data(), "r");
+#endif
+    if(pipe){
+        while(std::fread(buf, 1, sizeof(buf), pipe) > 0){}   //读掉输出再关闭管道
+#ifdef _WIN32
+        _pclose(pipe);
+#else
+        pclose(pipe);
+#endif
+    }
     return true;
 }
 
