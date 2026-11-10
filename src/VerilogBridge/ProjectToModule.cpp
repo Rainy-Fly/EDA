@@ -63,6 +63,7 @@ struct ComponentInfo{
     bool is_gate = false;
     bool is_input_terminal = false;
     bool is_output_terminal = false;
+    bool is_clock = false;
     bool is_constant = false;
 };
 
@@ -74,6 +75,7 @@ bool gate_kind_for_type(const std::string& type, Verilator::GateKind* kind){
     if(type == "NOR"){  *kind = Verilator::GateKind::Nor;  return true; }
     if(type == "XOR"){  *kind = Verilator::GateKind::Xor;  return true; }
     if(type == "XNOR"){ *kind = Verilator::GateKind::Xnor; return true; }
+    if(type == "D_FF"){ *kind = Verilator::GateKind::Dff;  return true; }   //D触发器
     return false;
 }
 
@@ -212,6 +214,7 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
         info.component = &component;
         info.is_input_terminal  = component.type == "IN_TERMINAL";
         info.is_output_terminal = component.type == "OUT_TERMINAL";
+        info.is_clock           = component.type == "CLK";   //时钟源：导出为 input 端口
         info.is_constant        = is_power_type(component.type) ||
                                   is_ground_type(component.type) ||
                                   is_ground_category(component.category);
@@ -225,7 +228,7 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
         }
 
         if(!info.is_gate && !info.is_input_terminal && !info.is_output_terminal &&
-           !info.is_constant){
+           !info.is_clock && !info.is_constant){
             if(component.category == "Hierarchy"){
                 add_error("PROJECT_VERILOG_HIERARCHY_UNSUPPORTED",
                           "模块实例 '" + component.instanceId +
@@ -248,10 +251,13 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
         int output_index = 0;
         for(const auto& entry : components){
             const ComponentInfo& info = entry.second;
-            if(!info.is_input_terminal && !info.is_output_terminal) continue;
+            if(!info.is_input_terminal && !info.is_output_terminal && !info.is_clock) continue;
             const NetlistData::PcbSnapshotComponent& component = *info.component;
 
-            std::string base = component.reference;
+            //时钟源固定用 "clk" 作端口名（testbench 按名字识别时钟输入）
+            std::string base = info.is_clock
+                ? "clk"
+                : component.reference;
             if(base.empty()){
                 base = info.is_input_terminal
                            ? "in" + std::to_string(++input_index)
@@ -378,7 +384,7 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
                 }else{
                     constant_by_group[entry.first] = value;
                 }
-            }else if(info.is_input_terminal || info.is_output_terminal){
+            }else if(info.is_input_terminal || info.is_output_terminal || info.is_clock){
                 const auto known = terminal_by_group.find(entry.first);
                 if(known != terminal_by_group.end()){
                     add_error("PROJECT_VERILOG_TERMINAL_SHARED_NET",
@@ -473,7 +479,7 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
     // ---- 端口与端子连接 ----
     for(const auto& entry : components){
         const ComponentInfo& info = entry.second;
-        if(!info.is_input_terminal && !info.is_output_terminal) continue;
+        if(!info.is_input_terminal && !info.is_output_terminal && !info.is_clock) continue;
 
         const NetlistData::PcbSnapshotComponent& component = *info.component;
         const auto name_it = port_name_by_component.find(entry.first);
@@ -494,7 +500,7 @@ ProjectToModuleResult BuildModuleFromProject(const DealProjectXML::ProjectData& 
         if(terminal_by_group[group_key] != entry.first) continue;
         if(constant_by_group.find(group_key) != constant_by_group.end()) continue;
 
-        const PortDirection direction = info.is_input_terminal
+        const PortDirection direction = (info.is_input_terminal || info.is_clock)
                                             ? PortDirection::Input
                                             : PortDirection::Output;
         result.module.ports.push_back(Verilator::Port{

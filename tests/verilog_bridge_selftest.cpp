@@ -117,6 +117,48 @@ void test_xnor_gate_export(){
     check(generated.ok, "XNOR source is generated");
 }
 
+// D触发器 + 时钟源的时序项目：输入端子 D、时钟源 CLK、D_FF、输出端子 Q。
+// 引脚坐标来自元数据：IN_TERMINAL A=(+50,0)、OUT_TERMINAL A=(-50,0)、
+// CLK OUT=(+40,0)、D_FF D=(-40,-20) CLK=(-40,0) Q=(+40,0)。
+void test_dff_export(){
+    DealProjectXML::ProjectData project;
+    project.info.name = "top";
+    project.components.push_back(component(1, "IN_TERMINAL", 0, 0, "D"));
+    project.components.push_back(component(2, "CLK", 0, 100, "CLK1"));
+    project.components.push_back(component(3, "D_FF", 100, 50, "U1"));
+    project.components.push_back(component(4, "OUT_TERMINAL", 250, 50, "Q"));
+    //D 端子 A(50,0) → D_FF.D(60,30)；CLK.OUT(40,100) → D_FF.CLK(60,50)；
+    //D_FF.Q(140,50) → Q 端子 A(200,50)
+    project.wires.push_back(pin_wire(1, wxPoint(50, 0), wxPoint(60, 30), 1, "A", 3, "D"));
+    project.wires.push_back(pin_wire(2, wxPoint(40, 100), wxPoint(60, 50), 2, "OUT", 3, "CLK"));
+    project.wires.push_back(pin_wire(3, wxPoint(140, 50), wxPoint(200, 50), 3, "Q", 4, "A"));
+
+    const auto result = VerilogBridge::BuildModuleFromProject(project, "top");
+    check(result.ok, "DFF project builds a module");
+    std::size_t dffCount = 0;
+    for(const Verilator::LogicGate& gate : result.module.gates)
+        if(gate.kind == Verilator::GateKind::Dff) ++dffCount;
+    check(dffCount == 1, "DFF module has one D触发器");
+
+    const Verilator::GenerateResult generated =
+        Verilator::generate_verilog(result.module);
+    check(generated.ok, "DFF source is generated");
+    if(generated.ok){
+        check(generated.verilog.find("always @(posedge clk)") != std::string::npos,
+              "generated code has always @(posedge clk)");
+        //端口名来自端子位号（本例 "Q"），大小写不敏感地检查 reg 声明
+        const std::string lower =
+            generated.verilog.substr(generated.verilog.find("reg"));
+        check(lower.find("q;") != std::string::npos ||
+                  lower.find("Q;") != std::string::npos,
+              "generated code has reg q;");
+        //闭环：生成代码可再解析
+        const Verilator::ParseResult round =
+            Verilator::parse_verilog(generated.verilog);
+        check(round.ok, "generated DFF code parses again");
+    }
+}
+
 void test_constant_input(){
     DealProjectXML::ProjectData project;
     project.info.name = "top";
@@ -221,7 +263,6 @@ void test_round_trip_constant(){
         "    assign n1 = B & 1'b1;\n"
         "    assign Y = n1;\n"
         "endmodule\n";
-
     const Verilator::ParseResult parsed = Verilator::parse_verilog(source);
     check(parsed.ok, "constant source parses");
     if(!parsed.ok) return;
@@ -240,6 +281,44 @@ void test_round_trip_constant(){
     const VerilogBridge::ProjectToModuleResult back =
         VerilogBridge::BuildModuleFromProject(project.project, "top");
     check(back.ok, "constant project converts back to a module");
+}
+
+// 时序代码 → 画布 → 再转回模型（D触发器往返）：验证画布回放 DFF 引脚映射。
+void test_round_trip_dff(){
+    const std::string source =
+        "module top(\n"
+        "    input d,\n"
+        "    input clk,\n"
+        "    output q\n"
+        ");\n"
+        "    reg q;\n"
+        "    always @(posedge clk) q <= d;\n"
+        "endmodule\n";
+
+    const Verilator::ParseResult parsed = Verilator::parse_verilog(source);
+    check(parsed.ok, "DFF source parses");
+    if(!parsed.ok) return;
+
+    const VerilogBridge::ModuleToProjectResult project =
+        VerilogBridge::BuildProjectFromModule(parsed.module, wxPoint(0, 0));
+    check(project.ok, "DFF module builds a project");
+    if(!project.ok) return;
+
+    bool found_dff = false;
+    for(const DealProjectXML::ComponentData& cd : project.project.components){
+        if(cd.type == "D_FF") found_dff = true;
+    }
+    check(found_dff, "project contains a D_FF component");
+
+    const VerilogBridge::ProjectToModuleResult back =
+        VerilogBridge::BuildModuleFromProject(project.project, "top");
+    check(back.ok, "DFF project converts back to a module");
+    if(back.ok){
+        std::size_t dffCount = 0;
+        for(const Verilator::LogicGate& gate : back.module.gates)
+            if(gate.kind == Verilator::GateKind::Dff) ++dffCount;
+        check(dffCount == 1, "round trip keeps one D触发器");
+    }
 }
 
 // 空模块（无端口无门）应被拒绝。
@@ -504,10 +583,12 @@ int main(int argc, char** argv){
 
     test_and_gate_export();
     test_xnor_gate_export();
+    test_dff_export();
     test_constant_input();
     test_unconnected_gate_input_rejected();
     test_unsupported_component_rejected();
     test_round_trip_from_verilog();
+    test_round_trip_dff();
     test_round_trip_constant();
     test_empty_module_rejected();
     test_wires_do_not_overlap();

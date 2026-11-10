@@ -159,6 +159,8 @@ bool write_gtkw_save(const wxString& vcd_path){
 // 根据模块端口自动生成 testbench：
 //   组合逻辑：遍历全部输入组合（输入≤4 时 2^n 个；更多时只遍历前 4 个输入，
 //   其余固定 0，避免组合爆炸）。输出用 wire 接收，写 VCD。
+//   时序逻辑：若模块有名为 clk 的输入端口，自动生成 10ns 周期时钟
+//   （always #5），组合激励间隔拉长到两个时钟沿（#20），让触发器稳定采样。
 wxString build_testbench(const Verilator::Module& module, const wxString& vcd_path){
     wxString tb;
     tb += wxT("`timescale 1ns/1ps\n");
@@ -170,11 +172,31 @@ wxString build_testbench(const Verilator::Module& module, const wxString& vcd_pa
         const wxString name = wxString::FromUTF8(port.name.c_str(), port.name.size());
         if(port.direction == Verilator::PortDirection::Input){
             inputs.push_back(name);
-            tb += wxT("  reg  ") + name + wxT(";\n");
         }else if(port.direction == Verilator::PortDirection::Output){
             outputs.push_back(name);
-            tb += wxT("  wire ") + name + wxT(";\n");
         }
+    }
+
+    //识别时钟输入（约定端口名 clk，不区分大小写）：时钟不参与组合遍历
+    wxString clockName;
+    for(const wxString& name : inputs){
+        if(name.Lower() == wxT("clk")){
+            clockName = name;
+            break;
+        }
+    }
+    std::vector<wxString> dataInputs = inputs;
+    if(!clockName.IsEmpty()){
+        dataInputs.erase(std::remove(dataInputs.begin(), dataInputs.end(), clockName),
+                         dataInputs.end());
+        tb += wxT("  reg ") + clockName + wxT(" = 0;\n");
+        tb += wxT("  always #5 ") + clockName + wxT(" = ~") + clockName + wxT(";\n");
+    }
+    for(const wxString& name : dataInputs){
+        tb += wxT("  reg  ") + name + wxT(";\n");
+    }
+    for(const wxString& name : outputs){
+        tb += wxT("  wire ") + name + wxT(";\n");
     }
 
     //实例化被测模块
@@ -193,24 +215,24 @@ wxString build_testbench(const Verilator::Module& module, const wxString& vcd_pa
     }
     tb += wxT(");\n");
 
-    //激励：遍历输入组合
+    //激励：遍历输入组合。时序电路每步停两个时钟周期，保证 D 在上升沿前稳定
     tb += wxT("\n  initial begin\n");
     tb += wxT("    $dumpfile(") + quote(vcd_path) + wxT(");\n");
     tb += wxT("    $dumpvars(0, tb_top);\n");
 
-    const std::size_t swept = std::min<std::size_t>(inputs.size(), 4);  //最多扫4个输入
+    const std::size_t swept = std::min<std::size_t>(dataInputs.size(), 4);  //最多扫4个输入
     const unsigned long long count = 1ULL << swept;
     for(unsigned long long pattern = 0; pattern < count; ++pattern){
-        for(std::size_t i = 0; i < inputs.size(); ++i){
+        for(std::size_t i = 0; i < dataInputs.size(); ++i){
             const int bit = i < swept
                 ? (int)((pattern >> i) & 1ULL)
                 : 0;
-            tb += wxT("    ") + inputs[i] + wxT(" = ") + (bit ? wxT("1") : wxT("0"))
+            tb += wxT("    ") + dataInputs[i] + wxT(" = ") + (bit ? wxT("1") : wxT("0"))
                 + wxT("; ");
         }
-        tb += wxT("#10;\n");
+        tb += clockName.IsEmpty() ? wxT("#10;\n") : wxT("#20;\n");
     }
-    tb += wxT("    #10;\n");
+    tb += clockName.IsEmpty() ? wxT("    #10;\n") : wxT("    #20;\n");
     tb += wxT("    $finish;\n");
     tb += wxT("  end\n");
     tb += wxT("endmodule\n");

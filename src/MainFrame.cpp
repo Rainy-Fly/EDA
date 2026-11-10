@@ -296,10 +296,10 @@ void MainFrame::OnRunPause(wxCommandEvent&){
     }
 }
 
-//单步时钟：暂停状态下也能推进一次（本阶段只有组合逻辑，等价于"重新计算"）
+//单步时钟：推进一个时钟周期（时序电路翻转时钟源并采样触发器；组合电路等价于重新计算）
 void MainFrame::OnTick(wxCommandEvent&){
     if(!simulation) return;
-    simulation->evaluate();
+    simulation->tick();
     if(canvas) canvas->refresh_simulation_display();
     UpdateSimulationStatus();
 }

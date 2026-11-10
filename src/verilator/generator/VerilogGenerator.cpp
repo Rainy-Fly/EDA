@@ -1,5 +1,6 @@
 #include "VerilogGenerator.hpp"
 
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -59,8 +60,42 @@ std::string gate_expression(const Module& module, const LogicGate& gate) {
         case GateKind::Nor:
             if (inputs.size() < 2) return "/* 输入不足 */";
             return "~(" + inputs[0] + " | " + inputs[1] + ")";
+        case GateKind::Dff:
+            return "/* 时序门：由 always 块驱动 */";
     }
     return "/* 无效门类型 */";
+}
+
+// D触发器输出网络：模块里驱动源是它、输出引脚为 out 的网络
+std::string dff_output_net(const Module& module, const LogicGate& gate) {
+    for (const auto& net : module.nets) {
+        for (const auto& driver : net.drivers) {
+            if (driver.kind == DriverKind::GateOutput &&
+                driver.ownerId == gate.id && driver.pinId == "out") {
+                return net.name.empty() ? net.id : net.name;
+            }
+        }
+    }
+    return "";
+}
+
+// D触发器 always 块：按输入引脚名字区分 D 与 CLK
+std::string dff_always_line(const Module& module, const LogicGate& gate) {
+    std::string dNet, clkNet;
+    for (const auto& pin : gate.inputs) {
+        const Net* net = input_net_for_pin(module, gate.id, pin.id);
+        if (!net) continue;
+        if (pin.name == "D" || pin.name == "d") {
+            dNet = net_reference(module, net->id);
+        } else if (pin.name == "CLK" || pin.name == "clk") {
+            clkNet = net_reference(module, net->id);
+        }
+    }
+    const std::string qNet = dff_output_net(module, gate);
+    if (dNet.empty() || clkNet.empty() || qNet.empty()) {
+        return "/* D触发器缺少 D/CLK 输入或输出网络 */";
+    }
+    return "always @(posedge " + clkNet + ") " + qNet + " <= " + dNet + ";";
 }
 
 std::string driver_expression(const Module& module, const Driver& driver) {
@@ -96,9 +131,23 @@ std::string generate_verilog_source(const Module& module) {
     }
     out << ");\n";
 
+    //D触发器输出网络集合（这些信号声明为 reg，由 always 块驱动）
+    std::set<std::string> regNets;
+    for (const auto& gate : module.gates) {
+        if (gate.kind != GateKind::Dff) continue;
+        const std::string qNet = dff_output_net(module, gate);
+        if (!qNet.empty()) regNets.insert(qNet);
+    }
+
     std::vector<const Signal*> wires;
+    std::vector<const Signal*> regs;
     for (const auto& signal : module.signals) {
-        if (signal.kind == SignalKind::Wire) wires.push_back(&signal);
+        if (regNets.count(signal.name) || regNets.count(signal.id) ||
+            signal.kind == SignalKind::Reg) {
+            regs.push_back(&signal);
+        } else if (signal.kind == SignalKind::Wire) {
+            wires.push_back(&signal);
+        }
     }
 
     if (!wires.empty()) {
@@ -107,10 +156,17 @@ std::string generate_verilog_source(const Module& module) {
             out << "    wire " << wire->name << ";\n";
         }
     }
+    if (!regs.empty()) {
+        out << "\n";
+        for (const Signal* reg : regs) {
+            out << "    reg " << reg->name << ";\n";
+        }
+    }
 
     std::vector<std::string> assignments;
     for (const auto& signal : module.signals) {
         if (signal.kind == SignalKind::Input) continue;
+        if (regNets.count(signal.name) || regNets.count(signal.id)) continue;
 
         const Net* net = find_net(module, signal.id);
         if (!net || net->drivers.empty()) continue;
@@ -126,6 +182,20 @@ std::string generate_verilog_source(const Module& module) {
     if (!assignments.empty()) {
         out << "\n";
         for (const auto& line : assignments) {
+            out << "    " << line << "\n";
+        }
+    }
+
+    //时序：每个 D触发器一个 always 块
+    std::vector<std::string> alwaysBlocks;
+    for (const auto& gate : module.gates) {
+        if (gate.kind != GateKind::Dff) continue;
+        const std::string line = dff_always_line(module, gate);
+        if (!line.empty()) alwaysBlocks.push_back(line);
+    }
+    if (!alwaysBlocks.empty()) {
+        out << "\n";
+        for (const auto& line : alwaysBlocks) {
             out << "    " << line << "\n";
         }
     }

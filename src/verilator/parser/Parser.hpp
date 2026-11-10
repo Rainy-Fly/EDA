@@ -26,6 +26,7 @@ private:
     void parse_port_list(Ast::Module& module);
     void parse_declaration(Ast::Module& module, SignalKind kind);
     Ast::Assignment parse_assignment();
+    Ast::TimingBlock parse_timing_block();
 
     Ast::ExpressionPtr parse_expression();
     Ast::ExpressionPtr parse_or();

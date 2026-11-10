@@ -785,6 +785,17 @@ void expect_parse_error(const std::string& source, const std::string& code,
     }
 }
 
+void expect_parse_ok(const std::string& source, const std::string& label) {
+    const ParseResult parsed = parse_verilog(source);
+    check(parsed.ok, label + "：解析应成功");
+    for (const auto& diagnostic : parsed.diagnostics) {
+        if (diagnostic.severity == DiagnosticSeverity::Error) {
+            check(false, label + "：无 error 级诊断，实际 [" +
+                             diagnostic.code + "] " + diagnostic.message);
+        }
+    }
+}
+
 // ---- 6b) 直连别名驱动 ----
 void test_alias_drives() {
     const auto check_alias_success =
@@ -981,10 +992,11 @@ endmodule
         "CIRCUIT_CYCLIC_DEPENDENCY", DiagnosticKind::Model,
         "循环依赖");
 
-    expect_parse_error(
-        "module m(input a, output y); reg x; endmodule",
-        "VERILOG_UNSUPPORTED_SYNTAX", DiagnosticKind::Syntax,
-        "不支持的 reg 语法");
+    //reg 声明现在受支持：完整时序模块（D触发器）应当能正常解析
+    expect_parse_ok(
+        "module m(input d, clk, output q); reg q;"
+        " always @(posedge clk) q <= d; endmodule",
+        "reg 声明与 always 时序块受支持");
 
     expect_parse_error(
         "module m(input [1:0] a, output y); endmodule",

@@ -23,6 +23,7 @@ public:
         finalize_undirected_ports();
         create_signal_nets();
         process_assignments();
+        process_timing_blocks();
 
         return std::move(result_);
     }
@@ -73,6 +74,12 @@ private:
 
             const auto port = portIndex_.find(declaration.name);
             if (port == portIndex_.end()) {
+                if (declaration.kind == SignalKind::Reg) {
+                    //模块内部的 reg（如触发器输出但未接端口）
+                    declare_signal(declaration.name, SignalKind::Reg,
+                                   declaration.location);
+                    continue;
+                }
                 add_error("VERILOG_PORT_NOT_IN_LIST",
                           "信号 '" + declaration.name +
                               "' 被声明为端口，但没有出现在模块端口列表中。",
@@ -81,6 +88,11 @@ private:
             }
 
             if (directionKnown_[declaration.name]) {
+                if (declaration.kind == SignalKind::Reg) {
+                    //"output q; reg q;"：方向已在端口声明，reg 只补充存储类型
+                    result_.module.signals[port->second].kind = SignalKind::Reg;
+                    continue;
+                }
                 add_error("VERILOG_DUPLICATE_DECLARATION",
                           "信号 '" + declaration.name + "' 重复声明。",
                           declaration.location);
@@ -135,22 +147,28 @@ private:
             net.name = signal.name;
             net.location = signal.location;
 
-            if (signal.kind == SignalKind::Input) {
-                // 输入端口由外部驱动。
-                Driver driver;
-                driver.kind = DriverKind::Port;
-                driver.ownerId = signal.name;
-                driver.pinId = "in";
-                driver.location = signal.location;
-                net.drivers.push_back(std::move(driver));
-            } else if (signal.kind == SignalKind::Output) {
-                // 输出端口是网络的一个接收端。
-                Terminal sink;
-                sink.kind = TerminalKind::Port;
-                sink.ownerId = signal.name;
-                sink.pinId = "out";
-                sink.location = signal.location;
-                net.sinks.push_back(std::move(sink));
+            //端口信号（含 output reg 触发器输出）按端口方向加驱动/接收端；
+            //内部 wire/reg 由 assign/always 显式驱动
+            const auto port = portIndex_.find(signal.name);
+            if (port != portIndex_.end() &&
+                (signal.kind == SignalKind::Input ||
+                 signal.kind == SignalKind::Output ||
+                 signal.kind == SignalKind::Reg)) {
+                if (result_.module.ports[port->second].direction == PortDirection::Input) {
+                    Driver driver;
+                    driver.kind = DriverKind::Port;
+                    driver.ownerId = signal.name;
+                    driver.pinId = "in";
+                    driver.location = signal.location;
+                    net.drivers.push_back(std::move(driver));
+                } else {
+                    Terminal sink;
+                    sink.kind = TerminalKind::Port;
+                    sink.ownerId = signal.name;
+                    sink.pinId = "out";
+                    sink.location = signal.location;
+                    net.sinks.push_back(std::move(sink));
+                }
             }
 
             netIndex_[net.id] = result_.module.nets.size();
@@ -391,6 +409,114 @@ private:
             sink.pinId = stored.inputs[i].id;
             sink.location = location;
             source->sinks.push_back(std::move(sink));
+        }
+
+        Net* target = find_net(result_.module, outputNetId);
+        if (target) {
+            Driver driver;
+            driver.kind = DriverKind::GateOutput;
+            driver.ownerId = stored.id;
+            driver.pinId = stored.output.id;
+            driver.location = location;
+            target->drivers.push_back(std::move(driver));
+        }
+    }
+
+    void process_timing_blocks() {
+        for (const auto& block : ast_.timingBlocks) {
+            if (!block.posedge) {
+                add_error("VERILOG_UNSUPPORTED_SYNTAX",
+                          "当前子集只支持 posedge（上升沿）触发的时序块。",
+                          block.location);
+                continue;
+            }
+
+            const auto target = signalIndex_.find(block.target);
+            if (target == signalIndex_.end()) {
+                add_error("VERILOG_UNDECLARED_SIGNAL",
+                          "时序块目标 '" + block.target + "' 未声明。",
+                          block.targetLocation);
+                continue;
+            }
+            const Signal& targetSignal = result_.module.signals[target->second];
+            if (targetSignal.kind == SignalKind::Input) {
+                add_error("VERILOG_ASSIGN_TO_INPUT",
+                          "输入端口 '" + block.target + "' 不能被 always 驱动。",
+                          block.targetLocation);
+                continue;
+            }
+
+            const auto clock = signalIndex_.find(block.clockName);
+            if (clock == signalIndex_.end()) {
+                add_error("VERILOG_UNDECLARED_SIGNAL",
+                          "时钟信号 '" + block.clockName + "' 未声明。",
+                          block.location);
+                continue;
+            }
+
+            const auto targetNet = netIndex_.find(targetSignal.id);
+            if (targetNet == netIndex_.end()) continue;
+            if (!result_.module.nets[targetNet->second].drivers.empty()) {
+                add_error("VERILOG_MULTIPLE_DRIVER",
+                          "信号 '" + block.target + "' 被重复驱动。",
+                          block.targetLocation);
+                continue;
+            }
+
+            if (!block.expression) continue;
+            SourceRef source;
+            build_expression(*block.expression, std::string(), false, source);
+            if (!source.valid) continue;
+
+            const std::string clkNetId = result_.module.signals[clock->second].id;
+            create_dff(source.netId, clkNetId, targetSignal.id, block.location);
+
+            //目标信号是触发器输出，标记为 reg
+            result_.module.signals[target->second].kind = SignalKind::Reg;
+        }
+    }
+
+    // 创建 D触发器门：输入引脚固定 [D, CLK]（引脚名字 D/CLK，生成器按名字区分）
+    void create_dff(const std::string& dNet, const std::string& clkNet,
+                    const std::string& outputNetId, SourceLocation location) {
+        LogicGate gate;
+        gate.id = next_gate_id();
+        gate.kind = GateKind::Dff;
+
+        Pin d;
+        d.id = "d";
+        d.name = "D";
+        d.direction = PinDirection::Input;
+        Pin c;
+        c.id = "clk";
+        c.name = "CLK";
+        c.direction = PinDirection::Input;
+        gate.inputs.push_back(std::move(d));
+        gate.inputs.push_back(std::move(c));
+
+        gate.output.id = "out";
+        gate.output.name = "out";
+        gate.output.direction = PinDirection::Output;
+        result_.module.gates.push_back(std::move(gate));
+
+        const LogicGate& stored = result_.module.gates.back();
+        Net* sourceD = find_net(result_.module, dNet);
+        if (sourceD) {
+            Terminal sink;
+            sink.kind = TerminalKind::GateInput;
+            sink.ownerId = stored.id;
+            sink.pinId = stored.inputs[0].id;
+            sink.location = location;
+            sourceD->sinks.push_back(std::move(sink));
+        }
+        Net* sourceClk = find_net(result_.module, clkNet);
+        if (sourceClk) {
+            Terminal sink;
+            sink.kind = TerminalKind::GateInput;
+            sink.ownerId = stored.id;
+            sink.pinId = stored.inputs[1].id;
+            sink.location = location;
+            sourceClk->sinks.push_back(std::move(sink));
         }
 
         Net* target = find_net(result_.module, outputNetId);

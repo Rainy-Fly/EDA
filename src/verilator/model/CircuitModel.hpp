@@ -11,6 +11,7 @@ namespace Verilator {
 
 // 第一阶段支持的门类型。NAND/NOR/XNOR 在数据模型中有独立类型，
 // 但 Verilog 子集没有对应的二元运算符，生成时会展开为等价的逻辑表达式。
+// Dff 是 D触发器（时序）：输入引脚顺序固定为 [D, CLK]，输出 Q，CLK 上升沿采样。
 enum class GateKind {
     And,
     Or,
@@ -18,13 +19,15 @@ enum class GateKind {
     Nand,
     Nor,
     Xor,
-    Xnor
+    Xnor,
+    Dff
 };
 
 enum class SignalKind {
     Input,
     Output,
-    Wire
+    Wire,
+    Reg   //reg：时序元件输出（由 always 块驱动）
 };
 
 enum class PortDirection {

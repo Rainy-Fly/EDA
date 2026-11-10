@@ -24,6 +24,8 @@ enum class GateKind{
     Nor,        //或门非：>=2 输入（附加）
     Buffer,     //缓冲/导通：1 输入，输出=输入（单刀开关闭合时用它把一侧的电平送到另一侧）
     Input,      //输入端子/输入开关：0 输入，1 输出；值由调用方设置（0/1，未设置为 X）
+    Dff,        //D触发器：2 输入（顺序固定 [D, CLK]），1 输出；CLK 0→1 上升沿时 Q←D，否则保持
+    Clock,      //时钟源：0 输入，1 输出；值由仿真器状态控制（clock_tick 时翻转 0/1）
     Unsupported //未知/暂不支持
 };
 
@@ -88,6 +90,8 @@ inline const char* gate_kind_name(GateKind kind){
         case GateKind::Nor:  return "NOR";
         case GateKind::Buffer: return "BUF";   //单刀开关闭合时把一侧电平送到另一侧
         case GateKind::Input: return "INPUT";
+        case GateKind::Dff:  return "D_FF";    //D触发器：CLK 上升沿采样
+        case GateKind::Clock: return "CLK";    //时钟源：单步时钟时翻转
         case GateKind::Unsupported: break;
     }
     return "UNSUPPORTED";
@@ -106,6 +110,8 @@ inline bool gate_input_count_range(GateKind kind, std::size_t& minInputs, std::s
         case GateKind::Nor:   minInputs = 2; maxInputs = static_cast<std::size_t>(-1); return true;
         case GateKind::Buffer: minInputs = 1; maxInputs = 1; return true;
         case GateKind::Input: minInputs = 0; maxInputs = 0; return true;
+        case GateKind::Dff:   minInputs = 2; maxInputs = 2; return true;   //[D, CLK]
+        case GateKind::Clock: minInputs = 0; maxInputs = 0; return true;
         case GateKind::Unsupported: break;
     }
     return false;

@@ -43,10 +43,12 @@ const std::map<std::string, CategoryInfo>& category_info(){
         {"Miscellaneous",{"杂项",         9}},
         {"Relay",        {"继电器",      10}},
         {"Resistor",     {"电阻",        11}},
-        {"Source",       {"电源/信号源", 12}},
-        {"Switch",       {"开关",        13}},
-        {"Transformer",  {"变压器",      14}},
-        {"Transistor",   {"晶体管",      15}},
+        {"Sequential",   {"时序元件",    12}},
+        {"Source",       {"电源/信号源", 13}},
+        {"Switch",       {"开关",        14}},
+        {"Timing",       {"时钟",        15}},
+        {"Transformer",  {"变压器",      16}},
+        {"Transistor",   {"晶体管",      17}},
     };
     return m;
 }

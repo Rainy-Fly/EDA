@@ -85,6 +85,8 @@ bool gate_kind_for_type(const std::string& type, GateKind& kind){
     if(type == "XNOR"){ kind = GateKind::Xnor; return true; }
     if(type == "NAND"){ kind = GateKind::Nand; return true; }
     if(type == "NOR"){  kind = GateKind::Nor;  return true; }
+    if(type == "D_FF"){ kind = GateKind::Dff;  return true; }   //D触发器（时序）
+    if(type == "CLK"){  kind = GateKind::Clock; return true; }  //时钟源（时序）
     return false;
 }
 
@@ -321,7 +323,7 @@ SimulationModel build_simulation_model(const SimProject& project){
                 if(pin.direction == "input") inputNets.push_back(it->second);
                 else if(pin.direction == "output" && outputNet.empty()) outputNet = it->second;
             }
-            if(inputNets.empty() || outputNet.empty()){
+            if((inputNets.empty() && kind != GateKind::Clock) || outputNet.empty()){
                 model.diagnostics.push_back(make_error(
                     "SIMULATION_GATE_PIN_INVALID",
                     "逻辑门缺少输入或输出引脚：" + component->name, {simId}));

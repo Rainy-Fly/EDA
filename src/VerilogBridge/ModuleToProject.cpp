@@ -501,6 +501,7 @@ ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
 
         int row = 0;
         for(const Verilator::LogicGate* gate : gates){
+            const bool dff = (gate->kind == Verilator::GateKind::Dff);
             const std::string type = Verilator::gate_kind_name(gate->kind);
             const wxPoint position(origin.x + kLayerStepX * layer_entry.first,
                                    origin.y + kFirstRowY + row * kRowStepY);
@@ -510,10 +511,14 @@ ModuleToProjectResult BuildProjectFromModule(const Verilator::Module& module,
             GatePlacement placement;
             placement.component_id = component_id;
             placement.position = position;
+            placement.output_pin_id = dff ? "Q" : "OUT";
 
             TypeInfo& info = type_info_for(&type_cache, type);
             for(std::size_t i = 0; i < gate->inputs.size(); ++i){
-                const std::string pin_id = "IN" + std::to_string(i + 1);
+                //D触发器输入引脚按名字 D/CLK（顺序固定 [D, CLK]）
+                const std::string pin_id = dff
+                    ? (i == 0 ? "D" : "CLK")
+                    : "IN" + std::to_string(i + 1);
                 if(!find_type_pin(info, pin_id)){
                     add_error("PROJECT_VERILOG_GATE_PIN_MISSING",
                               "门元件 '" + type + "' 缺少输入引脚 '" + pin_id + "'。");
