@@ -140,6 +140,27 @@ NetTable build_nets(UnionFind& uf){
     return table;
 }
 
+//点是否落在线段上（含两端；整数坐标精确判定，不考虑容差）
+bool point_on_segment(const SimPoint& p, const SimPoint& a, const SimPoint& b){
+    const long long abx = static_cast<long long>(b.x) - a.x;
+    const long long aby = static_cast<long long>(b.y) - a.y;
+    const long long apx = static_cast<long long>(p.x) - a.x;
+    const long long apy = static_cast<long long>(p.y) - a.y;
+    const long long len2 = abx * abx + aby * aby;
+    if(len2 == 0) return p == a;                     //退化线段（起止重合）
+    if(abx * apy - aby * apx != 0) return false;     //不共线
+    const long long dot = apx * abx + apy * aby;
+    return dot >= 0 && dot <= len2;                  //投影落在 [0, len2]
+}
+
+//点是否落在折线上（任一段，含折点）
+bool point_on_polyline(const SimPoint& p, const std::vector<SimPoint>& points){
+    if(points.size() < 2) return false;
+    for(size_t i = 1; i < points.size(); ++i)
+        if(point_on_segment(p, points[i - 1], points[i])) return true;
+    return false;
+}
+
 } // namespace
 
 const char* sim_role_name(SimRole role){
@@ -204,8 +225,23 @@ SimulationModel build_simulation_model(const SimProject& project){
             }
             //kind 为空（旧 1.0）或 free：只靠坐标连接
         };
+
+        //规则 5：T 型分叉——端点落在**别的导线**的线段上（含折线中段/折点）也算连接。
+        //为什么需要：画布目前不会自动生成 junction，"从一根已有导线中间拉一根线出去"时，
+        //新导线的端点 kind=free，只靠"端点坐标精确重合"是连不上的，表现为分叉出来的那根线
+        //永远是 X（下游门的输入悬空）。注意：两根导线的**中段交叉**不算连接（交叉不是接头）。
+        const auto merge_tee = [&](const SimEndpoint& endpoint, const std::string& node){
+            for(const SimWire& other : project.wires){
+                if(other.id == wire.id) continue;
+                if(point_on_polyline(endpoint.position, other.points))
+                    uf.unite(node, wire_end_node(other.id, true));   //另一端与它同网
+            }
+        };
+
         handle_endpoint(wire.start, startNode);
+        merge_tee(wire.start, startNode);
         handle_endpoint(wire.end, endNode);
+        merge_tee(wire.end, endNode);
     }
 
     //---- 3) junction / label 自身也并入坐标节点 ----

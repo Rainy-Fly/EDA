@@ -461,6 +461,64 @@ void test_xnor_type(){
     }
 }
 
+// ---- 用例12：T 型分叉——端点落在另一根导线的线段上（中段/折点）必须同网 ----
+// 背景：画布不会自动生成 junction，"从一根导线中间拉一根线出去"时新导线端点是 free，
+// 只按"端点坐标重合"是连不上的 —— 导致分叉出来的线永远是 X（bug1.xml 就是这个情况）。
+void test_tee_branch(){
+    {   // 分叉点落在横线中段
+        SimProject project;
+        project.components.push_back(in_terminal(1, 0, 0, "1"));                     // A=(20,0)
+        project.components.push_back(comp(2, "AND", "LogicGate",
+            {pin("IN1", "input", 200, 0), pin("IN2", "input", 200, 80),
+             pin("OUT", "output", 260, 40)}));
+        project.components.push_back(out_terminal(3, 340, 40));                       // A=(320,40)
+        project.wires.push_back(wire(10, P(20, 0), P(200, 0), pin_end(1, "A"), pin_end(2, "IN1")));
+        //分叉：起点 (120,0) 落在导线 10 的中段（不是端点，kind 为空 = free）
+        project.wires.push_back(wire(11, P(120, 0), P(120, 80), SimEndpoint(), pin_end(2, "IN2")));
+        //门输出接输出端子
+        project.wires.push_back(wire(12, P(260, 40), P(320, 40), pin_end(2, "OUT"), pin_end(3, "A")));
+
+        const SimulationModel model = build_simulation_model(project);
+        check(model.binding.wireNet.at(10) == model.binding.wireNet.at(11),
+              "T 型分叉：两根导线同网");
+        check(model.binding.pinNet.at({2, "IN1"}) == model.binding.pinNet.at({2, "IN2"}),
+              "T 型分叉：两根门输入在同一条网络上");
+
+        SimulationSession session;
+        check(session.rebuild(project), "T 型分叉：建模型成功");
+        check(session.errorCount() == 0, "T 型分叉：没有 error 级诊断");
+        check(session.componentValue(2) == LogicValue::One, "T 型分叉：1 AND 1 => 门输出 1");
+        check(session.componentValue(3) == LogicValue::One, "T 型分叉：输出端子读到 1");
+    }
+    {   // 分叉点落在另一根导线的折点上（折线中间顶点）
+        SimProject project;
+        project.components.push_back(in_terminal(1, 0, 0, "1"));                     // A=(20,0)
+        project.components.push_back(comp(2, "AND", "LogicGate",
+            {pin("IN1", "input", 200, 0), pin("IN2", "input", 200, 80),
+             pin("OUT", "output", 260, 40)}));
+        project.wires.push_back(wire(10, P(20, 0), P(200, 0), pin_end(1, "A"), pin_end(2, "IN1")));
+        project.wires.push_back(wire(11, P(120, 0), P(120, 80), SimEndpoint(), pin_end(2, "IN2")));
+
+        //把导线 10 改成经过 (120,0) 折点的折线：(20,0) -> (120,0) -> (200,0)
+        project.wires[0].points = {P(20, 0), P(120, 0), P(200, 0)};
+        project.wires[0].start.position = P(20, 0);
+        project.wires[0].end.position = P(200, 0);
+
+        const SimulationModel model = build_simulation_model(project);
+        check(model.binding.pinNet.at({2, "IN2"}) == model.binding.pinNet.at({2, "IN1"}),
+              "分叉点落在折点上也能连接");
+    }
+    {   // 反例：两根导线中段交叉——不是接头，必须不相连
+        SimProject project;
+        project.wires.push_back(wire(10, P(0, 0), P(100, 0)));
+        project.wires.push_back(wire(11, P(50, -40), P(50, 40)));
+
+        const SimulationModel model = build_simulation_model(project);
+        check(model.binding.wireNet.at(10) != model.binding.wireNet.at(11),
+              "中段交叉不算连接（交叉不是接头）");
+    }
+}
+
 } // namespace
 
 int main(){
@@ -475,6 +533,7 @@ int main(){
     test_terminals();
     test_switch_passthrough();
     test_xnor_type();
+    test_tee_branch();
 
     if(failures == 0){
         std::cout << "Simulation adapter self-test passed (" << checks << " checks).\n";
