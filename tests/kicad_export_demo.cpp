@@ -1,7 +1,9 @@
-// KiCad 网表导出演示/自检：
+// KiCad / OrCAD PCB2 网表导出演示/自检：
 // 用一个内存中的最小项目走完整链路
-//   ProjectData -> PcbProjectAdapter -> PcbNetlistBuilder -> KiCadNetlistExporter
-// 并把结果写到 tests/kicad_export_demo.net，便于直接用 KiCad 打开检查。
+//   ProjectData -> PcbProjectAdapter -> PcbNetlistBuilder
+//             -> KiCadNetlistExporter（tests/kicad_export_demo.net）
+//             -> OrCadNetlistExporter（tests/kicad_export_demo.orc）
+// 并把结果写到 tests/ 下，便于直接用 KiCad / OrCAD 打开检查。
 //
 // 从源码根目录运行：
 //   ./build/kicad_export_demo
@@ -9,6 +11,7 @@
 
 #include "../src/DealProjectXML/DealProjectXML.hpp"
 #include "../src/Netlist/KiCadNetlistExporter.hpp"
+#include "../src/Netlist/OrCadNetlistExporter.hpp"
 #include "../src/Netlist/PcbNetlistBuilder.hpp"
 #include "../src/Netlist/PcbProjectAdapter.hpp"
 
@@ -138,5 +141,22 @@ int main(int argc, char** argv) {
     for (const auto& net : built.value->nets) {
         std::cout << "  net " << net.name << " (" << net.nodes.size() << " nodes)\n";
     }
+
+    // OrCAD PCB2 变体：同一份 PcbNetlist，不同序列化器
+    const std::string orcadOutput =
+        argc > 2 ? argv[2] : "tests/kicad_export_demo.orc";
+    NetlistData::OrCadNetlistExportOptions orcadOptions;
+    orcadOptions.sourcePath = "tests/kicad_export_demo.xml";
+    orcadOptions.date = "2026-10-22";
+    const NetlistData::OrCadNetlistWriteResult orcadWritten =
+        NetlistData::OrCadNetlistExporter::write(*built.value, orcadOutput, orcadOptions);
+    for (const auto& diagnostic : orcadWritten.diagnostics) {
+        std::cerr << "[error] " << diagnostic.code << ": " << diagnostic.message << '\n';
+    }
+    if (!orcadWritten.ok()) {
+        std::cerr << "orcad netlist write failed\n";
+        return 1;
+    }
+    std::cout << "wrote " << orcadOutput << "\n";
     return 0;
 }

@@ -131,9 +131,11 @@ PcbProjectSnapshot BuildPcbSnapshotFromProject(const DealProjectXML::ProjectData
         if (component.value.empty() && metadata) component.value = metadata->get_type();
 
         // 端子没有物理封装，导出时统一按 KiCad 测试点(Test Point)处理：
-        // 默认封装 TestPoint、默认值 IN/OUT，位号沿用元数据的 reference_prefix 自动编号。
+        // 默认封装 TestPoint 库的标准过孔焊盘、默认值 IN/OUT，
+        // 位号沿用元数据的 reference_prefix 自动编号。
         if (isTerminal) {
-            if (component.footprint.empty()) component.footprint = "TestPoint";
+            if (component.footprint.empty())
+                component.footprint = "TestPoint:TestPoint_THTPad_1.0x1.0mm_Drill0.5mm";
             if (component.value.empty() || component.value == component.type)
                 component.value = (component.type == "IN_TERMINAL") ? "IN" : "OUT";
         }

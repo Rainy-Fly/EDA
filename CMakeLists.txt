@@ -284,6 +284,16 @@ if(BUILD_TESTING)
     target_link_libraries(netlist_selftest PRIVATE jsoncpp_lib)
     add_test(NAME netlist_selftest COMMAND netlist_selftest)
 
+    # OrCAD PCB2 网表导出器自检（对照 KiCad 文档的 OrcadPCB2 参考实现）。
+    add_executable(
+        orcad_netlist_selftest
+        src/Netlist/PcbNetlistBuilder.cpp
+        src/Netlist/OrCadNetlistExporter.cpp
+        tests/orcad_netlist_selftest.cpp
+    )
+    target_link_libraries(orcad_netlist_selftest PRIVATE jsoncpp_lib)
+    add_test(NAME orcad_netlist_selftest COMMAND orcad_netlist_selftest)
+
     # XML 2.0 读写与 1.0 兼容迁移的独立测试（不依赖 Canvas/GUI 主程序）。
     add_executable(
         projectxml_selftest
@@ -311,6 +321,7 @@ if(BUILD_TESTING)
         src/Netlist/PcbProjectAdapter.cpp
         src/Netlist/PcbNetlistBuilder.cpp
         src/Netlist/KiCadNetlistExporter.cpp
+        src/Netlist/OrCadNetlistExporter.cpp
         src/Canva/CanvasItem.cpp
         src/metadata/MetaDataJson.cpp
         tests/kicad_export_demo.cpp
