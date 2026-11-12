@@ -6,6 +6,7 @@
 #include<vector>
 #include<tuple>
 #include"./CanvasItem.hpp"
+#include"./WireRouting.hpp"
 #include"./ToolBar.hpp"
 using canvasPos=std::tuple<float,float>;
 
@@ -138,12 +139,12 @@ private:
 
     //----- 导线(wire)状态 -----
     bool wire_placing;               //是否处于导线绘制模式
-    std::vector<wxPoint> wire_points;   //正在绘制的导线折点（逻辑坐标coords，已吸附）
+    std::vector<wxPoint> wire_points;   //正在绘制的导线折点（逻辑坐标coords，已吸附；含已固化的拐点）
     wxPoint wire_mouse_pos;          //橡皮筋预览的鼠标逻辑坐标
+    wxPoint wire_anchor_pos;         //上一个折点在窗口里的原始像素位置（判断初次移动方向用，未吸附）
     wxPoint wire_drag_origin;        //拖动导线时抓取点（吸附后coords）
     std::vector<wxPoint> wire_drag_saved;  //拖动开始时各折点的原始coords
-    bool wire_corner_locked;         //橡皮筋拐角方向是否已锁定（由首个鼠标移动方向决定）
-    bool wire_corner_horizontal_first; //true=拐角先横后竖；false=先竖后横
+    WireLeadAxis wire_lead;          //橡皮筋的初次延长方向（None=还没判断出来）
 
     //----- 编辑工具(选择/删除/克隆)状态 -----
     EditTool edit_tool;                   //当前编辑工具
@@ -180,6 +181,9 @@ private:
     void finish_wire();      //提交正在绘制的导线到集合并结束绘制模式
     void commit_wire();      //提交当前折点为导线元件并清空绘制状态（不退出导线模式）
     void cancel_wire();      //丢弃正在绘制的导线并结束绘制模式
+    //用最新鼠标位置更新橡皮筋的初次延长方向（首次按原始位移判断，之后按“回到起点线”翻转）
+    void update_wire_lead(const wxPoint& raw_pos, const wxPoint& coords);
+    wxPoint wire_preview_elbow() const;  //当前橡皮筋拐点（起点=最后一个折点）
     void draw_wires(wxDC& dc);  //在画布上绘制所有导线+预览+选中高亮
     void draw_wire_path(wxDC& dc, const std::vector<wxPoint>& points,
                         const wxColour& colour, int width);  //折线绘制

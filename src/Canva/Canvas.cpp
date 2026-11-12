@@ -67,10 +67,10 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
       wire_placing(false),
       wire_points(),
       wire_mouse_pos(0, 0),
+      wire_anchor_pos(0, 0),
       wire_drag_origin(0, 0),
       wire_drag_saved(),
-      wire_corner_locked(false),
-      wire_corner_horizontal_first(false),
+      wire_lead(WireLeadAxis::None),
       edit_tool(EditTool::NONE),
       select_follow_item(nullptr){
     SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -346,15 +346,8 @@ void Canvas::on_mouse_move(wxMouseEvent& event){
         wxPoint pin;
         if(snap_to_pin(pos, pin)) coords = pin;   //引脚优先于网格吸附
         if(coords != wire_mouse_pos){
+            update_wire_lead(pos, coords);   //先按“移动前后的位置”判断方向，再更新预览点
             wire_mouse_pos = coords;
-            //锁定橡皮筋拐角方向：以「离开上一个折点的首个移动方向」为准。
-            //之后鼠标方向再怎么变，拐角都保持先竖后横/先横后竖，不会中途突变
-            if(!wire_points.empty() && !wire_corner_locked && coords != wire_points.back()){
-                const wxPoint last = wire_points.back();
-                wire_corner_horizontal_first =
-                    std::abs(coords.x - last.x) >= std::abs(coords.y - last.y);
-                wire_corner_locked = true;
-            }
             Refresh(false);   //重绘预览线
         }
         return;
@@ -492,23 +485,60 @@ void Canvas::on_item_left_down(CanvasItem* item, wxMouseEvent& event){
     if(!HasCapture()) CaptureMouse();
 }
 
+//用最新鼠标位置更新橡皮筋的初次延长方向（规则见 WireRouting.hpp）
+void Canvas::update_wire_lead(const wxPoint& raw_pos, const wxPoint& coords){
+    if(wire_points.empty()) return;
+    if(wire_lead == WireLeadAxis::None){
+        //首次移动：用未吸附的窗口位移判断。网格吸附会把斜向的一点点抖动放大成整格，
+        //只看吸附后的坐标会让方向几乎总是先横后竖——也就是“路线固定成 L”的根源
+        wire_lead = wire_lead_from_delta(raw_pos - wire_anchor_pos);
+    }else{
+        wire_lead = wire_lead_update(wire_lead, wire_points.back(), wire_mouse_pos, coords);
+    }
+}
+
+//当前橡皮筋的拐点：起点是最后一个折点，终点是鼠标预览位置
+wxPoint Canvas::wire_preview_elbow() const{
+    if(wire_points.empty()) return wire_mouse_pos;
+    return wire_elbow(wire_points.back(), wire_mouse_pos, wire_lead);
+}
+
 //导线绘制模式左键：把鼠标位置（吸附网格）加入折点序列；
-//连续重复点（双击产生两次DOWN）忽略；点击回起点（≥2点）视为完成
+//连续重复点（双击产生两次DOWN）忽略；点击回起点（≥2点）视为完成。
+//点击时把橡皮筋当前走出的拐点一并固化，这样提交的路线就是屏幕上看到的那条，
+//不会再在提交时按“长边优先”重排成另一条 L。
 void Canvas::on_wire_left_down(const wxMouseEvent& event){
     const wxPoint pos = mouse_position(event);
     wxPoint coords = snap_coords(pos_to_coords(to_canvas_pos(pos)));
     wxPoint pin;
     if(snap_to_pin(pos, pin)) coords = pin;   //靠近引脚时吸附到引脚（引脚在网格上）
-    if(!wire_points.empty() && coords == wire_points.back()){
+    if(wire_points.empty()){
+        wire_points.push_back(coords);
+        wire_mouse_pos = coords;
+        wire_anchor_pos = pos;
+        wire_lead = WireLeadAxis::None;
+        Refresh(false);
+        return;
+    }
+    if(coords == wire_points.back()){
         return;   //双击会先来两次DOWN（位置相同），忽略重复点，由DCLICK完成
     }
     if(wire_points.size() >= 2 && coords == wire_points.front()){
         finish_wire();   //点回起点：完成
         return;
     }
+    const wxPoint anchor = wire_points.back();
+    //按点击这一下把预览方向定下来（鼠标可能没触发 MOTION 就直接点了）
+    if(wire_lead == WireLeadAxis::None)
+        wire_lead = wire_lead_from_delta(pos - wire_anchor_pos);
+    else
+        wire_lead = wire_lead_update(wire_lead, anchor, wire_mouse_pos, coords);
+    const wxPoint elbow = wire_elbow(anchor, coords, wire_lead);
+    if(elbow != anchor && elbow != coords) wire_points.push_back(elbow);   //固化拐点
     wire_points.push_back(coords);
     wire_mouse_pos = coords;
-    wire_corner_locked = false;   //新折点后拐角方向重新按首个移动方向决定
+    wire_anchor_pos = pos;
+    wire_lead = WireLeadAxis::None;   //下一段重新按自己的首个移动方向判断
     Refresh(false);
 }
 
@@ -521,7 +551,7 @@ void Canvas::on_wire_right_down(wxMouseEvent& event){
         commit_wire();
     }else{
         wire_points.clear();
-        wire_corner_locked = false;
+        wire_lead = WireLeadAxis::None;
         Refresh(false);
         update_status();
     }
@@ -575,6 +605,7 @@ void Canvas::select_tool(const std::string& name, ItemType type){
         //导线：进入绘制模式——左键加点（点回起点/双击/右键/Esc完成），移动时橡皮筋预览
         wire_placing = true;
         wire_points.clear();
+        wire_lead = WireLeadAxis::None;
         Refresh(false);
         update_status();
         return;
@@ -648,7 +679,7 @@ void Canvas::finish_wire(){
     if(!wire_placing) return;
     commit_wire();
     wire_placing = false;
-    wire_corner_locked = false;
+    wire_lead = WireLeadAxis::None;
     if(toolbar) toolbar->clear_selection();
     Refresh(false);
     update_status();
@@ -657,13 +688,14 @@ void Canvas::finish_wire(){
 //提交当前折点为导线元件并清空绘制状态（不退出导线模式，由调用方决定是否退出）
 void Canvas::commit_wire(){
     if(wire_points.size() >= 2){
-        //去掉连续重复点后按正交展开（相邻锚点间插入拐角，保证只有水平/垂直段）
+        //去掉连续重复点即可：折点在加点时已按橡皮筋固化过拐点，整条折线保证横竖段。
+        //这里不能再用 orthogonal_expand 按“长边优先”重排——那会把用户看到的 L
+        //换成另一条 L，正是“布线只能是固定路线”的原因
         std::vector<wxPoint> clean;
         for(const wxPoint& p : wire_points){
             if(clean.empty() || clean.back() != p) clean.push_back(p);
         }
         if(clean.size() >= 2){
-            clean = orthogonal_expand(clean);
             CanvasItem* item = ItemSVG("导线");   //Linking，无UI节点，由onPaint绘制
             if(Linking* wire = dynamic_cast<Linking*>(item)){
                 wire->points = clean;
@@ -675,7 +707,7 @@ void Canvas::commit_wire(){
         //点数不足2的导线不创建，直接丢弃
     }
     wire_points.clear();
-    wire_corner_locked = false;
+    wire_lead = WireLeadAxis::None;
     Refresh(false);
     update_status();
 }
@@ -684,7 +716,7 @@ void Canvas::commit_wire(){
 void Canvas::cancel_wire(){
     wire_placing = false;
     wire_points.clear();
-    wire_corner_locked = false;
+    wire_lead = WireLeadAxis::None;
     update_status();
 }
 
@@ -1196,25 +1228,20 @@ void Canvas::draw_wires(wxDC& dc){
         }
     }
 
-    //正在绘制的导线：已确定的折线（正交展开）+ 橡皮筋预览（正交拐角）+ 端点圆点
+    //正在绘制的导线：已确定的折线（已含固化的拐点）+ 橡皮筋预览 + 端点圆点
     if(wire_placing && !wire_points.empty()){
         if(wire_points.size() >= 2){
-            draw_wire_path(dc, orthogonal_expand(wire_points), UiTheme::Brand900, 2);
+            draw_wire_path(dc, wire_points, UiTheme::Brand900, 2);
         }
-        //橡皮筋：最后一个折点 -> 拐角 -> 鼠标（只走横竖段，无斜线）。
-        //拐角方向已由首个鼠标移动方向锁定：鼠标方向改变后拐角不会中途突变
-        const wxPoint last  = wire_points.back();
-        const wxPoint mouse = wire_mouse_pos;
-        const bool horizontal_first = wire_corner_locked
-                                          ? wire_corner_horizontal_first
-                                          : (std::abs(mouse.x - last.x) >=
-                                             std::abs(mouse.y - last.y));
-        const wxPoint corner = horizontal_first
-                                   ? wxPoint(mouse.x, last.y)   //先横后竖
-                                   : wxPoint(last.x, mouse.y);  //先竖后横
+        //橡皮筋：最后一个折点 -> 拐点 -> 鼠标（只走横竖段，无斜线）。
+        //方向由 WireRouting 决定：初次移动定方向；鼠标回到起点的水平线/竖线后
+        //可以换成另一条 L，而不会因为鼠标小幅抖动就来回翻
+        const wxPoint elbow = wire_preview_elbow();
         dc.SetPen(wxPen(UiTheme::Brand700, 2, wxPENSTYLE_SHORT_DASH));
-        if(corner != last) dc.DrawLine(coords_to_pos_px(last), coords_to_pos_px(corner));
-        if(mouse != corner) dc.DrawLine(coords_to_pos_px(corner), coords_to_pos_px(mouse));
+        if(elbow != wire_points.back())
+            dc.DrawLine(coords_to_pos_px(wire_points.back()), coords_to_pos_px(elbow));
+        if(wire_mouse_pos != elbow)
+            dc.DrawLine(coords_to_pos_px(elbow), coords_to_pos_px(wire_mouse_pos));
         //端点圆点
         dc.SetBrush(wxBrush(UiTheme::Brand700));
         dc.SetPen(*wxTRANSPARENT_PEN);
