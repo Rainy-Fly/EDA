@@ -34,3 +34,9 @@ local/*
 
 /*.md
 !README.md
+
+# ---------- Local scratch ----------
+/.archify/
+/.pydeps/
+/ppt_tasks/
+/汇报/汇报PPT/

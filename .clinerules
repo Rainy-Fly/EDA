@@ -11,3 +11,29 @@ You MUST strictly use Anthropic-style XML tags to invoke tools, with this exact 
 <path>path/to/file</path>
 <content>file content here</content>
 </write_to_file>
+
+---
+
+# 硬性规则（对所有 agent 生效，优先级高于任务本身）
+
+## 1. Git：默认不要动
+
+- **禁止**主动执行任何会改动仓库状态的 git 操作：`git add`、`git commit`、`git push`、`git pull`、`git merge`、
+  `git rebase`、`git reset`、`git revert`、`git checkout -- <file>`、`git restore`、`git stash`、`git cherry-pick`、
+  `git tag`、`git branch -d` 等。
+- **只有用户在当轮明确要求**（例如"帮我提交""push 一下""回滚这个改动"）时，才执行他**点名的那一个**操作；
+  不要顺手多做一步（他说 commit，就**不要** push）。
+- 允许的只读 git 命令（可以用来排查问题）：`git status`、`git log`、`git show`、`git diff`、`git blame`、
+  `git ls-files`、`git rev-parse`、`git reflog`、`git check-ignore`。
+- 改完代码后，在回复里写清楚：**改了哪些文件** + **建议的提交信息**，由用户自己决定提交与推送。
+
+## 2. 任务产物放在 git 忽略的目录
+
+- 给用户做的"额外任务"（教程、分析报告、临时校验程序、导出的图/文档等）不要放进受版本控制的目录，
+  统一放到 `local/` 下面（`.gitignore` 里的 `local/*` 已忽略），例如 `local/tasks/<任务名>/`。
+- 交付前用 `git check-ignore -v <路径>` 自查一次，确保不会被提交。
+
+## 3. 不要动别人正在改的东西
+
+- 发现工作区有**别人未提交的改动**时：不要 `checkout`/`stash`/覆盖它们；需要改动同一文件时先说明冲突风险。
+- 不确定某文件归谁负责时，先问，不要"顺手"重构。
