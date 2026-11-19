@@ -95,6 +95,9 @@ FileActions::FileActions(wxFrame* frame_, Canvas* canvas_)
     //撤销/重做：Edit 菜单以前只有菜单项、没有任何处理函数，这里是它的实现
     frame->Bind(wxEVT_MENU, &FileActions::on_undo, this, wxID_UNDO);
     frame->Bind(wxEVT_MENU, &FileActions::on_redo, this, wxID_REDO);
+    //菜单项置灰：菜单展开时会发 wxEVT_UPDATE_UI，按“有没有可撤销/可重做的内容”启用或禁用
+    frame->Bind(wxEVT_UPDATE_UI, &FileActions::on_update_undo, this, wxID_UNDO);
+    frame->Bind(wxEVT_UPDATE_UI, &FileActions::on_update_redo, this, wxID_REDO);
     frame->Bind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     //关闭窗口也要走“是否保存”的确认，否则点右上角的×会绕过未保存检查
     frame->Bind(wxEVT_CLOSE_WINDOW, &FileActions::on_close, this);
@@ -122,6 +125,8 @@ FileActions::~FileActions(){
     frame->Unbind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
     frame->Unbind(wxEVT_MENU, &FileActions::on_undo, this, wxID_UNDO);
     frame->Unbind(wxEVT_MENU, &FileActions::on_redo, this, wxID_REDO);
+    frame->Unbind(wxEVT_UPDATE_UI, &FileActions::on_update_undo, this, wxID_UNDO);
+    frame->Unbind(wxEVT_UPDATE_UI, &FileActions::on_update_redo, this, wxID_REDO);
     frame->Unbind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     frame->Unbind(wxEVT_CLOSE_WINDOW, &FileActions::on_close, this);
 }
@@ -375,6 +380,16 @@ void FileActions::on_redo(wxCommandEvent& event){
         frame->SetStatusText(done ? wxString::FromUTF8("已重做")
                                   : wxString::FromUTF8("没有可重做的操作"));
     }
+}
+
+//菜单项置灰：菜单展开时 wxWidgets 会发 wxEVT_UPDATE_UI，
+//按“画布栈里到底有没有东西”决定菜单项是否可点（没得撤时直接变灰，不用点了才知道）
+void FileActions::on_update_undo(wxUpdateUIEvent& event){
+    event.Enable(canvas != nullptr && canvas->can_undo());
+}
+
+void FileActions::on_update_redo(wxUpdateUIEvent& event){
+    event.Enable(canvas != nullptr && canvas->can_redo());
 }
 
 //设置默认目录：选一个目录存进配置文件，“打开项目”里的“从默认目录打开”就用它

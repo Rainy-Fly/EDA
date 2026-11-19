@@ -47,6 +47,9 @@ private:
     void on_set_default_dir(wxCommandEvent& event);
     void on_undo(wxCommandEvent& event);
     void on_redo(wxCommandEvent& event);
+    //菜单项置灰：没有可撤销/可重做的内容时菜单项变灰（由 wxEVT_UPDATE_UI 驱动）
+    void on_update_undo(wxUpdateUIEvent& event);
+    void on_update_redo(wxUpdateUIEvent& event);
     void on_exit(wxCommandEvent& event);
     void on_close(wxCloseEvent& event);
 
