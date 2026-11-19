@@ -369,6 +369,48 @@ void test_extras(){
     }
 }
 
+// ---- XNOR（同或门）：真值表 + 结构校验回归 ----
+// 背景：GateKind::Xnor 曾经漏在 gate_input_count_range()/gate_kind_name() 两个 switch 里，
+// 导致校验器把它判成"不支持的类型"(error)，整张电路 valid()==false，一个值都不出。
+void test_xnor(){
+    check(eval_two_input(GateKind::Xnor, LogicValue::One,  LogicValue::One)  == LogicValue::One,
+          "1 XNOR 1 = 1");
+    check(eval_two_input(GateKind::Xnor, LogicValue::Zero, LogicValue::Zero) == LogicValue::One,
+          "0 XNOR 0 = 1");
+    check(eval_two_input(GateKind::Xnor, LogicValue::One,  LogicValue::Zero) == LogicValue::Zero,
+          "1 XNOR 0 = 0");
+    check(eval_two_input(GateKind::Xnor, LogicValue::Unknown, LogicValue::One) == LogicValue::Unknown,
+          "X XNOR 1 = X");
+
+    //类型名与引脚数规则（这两条就是当初漏掉的 switch）
+    check(std::string(gate_kind_name(GateKind::Xnor)) == "XNOR", "XNOR 类型名 = XNOR");
+    std::size_t minInputs = 0;
+    std::size_t maxInputs = 0;
+    check(gate_input_count_range(GateKind::Xnor, minInputs, maxInputs) && minInputs == 2,
+          "XNOR 至少 2 个输入（不再被判为不支持类型）");
+
+    //关键回归：含 XNOR 的电路必须整体有效、能求值
+    SimulationCircuit circuit;
+    circuit.nets = {"a", "b", "y"};
+    circuit.components = {input("sa", "a"), input("sb", "b"),
+                          gate("g", GateKind::Xnor, {"a", "b"}, "y")};
+    circuit.probes = {probe("lamp", "y")};
+
+    Simulator simulator(circuit);
+    check(simulator.valid(), "XNOR 电路通过结构校验");
+    check(!has_error(simulator.diagnostics()), "XNOR 没有 error 级诊断");
+
+    simulator.set_input("sa", true);
+    simulator.set_input("sb", true);
+    SimulationResult result = simulator.evaluate();
+    check(result.ok, "XNOR 求值成功");
+    check(result.probe_value("lamp") == LogicValue::One, "1 XNOR 1 => 1");
+
+    simulator.set_input("sb", false);
+    result = simulator.evaluate();
+    check(result.probe_value("lamp") == LogicValue::Zero, "1 XNOR 0 => 0");
+}
+
 } // namespace
 
 int main(){
@@ -383,6 +425,7 @@ int main(){
     test_combinational_loop();
     test_empty_and_minimal();
     test_extras();
+    test_xnor();
 
     if(failures == 0){
         std::cout << "Simulation self-test passed (" << checks << " checks).\n";

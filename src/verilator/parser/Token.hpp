@@ -16,6 +16,9 @@ enum class TokenKind {
     KeywordOutput,
     KeywordWire,
     KeywordAssign,
+    KeywordAlways,
+    KeywordReg,
+    KeywordPosedge,
 
     UnsupportedKeyword,
 
@@ -30,6 +33,8 @@ enum class TokenKind {
     Comma,
     Semicolon,
     Equals,
+    LessEqual,    // <=（非阻塞赋值）
+    At,           // @
     EndOfFile
 };
 
@@ -49,6 +54,9 @@ inline const char* token_kind_name(TokenKind kind) {
         case TokenKind::KeywordOutput:      return "output";
         case TokenKind::KeywordWire:        return "wire";
         case TokenKind::KeywordAssign:      return "assign";
+        case TokenKind::KeywordAlways:      return "always";
+        case TokenKind::KeywordReg:         return "reg";
+        case TokenKind::KeywordPosedge:     return "posedge";
         case TokenKind::UnsupportedKeyword: return "不支持的关键字";
         case TokenKind::Tilde:              return "~";
         case TokenKind::Ampersand:          return "&";
@@ -60,6 +68,8 @@ inline const char* token_kind_name(TokenKind kind) {
         case TokenKind::Comma:              return ",";
         case TokenKind::Semicolon:          return ";";
         case TokenKind::Equals:             return "=";
+        case TokenKind::LessEqual:          return "<=";
+        case TokenKind::At:                 return "@";
         case TokenKind::EndOfFile:          return "文件结束";
     }
     return "未知记号";

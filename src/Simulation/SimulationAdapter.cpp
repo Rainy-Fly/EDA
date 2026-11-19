@@ -7,10 +7,12 @@
 
 // 元件 ↔ 仿真角色 的映射表（以后新增可仿真元件，只需要改这里）：
 //
-//   LOGIC GATE   type = NOT / AND / OR / NAND / NOR / XOR（category=LogicGate）
+//   LOGIC GATE   type = NOT / AND / OR / NAND / NOR / XOR / XNOR（category=LogicGate）
 //                引脚 direction=input 顺序即输入顺序，direction=output 为输出
+//   IN_TERMINAL  输入端子（1 脚，direction=output）：单端驱动源，单击切换 0/1
+//   OUT_TERMINAL 输出端子（1 脚，direction=input）：观察该脚网络电平
 //   SWITCH       category=Switch 或 type 以 "Switch-COM-" 开头（SPST/按钮/SPDT…）
-//                两脚只取"已接线"的那一脚作为被驱动网络；状态存实例参数 State=0/1
+//                两脚开关：闭合时两端导通（Buffer 把有信号一侧送到另一侧），断开时都不驱动
 //   POWER        引脚 "+"=1、"-"=0（常量源）
 //   GND          引脚 "GND"=0（常量源）
 //   PROBE        Miscellaneous-COM-Probe_Point（1 脚）：观察该脚网络
@@ -83,6 +85,8 @@ bool gate_kind_for_type(const std::string& type, GateKind& kind){
     if(type == "XNOR"){ kind = GateKind::Xnor; return true; }
     if(type == "NAND"){ kind = GateKind::Nand; return true; }
     if(type == "NOR"){  kind = GateKind::Nor;  return true; }
+    if(type == "D_FF"){ kind = GateKind::Dff;  return true; }   //D触发器（时序）
+    if(type == "CLK"){  kind = GateKind::Clock; return true; }  //时钟源（时序）
     return false;
 }
 
@@ -134,6 +138,27 @@ NetTable build_nets(UnionFind& uf){
         for(const std::string& node : groups[roots[i]]) table.netOfNode[node] = id;
     }
     return table;
+}
+
+//点是否落在线段上（含两端；整数坐标精确判定，不考虑容差）
+bool point_on_segment(const SimPoint& p, const SimPoint& a, const SimPoint& b){
+    const long long abx = static_cast<long long>(b.x) - a.x;
+    const long long aby = static_cast<long long>(b.y) - a.y;
+    const long long apx = static_cast<long long>(p.x) - a.x;
+    const long long apy = static_cast<long long>(p.y) - a.y;
+    const long long len2 = abx * abx + aby * aby;
+    if(len2 == 0) return p == a;                     //退化线段（起止重合）
+    if(abx * apy - aby * apx != 0) return false;     //不共线
+    const long long dot = apx * abx + apy * aby;
+    return dot >= 0 && dot <= len2;                  //投影落在 [0, len2]
+}
+
+//点是否落在折线上（任一段，含折点）
+bool point_on_polyline(const SimPoint& p, const std::vector<SimPoint>& points){
+    if(points.size() < 2) return false;
+    for(size_t i = 1; i < points.size(); ++i)
+        if(point_on_segment(p, points[i - 1], points[i])) return true;
+    return false;
 }
 
 } // namespace
@@ -200,8 +225,23 @@ SimulationModel build_simulation_model(const SimProject& project){
             }
             //kind 为空（旧 1.0）或 free：只靠坐标连接
         };
+
+        //规则 5：T 型分叉——端点落在**别的导线**的线段上（含折线中段/折点）也算连接。
+        //为什么需要：画布目前不会自动生成 junction，"从一根已有导线中间拉一根线出去"时，
+        //新导线的端点 kind=free，只靠"端点坐标精确重合"是连不上的，表现为分叉出来的那根线
+        //永远是 X（下游门的输入悬空）。注意：两根导线的**中段交叉**不算连接（交叉不是接头）。
+        const auto merge_tee = [&](const SimEndpoint& endpoint, const std::string& node){
+            for(const SimWire& other : project.wires){
+                if(other.id == wire.id) continue;
+                if(point_on_polyline(endpoint.position, other.points))
+                    uf.unite(node, wire_end_node(other.id, true));   //另一端与它同网
+            }
+        };
+
         handle_endpoint(wire.start, startNode);
+        merge_tee(wire.start, startNode);
         handle_endpoint(wire.end, endNode);
+        merge_tee(wire.end, endNode);
     }
 
     //---- 3) junction / label 自身也并入坐标节点 ----
@@ -319,7 +359,7 @@ SimulationModel build_simulation_model(const SimProject& project){
                 if(pin.direction == "input") inputNets.push_back(it->second);
                 else if(pin.direction == "output" && outputNet.empty()) outputNet = it->second;
             }
-            if(inputNets.empty() || outputNet.empty()){
+            if((inputNets.empty() && kind != GateKind::Clock) || outputNet.empty()){
                 model.diagnostics.push_back(make_error(
                     "SIMULATION_GATE_PIN_INVALID",
                     "逻辑门缺少输入或输出引脚：" + component->name, {simId}));

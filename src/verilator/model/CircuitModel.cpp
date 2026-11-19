@@ -11,6 +11,7 @@ const char* gate_kind_name(GateKind kind) {
         case GateKind::Nor:  return "NOR";
         case GateKind::Xor:  return "XOR";
         case GateKind::Xnor: return "XNOR";
+        case GateKind::Dff:  return "D_FF";
     }
     return "UNKNOWN";
 }
@@ -20,6 +21,7 @@ const char* signal_kind_name(SignalKind kind) {
         case SignalKind::Input:  return "input";
         case SignalKind::Output: return "output";
         case SignalKind::Wire:   return "wire";
+        case SignalKind::Reg:    return "reg";
     }
     return "unknown";
 }

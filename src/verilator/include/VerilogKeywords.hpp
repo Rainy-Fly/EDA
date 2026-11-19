@@ -12,29 +12,33 @@ inline constexpr std::string_view kKeywordInput = "input";
 inline constexpr std::string_view kKeywordOutput = "output";
 inline constexpr std::string_view kKeywordWire = "wire";
 inline constexpr std::string_view kKeywordAssign = "assign";
+inline constexpr std::string_view kKeywordAlways = "always";
+inline constexpr std::string_view kKeywordReg = "reg";
+inline constexpr std::string_view kKeywordPosedge = "posedge";
 
 inline constexpr std::string_view kSupportedVerilogKeywords[] = {
     kKeywordModule, kKeywordEndmodule, kKeywordInput,
     kKeywordOutput, kKeywordWire,     kKeywordAssign,
+    kKeywordAlways, kKeywordReg,      kKeywordPosedge,
 };
 
 inline constexpr std::string_view kUnsupportedVerilogKeywords[] = {
-    "always",      "initial",    "begin",      "end",
-    "reg",         "logic",      "if",         "else",
-    "case",        "casex",      "casez",      "endcase",
-    "default",     "for",        "while",      "repeat",
-    "forever",     "function",   "endfunction", "task",
-    "endtask",     "parameter",  "localparam", "generate",
-    "endgenerate", "inout",      "tri",        "integer",
-    "real",        "time",       "signed",     "unsigned",
-    "posedge",     "negedge",    "and",        "or",
-    "not",         "xor",        "xnor",       "nand",
-    "nor",         "buf",        "bufif0",     "bufif1",
-    "notif0",      "notif1",     "pmos",       "nmos",
-    "cmos",        "tran",       "supply0",    "supply1",
-    "specify",     "endspecify", "primitive",  "endprimitive",
-    "genvar",      "fork",       "join",       "wait",
-    "disable",     "event",
+    "initial",    "begin",      "end",
+    "logic",      "if",         "else",
+    "case",       "casex",      "casez",      "endcase",
+    "default",    "for",        "while",      "repeat",
+    "forever",    "function",   "endfunction", "task",
+    "endtask",    "parameter",  "localparam", "generate",
+    "endgenerate", "inout",     "tri",        "integer",
+    "real",       "time",       "signed",     "unsigned",
+    "negedge",    "and",        "or",
+    "not",        "xor",        "xnor",       "nand",
+    "nor",        "buf",        "bufif0",     "bufif1",
+    "notif0",     "notif1",     "pmos",       "nmos",
+    "cmos",       "tran",       "supply0",    "supply1",
+    "specify",    "endspecify", "primitive",  "endprimitive",
+    "genvar",     "fork",       "join",       "wait",
+    "disable",    "event",
 };
 
 inline bool is_supported_verilog_keyword(std::string_view name) {

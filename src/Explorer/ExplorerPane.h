@@ -9,6 +9,8 @@
 // 资源树：从 src/metadata/ 加载所有元件元数据，按类别分组为文件夹
 // （天线/音频/电容/二极管/…/晶体管，与电子符号库SVG目录分类一致），
 // 每个文件夹下是该类的各个元件；点击元件通过回调通知外部（画布放置）。
+// 其中「门」文件夹（LogicGate，见 src/metadata/gates.json）收纳全部逻辑门，
+// 与工具栏第一组的门元件一一对应。
 class ExplorerPane : public CardPanel
 {
 public:

@@ -44,39 +44,62 @@ LogicValue Simulator::compute_gate(GateKind kind, const std::vector<LogicValue>&
         case GateKind::Buffer:
             return inputs.empty() ? LogicValue::Unknown : inputs.front();
         case GateKind::Input:
+        case GateKind::Dff:
+        case GateKind::Clock:
         case GateKind::Unsupported:
-            break;   //不是门，不参与求值
+            break;   //不是组合门：不参与迭代求值（Dff/Clock 由状态表定值）
     }
     return LogicValue::Unknown;
 }
 
-SimulationResult Simulator::evaluate(){
-    SimulationResult result;
-    result.diagnostics = diagnostics_;   //结构问题先带上
-
-    if(!valid()){
-        //结构本身有问题：不求值，直接返回（ok 保持 false，诊断里有 error）
-        return result;
-    }
-
-    std::map<std::string, LogicValue> values = initial_net_values(circuit_);
-
-    //输入开关是常量源：先用调用方设置的值覆盖一遍
+//把“当前状态”写进网络值表：输入开关、时钟源输出、触发器 Q
+void Simulator::apply_state(std::map<std::string, LogicValue>& values) const{
     for(const auto& component : circuit_.components){
         if(component.kind == GateKind::Input && !component.outputNet.empty()){
             values[component.outputNet] = component.inputValue;
+        }else if(component.kind == GateKind::Clock && !component.outputNet.empty()){
+            const auto it = clockValues_.find(component.outputNet);
+            values[component.outputNet] =
+                (it == clockValues_.end()) ? LogicValue::Zero : it->second;
+        }else if(component.kind == GateKind::Dff && !component.outputNet.empty()){
+            const auto it = dffQ_.find(component.outputNet);
+            values[component.outputNet] =
+                (it == dffQ_.end()) ? LogicValue::Zero : it->second;
         }
     }
+}
 
-    //迭代求值到不动点（就地更新 = Gauss-Seidel，比整轮快照收敛更快）。
-    //初值全为 X 时也能收敛：例如 0 AND X 直接得 0。
-    const std::size_t maxIterations = circuit_.components.size() * 2 + 16;
-
-    std::vector<std::string> gateIds;
+//对所有 D触发器做 CLK 上升沿检测（上次 0 → 本次 1），沿上把 D 采入 Q。
+//inputNets 顺序固定为 [D, CLK]。返回是否有任一触发器更新。
+bool Simulator::sample_dffs(const std::map<std::string, LogicValue>& values){
+    bool any = false;
     for(const auto& component : circuit_.components){
-        if(is_gate(component.kind)) gateIds.push_back(component.id);
-    }
+        if(component.kind != GateKind::Dff || component.inputNets.size() < 2) continue;
+        const std::string& dNet   = component.inputNets[0];
+        const std::string& clkNet = component.inputNets[1];
+        const std::string& qNet   = component.outputNet;
+        if(qNet.empty()) continue;
 
+        const auto clkNowIt = values.find(clkNet);
+        const LogicValue clkNow = (clkNowIt == values.end()) ? LogicValue::Unknown
+                                                             : clkNowIt->second;
+        const LogicValue clkPrev = lastClk_.count(clkNet) ? lastClk_[clkNet]
+                                                          : LogicValue::Unknown;
+
+        if(clkPrev == LogicValue::Zero && clkNow == LogicValue::One){
+            const auto dIt = values.find(dNet);
+            dffQ_[qNet] = (dIt == values.end()) ? LogicValue::Unknown : dIt->second;
+            any = true;
+        }
+        lastClk_[clkNet] = clkNow;
+    }
+    return any;
+}
+
+//组合迭代求值到不动点（Dff/Clock 输出由状态表定值，不参与迭代）。
+//返回是否在限次内收敛。
+bool Simulator::iterate_gates(std::map<std::string, LogicValue>& values){
+    const std::size_t maxIterations = circuit_.components.size() * 2 + 16;
     std::size_t iteration = 0;
     bool converged = false;
     while(iteration < maxIterations){
@@ -104,17 +127,46 @@ SimulationResult Simulator::evaluate(){
             break;
         }
     }
+    return converged;
+}
 
-    result.iterations = static_cast<int>(iteration);
+SimulationResult Simulator::evaluate(){
+    SimulationResult result;
+    result.diagnostics = diagnostics_;   //结构问题先带上
 
-    //不收敛：明确诊断，而不是继续转（组合反馈/环）
-    if(!converged){
+    if(!valid()){
+        //结构本身有问题：不求值，直接返回（ok 保持 false，诊断里有 error）
+        return result;
+    }
+
+    std::map<std::string, LogicValue> values = initial_net_values(circuit_);
+    apply_state(values);
+    if(!iterate_gates(values)){
+        std::vector<std::string> gateIds;
+        for(const auto& component : circuit_.components){
+            if(is_gate(component.kind)) gateIds.push_back(component.id);
+        }
         result.diagnostics.push_back(make_error(
             "SIMULATION_COMBINATIONAL_LOOP",
-            "组合逻辑在 " + std::to_string(maxIterations) +
-                " 轮内没有稳定，可能存在反馈环。",
+            "组合逻辑在限次内没有稳定，可能存在反馈环。",
             gateIds));
     }
+
+    //时序：CLK 上升沿采样 D，之后把新 Q 传播一轮
+    const bool sampled = sample_dffs(values);
+    if(sampled){
+        std::map<std::string, LogicValue> values2 = initial_net_values(circuit_);
+        apply_state(values2);
+        if(!iterate_gates(values2)){
+            result.diagnostics.push_back(make_error(
+                "SIMULATION_COMBINATIONAL_LOOP",
+                "组合逻辑在限次内没有稳定，可能存在反馈环。",
+                {}));
+        }
+        values = std::move(values2);
+    }
+
+    result.iterations = 1;
 
     result.netValues = values;
     lastNetValues_ = values;
@@ -129,6 +181,19 @@ SimulationResult Simulator::evaluate(){
 
     result.ok = !result.has_error();
     return result;
+}
+
+SimulationResult Simulator::clock_tick(){
+    //全部时钟源输出翻转一次（0↔1），产生一个上升沿
+    for(const auto& component : circuit_.components){
+        if(component.kind != GateKind::Clock || component.outputNet.empty()) continue;
+        const auto it = clockValues_.find(component.outputNet);
+        const LogicValue current = (it == clockValues_.end()) ? LogicValue::Zero
+                                                              : it->second;
+        clockValues_[component.outputNet] =
+            (current == LogicValue::One) ? LogicValue::Zero : LogicValue::One;
+    }
+    return evaluate();
 }
 
 LogicValue Simulator::net_value(const std::string& net) const{

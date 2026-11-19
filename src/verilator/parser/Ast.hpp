@@ -56,12 +56,24 @@ struct Assignment {
     SourceLocation location;
 };
 
+// 时序块：always @(posedge clk) q <= d;
+// 当前子集只支持“边沿触发的单个非阻塞赋值”（D触发器）。
+struct TimingBlock {
+    std::string clockName;          //触发时钟信号名
+    bool posedge = true;            //仅支持 posedge（negedge 报不支持）
+    std::string target;             //被赋值信号（reg，即触发器 Q）
+    SourceLocation targetLocation;
+    ExpressionPtr expression;       //D 输入表达式
+    SourceLocation location;
+};
+
 struct Module {
     std::string name;
     SourceLocation location;
     std::vector<PortDeclaration> ports;
     std::vector<SignalDeclaration> declarations;
     std::vector<Assignment> assignments;
+    std::vector<TimingBlock> timingBlocks;
 };
 
 } // namespace Ast

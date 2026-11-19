@@ -35,6 +35,9 @@ public:
     //强制重算一次（菜单"单步时钟"）
     bool evaluate();
 
+    //推进一个时钟周期：翻转全部时钟源输出并求值（时序电路的单步时钟）
+    bool tick();
+
     bool hasModel() const{ return hasModel_; }
     int errorCount() const;
     int warningCount() const;

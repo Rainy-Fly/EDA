@@ -33,21 +33,43 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     //它不再压在画布上，所以也不用再把滚轮/移动事件转发给画布了。
     wxBoxSizer* outer = Content();
 
-    //元件：10 个，2 行 5 列
-    wxGridSizer* tools = new wxGridSizer(2, 5, FromDIP(3), FromDIP(3));
-    add_tool(tools, "与非门", ItemType::NAND);
-    add_tool(tools, "与门",   ItemType::AND);
-    add_tool(tools, "或门",   ItemType::OR);
-    add_tool(tools, "或非门", ItemType::NOR);
-    add_tool(tools, "异或门", ItemType::XOR);
-    add_tool(tools, "同或门", ItemType::XNOR);
-    add_tool(tools, "非门",   ItemType::NOT);
-    add_tool(tools, "导线",   ItemType::WIRE);
+    //仍然是原来的 2 行 5 列（按钮 36×36、间隔 3px），两行图标严格对齐；
+    //只在第二行**图标之间的间隔里**插一条 1px 浅色竖线，把三种类型划开：
+    //  第一行：与非门 与门 或门 或非门 异或门          （门）
+    //  第二行：同或门 非门 │ 导线 │ 输入端子 输出端子   （门 │ 导线 │ 端子）
+    //门是逻辑元件（有引脚、参与仿真）、导线是连线、端子是仿真激励/观测点，
+    //三者放到画布上以后行为完全不同，靠一条竖线分隔比只凭图标区分直观。
+    //竖线是"塞进网格间隔"里的，不额外占列，所以两行宽度一样、列位不错位。
+    const int gap   = FromDIP(3);              //网格间隔（与行内间距一致）
+    const int line_w = FromDIP(1);             //竖线宽度
+    const int lead  = (gap - line_w) / 2;      //竖线左侧留白：把它放在间隔正中
+    const int trail = gap - line_w - lead;     //竖线右侧留白（lead+line_w+trail == gap）
+
+    wxBoxSizer* row1 = new wxBoxSizer(wxHORIZONTAL);
+    add_tool(row1, "与非门", ItemType::NAND);  row1->AddSpacer(gap);
+    add_tool(row1, "与门",   ItemType::AND);   row1->AddSpacer(gap);
+    add_tool(row1, "或门",   ItemType::OR);    row1->AddSpacer(gap);
+    add_tool(row1, "或非门", ItemType::NOR);   row1->AddSpacer(gap);
+    add_tool(row1, "异或门", ItemType::XOR);
+    outer->Add(row1, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(2));
+
+    wxBoxSizer* row2 = new wxBoxSizer(wxHORIZONTAL);
+    add_tool(row2, "同或门", ItemType::XNOR);  row2->AddSpacer(gap);
+    add_tool(row2, "非门",   ItemType::NOT);
+    //│ 门 与 导线之间
+    row2->AddSpacer(lead);
+    row2->Add(make_vertical_rule(), 0, wxEXPAND);
+    row2->AddSpacer(trail);
+    add_tool(row2, "导线",   ItemType::WIRE);
+    //│ 导线 与 端子之间
+    row2->AddSpacer(lead);
+    row2->Add(make_vertical_rule(), 0, wxEXPAND);
+    row2->AddSpacer(trail);
     //仿真输入/输出端子（小方框）：输入端子单击切换 0/1，输出端子显示所接网络电平。
     //它们是通用元件（类型串 IN_TERMINAL / OUT_TERMINAL 来自 src/metadata/terminals.json）
-    add_tool(tools, "输入端子", ItemType::GENERIC);
-    add_tool(tools, "输出端子", ItemType::GENERIC);
-    outer->Add(tools, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(2));
+    add_tool(row2, "输入端子", ItemType::GENERIC); row2->AddSpacer(gap);
+    add_tool(row2, "输出端子", ItemType::GENERIC);
+    outer->Add(row2, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, gap);
 
     //动作工具与元件工具用一条 1px 细线分隔（不用原生 wxStaticLine 的 3D 蚀刻效果）
     wxPanel* rule = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(-1, 1));
@@ -64,6 +86,16 @@ ToolBar::ToolBar(wxWindow* parent, Canvas* cvs)
     outer->Add(actions, 0, wxALIGN_CENTER_HORIZONTAL);
 
     Layout();
+}
+
+//元件类型之间的浅色竖线：宽 1px，高度由 wxEXPAND 撑满整行（与 36px 按钮等高）。
+//颜色用主题里的浅描边色 UiTheme::Border，和卡片边框同一色系，只把三类元件"划开"，不抢眼。
+wxPanel* ToolBar::make_vertical_rule(){
+    wxPanel* rule = new wxPanel(this, wxID_ANY, wxDefaultPosition,
+                                wxSize(FromDIP(1), -1), wxBORDER_NONE);
+    rule->SetBackgroundColour(UiTheme::Border);
+    rule->SetMinSize(wxSize(FromDIP(1), -1));
+    return rule;
 }
 
 //建一个图标按钮：界面上只有图标，名字放进悬停提示（鼠标停住才提示）

@@ -7,6 +7,7 @@ MenuBar::MenuBar(){
     file_menu->Append(wxID_SAVE, wxString::FromUTF8("保存(&S)\tCtrl+S"));
     file_menu->Append(wxID_SAVEAS, wxString::FromUTF8("另存为(&A)...\tCtrl+Shift+S"));
     file_menu->Append(ID_EXPORT_KICAD_NETLIST, wxString::FromUTF8("导出 KiCad 网表(&K)..."));
+    file_menu->Append(ID_EXPORT_ORCAD_NETLIST, wxString::FromUTF8("导出 OrCAD PCB2 网表(&O)..."));
     file_menu->Append(ID_EXPORT_VERILOG, wxString::FromUTF8("导出 Verilog(&V)..."));
     file_menu->AppendSeparator();
     file_menu->Append(ID_SET_DEFAULT_DIR, wxString::FromUTF8("设置默认目录(&D)..."));

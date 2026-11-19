@@ -20,6 +20,9 @@ enum class ToolAction{
 // 工具条（元件调色板）：放在主窗口左侧栏、资源树上方。
 // **只显示 24px 图标**（类似 Logisim 顶部的图标工具栏），名字放在悬停提示里（鼠标停住才出现），
 // 这样 10 个按钮两三行就能放下，垂直空间留给下面的资源树。
+// 元件仍按 2 行 5 列排列（按钮 36×36、间隔 3px）；
+// 只在第二行图标之间的间隔里插 1px 浅色竖线，把 门 | 导线 | 输入/输出端子 三组划开
+// （竖线塞在网格间隔内，不额外占列，两行仍然严格对齐）。
 // 继承 CardPanel：外侧统一圆角卡片 + “元件”标题；按钮使用扁平 ThemedButton。
 class ToolBar : public CardPanel{
 public:
@@ -27,6 +30,8 @@ public:
     //取消当前按钮高亮（由Canvas在放置结束后调用）
     void clear_selection();
 private:
+    //建一条 1px 宽的浅色竖线（元件类型分隔），由调用方用 wxEXPAND 撑满整行高度
+    wxPanel* make_vertical_rule();
     //建一个 36x36 的扁平图标按钮（只有图标+提示），加进sizer并返回
     ThemedButton* make_button(wxSizer* sizer, const wxString& tooltip,
                               const wxBitmapBundle& icon);

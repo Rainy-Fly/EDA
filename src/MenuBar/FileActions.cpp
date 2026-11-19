@@ -5,6 +5,7 @@
 #include"../Netlist/PcbProjectAdapter.hpp"
 #include"../Netlist/PcbNetlistBuilder.hpp"
 #include"../Netlist/KiCadNetlistExporter.hpp"
+#include"../Netlist/OrCadNetlistExporter.hpp"
 #include"../VerilogBridge/ProjectToModule.hpp"
 #include"../verilator/VerilatorApi.hpp"
 
@@ -35,25 +36,6 @@ std::string to_utf8(const wxString& s){
 // 文件对话框的过滤器：只认 .xml，同时留一个“所有文件”兜底
 wxString project_wildcard(){
     return wxString::FromUTF8("TinyEDA 项目文件 (*.xml)|*.xml|所有文件 (*.*)|*.*");
-}
-
-// 收集仅用于仿真的输入/输出端子。它们不能参与 KiCad/PCB 封装网表导出。
-std::vector<wxString> simulation_only_terminals(const DealProjectXML::ProjectData& project){
-    std::vector<wxString> names;
-    for(const DealProjectXML::ComponentData& component : project.components){
-        const bool terminal = component.type == "IN_TERMINAL" ||
-                              component.type == "OUT_TERMINAL" ||
-                              component.category == "Simulation";
-        if(!terminal) continue;
-        wxString label = wxString::FromUTF8(component.name.empty()
-                                                ? component.type.c_str()
-                                                : component.name.c_str());
-        if(component.id > 0){
-            label += wxString::Format(wxT(" (ID %d)"), component.id);
-        }
-        names.push_back(std::move(label));
-    }
-    return names;
 }
 
 // 把网表校验/写入诊断整理成可读文本。
@@ -107,6 +89,7 @@ FileActions::FileActions(wxFrame* frame_, Canvas* canvas_)
     frame->Bind(wxEVT_MENU, &FileActions::on_save,    this, wxID_SAVE);
     frame->Bind(wxEVT_MENU, &FileActions::on_save_as, this, wxID_SAVEAS);
     frame->Bind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
+    frame->Bind(wxEVT_MENU, &FileActions::on_export_orcad_netlist, this, ID_EXPORT_ORCAD_NETLIST);
     frame->Bind(wxEVT_MENU, &FileActions::on_export_verilog, this, ID_EXPORT_VERILOG);
     frame->Bind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
     //撤销/重做：Edit 菜单以前只有菜单项、没有任何处理函数，这里是它的实现
@@ -135,6 +118,7 @@ FileActions::~FileActions(){
     frame->Unbind(wxEVT_MENU, &FileActions::on_save,    this, wxID_SAVE);
     frame->Unbind(wxEVT_MENU, &FileActions::on_save_as, this, wxID_SAVEAS);
     frame->Unbind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
+    frame->Unbind(wxEVT_MENU, &FileActions::on_export_orcad_netlist, this, ID_EXPORT_ORCAD_NETLIST);
     frame->Unbind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
     frame->Unbind(wxEVT_MENU, &FileActions::on_undo, this, wxID_UNDO);
     frame->Unbind(wxEVT_MENU, &FileActions::on_redo, this, wxID_REDO);
@@ -173,26 +157,12 @@ void FileActions::on_save_as(wxCommandEvent& event){
 
 //导出 KiCad PCB 网表：画布 -> 只读快照 -> PcbNetlist -> .net 文件。
 //网表生成与序列化都不在本函数内实现，失败时把具体诊断显示给用户。
+//输入/输出端子会作为 KiCad 测试点(Test Point)元件一并导出（见 PcbProjectAdapter）。
 void FileActions::on_export_kicad_netlist(wxCommandEvent& event){
     (void)event;
     if(!canvas) return;
 
     const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
-    // 端子只是仿真测试点，不能进封装/BOM；在生成网表前就用明确的警告拦住，
-    // 而不是让用户拿到一个缺端子、缺网络的 .net 文件。
-    const std::vector<wxString> terminals = simulation_only_terminals(project);
-    if(!terminals.empty()){
-        wxString list;
-        for(const wxString& terminal : terminals){
-            list += wxT("- ") + terminal + wxT("\n");
-        }
-        wxMessageBox(
-            wxString::FromUTF8("画布中存在仅用于仿真的输入/输出端子：\n\n") + list +
-                wxString::FromUTF8("\n这些元件不能参与 KiCad/PCB 封装网表导出。请先删除它们，再重新导出。"),
-            wxString::FromUTF8("无法导出 KiCad 网表"),
-            wxOK | wxICON_WARNING, frame);
-        return;
-    }
     const NetlistData::PcbProjectSnapshot snapshot =
         NetlistData::BuildPcbSnapshotFromProject(project);
     const NetlistData::PcbNetlistBuildResult build =
@@ -247,6 +217,70 @@ void FileActions::on_export_kicad_netlist(wxCommandEvent& event){
         return;
     }
     if(frame) frame->SetStatusText(wxString::FromUTF8("KiCad 网表已导出"));
+}
+
+//导出 OrCAD PCB2 网表：与 KiCad 导出共用同一采集/构建链路（画布 -> 快照 ->
+//PcbNetlist），只是序列化成 OrCAD PCB2 文本。输入/输出端子同样作为
+//TestPoint 元件导出（见 PcbProjectAdapter），与 KiCad 导出一致。
+void FileActions::on_export_orcad_netlist(wxCommandEvent& event){
+    (void)event;
+    if(!canvas) return;
+
+    const DealProjectXML::ProjectData project = DealProjectXML::CollectFromCanvas(canvas, info);
+    const NetlistData::PcbProjectSnapshot snapshot =
+        NetlistData::BuildPcbSnapshotFromProject(project);
+    const NetlistData::PcbNetlistBuildResult build =
+        NetlistData::PcbNetlistBuilder::build(snapshot);
+
+    if(!build.ok() || !build.value){
+        wxMessageBox(wxString::FromUTF8("无法导出 OrCAD PCB2 网表：\n\n") +
+                         format_diagnostics(build.diagnostics),
+                     wxString::FromUTF8("导出 OrCAD PCB2 网表"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+
+    const bool hasWarnings = std::any_of(
+        build.diagnostics.begin(), build.diagnostics.end(),
+        [](const NetlistData::Diagnostic& diagnostic){
+            return diagnostic.severity == "warning";
+        });
+    if(hasWarnings){
+        const int answer = wxMessageBox(
+            wxString::FromUTF8("导出前检查发现以下警告：\n\n") +
+                format_diagnostics(build.diagnostics) +
+                wxString::FromUTF8("\n是否继续导出？"),
+            wxString::FromUTF8("导出 OrCAD PCB2 网表"), wxYES_NO | wxICON_WARNING, frame);
+        if(answer != wxYES) return;
+    }
+
+    //默认文件名：当前项目名 + .net（与 KiCad 网表同一扩展名，路径由用户选择）
+    const wxString suggested = current_path.empty()
+        ? wxString(wxT("project.net"))
+        : wxFileName(current_path).GetName() + wxT(".net");
+    wxFileDialog dlg(frame, wxString::FromUTF8("导出 OrCAD PCB2 网表"), start_dir(), suggested,
+                     wxString::FromUTF8("OrCAD PCB2 网表 (*.net)|*.net|所有文件 (*.*)|*.*"),
+                     wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if(dlg.ShowModal() != wxID_OK) return;
+
+    wxString path = dlg.GetPath();
+    if(!path.Lower().EndsWith(wxT(".net"))) path += wxT(".net");
+
+    NetlistData::OrCadNetlistExportOptions options;
+    if(!current_path.empty()) options.sourcePath = to_utf8(current_path);
+
+    NetlistData::OrCadNetlistWriteResult written;
+    {
+        //底层用 std::ofstream；wxLogNull 避免 wxWidgets 额外弹原始错误框
+        wxLogNull no_log;
+        written = NetlistData::OrCadNetlistExporter::write(*build.value, to_utf8(path), options);
+    }
+    if(!written.ok()){
+        wxMessageBox(wxString::FromUTF8("写入网表文件失败：\n\n") +
+                         format_diagnostics(written.diagnostics),
+                     wxString::FromUTF8("导出失败"), wxOK | wxICON_ERROR, frame);
+        return;
+    }
+    if(frame) frame->SetStatusText(wxString::FromUTF8("OrCAD PCB2 网表已导出"));
 }
 
 //导出 Verilog：画布 -> ProjectData -> Verilator 电路模型 -> .v 文件。

@@ -47,6 +47,12 @@ bool SimulationSession::evaluate(){
     return last_.ok;
 }
 
+bool SimulationSession::tick(){
+    if(!simulator_) return false;
+    last_ = simulator_->clock_tick();
+    return last_.ok;
+}
+
 int SimulationSession::errorCount() const{
     int count = 0;
     for(const SimulationDiagnostic& diagnostic : diagnostics_)

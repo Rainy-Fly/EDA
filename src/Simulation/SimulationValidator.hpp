@@ -11,8 +11,8 @@ namespace Simulation{
 
 // 校验内容：
 //   - 元件 ID 非空且唯一；探针 ID 非空且唯一
-//   - 元件类型受支持（GateKind::Unsupported 明确报错）
-//   - 门的输入/输出引脚数量符合要求（NOT=1，AND/OR/XOR/NAND/NOR>=2，Input=0）
+//   - 元件类型受支持（GateKind::Unsupported 明确报错；新增门类型要同步 GateKind 的两个 switch）
+//   - 门的输入/输出引脚数量符合要求（NOT/Buffer=1，AND/OR/XOR/XNOR/NAND/NOR>=2，Input=0）
 //   - 元件/探针/网络初值引用的网络都已声明
 //   - 一个网络最多一个驱动源（本阶段不做多驱动解析，直接报错）
 std::vector<SimulationDiagnostic> validate_circuit(const SimulationCircuit& circuit);

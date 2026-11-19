@@ -1,0 +1,80 @@
+{
+  "file": "sequential.json",
+  "schema_version": "2.0",
+  "components": [
+    {
+      "id": 10001,
+      "name": "时钟源",
+      "name_en": "CLOCK",
+      "type": "CLK",
+      "category": "Timing",
+      "description": "时钟源：仿真中单步时钟时自动翻转 0/1，导出 Verilog 时作为模块输入端口",
+      "DataBits": 1,
+      "inputs": 0,
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "CLK",
+      "value": "CLK",
+      "footprint": "Package_DIP:DIP-14_W7.62mm",
+      "pins": [
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "number": "1",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 40,
+          "y": 0,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "id": 10002,
+      "name": "D触发器",
+      "name_en": "D Flip-Flop",
+      "type": "D_FF",
+      "category": "Sequential",
+      "description": "D触发器：上升沿时 Q 采入 D（Q = D），否则保持",
+      "DataBits": 1,
+      "inputs": 2,
+      "outputs": 1,
+      "definition_version": "1",
+      "reference_prefix": "U",
+      "value": "D_FF",
+      "footprint": "Package_DIP:DIP-14_W7.62mm",
+      "pins": [
+        {
+          "id": "D",
+          "name": "D",
+          "number": "1",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -40,
+          "y": -20,
+          "width": 1
+        },
+        {
+          "id": "CLK",
+          "name": "CLK",
+          "number": "2",
+          "direction": "input",
+          "electrical_type": "input",
+          "x": -40,
+          "y": 0,
+          "width": 1
+        },
+        {
+          "id": "Q",
+          "name": "Q",
+          "number": "3",
+          "direction": "output",
+          "electrical_type": "output",
+          "x": 40,
+          "y": 0,
+          "width": 1
+        }
+      ]
+    }
+  ]
+}

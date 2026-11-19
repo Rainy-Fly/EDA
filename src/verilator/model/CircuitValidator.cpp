@@ -115,7 +115,9 @@ std::vector<Diagnostic> validate_module(const Module& module) {
         const SignalKind expected = port.direction == PortDirection::Input
                                         ? SignalKind::Input
                                         : SignalKind::Output;
-        if (module.signals[signal->second].kind != expected) {
+        const bool regOutput = expected == SignalKind::Output &&
+                               module.signals[signal->second].kind == SignalKind::Reg;
+        if (module.signals[signal->second].kind != expected && !regOutput) {
             add("CIRCUIT_PORT_SIGNAL_KIND",
                 "端口 '" + port.name + "' 的方向与信号类型不一致。",
                 port.location);

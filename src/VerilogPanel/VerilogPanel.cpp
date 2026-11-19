@@ -6,13 +6,20 @@
 #include "../VerilogBridge/ProjectToModule.hpp"
 #include "../verilator/VerilatorApi.hpp"
 #include "../verilator/include/VerilogKeywords.hpp"
+#include "./VerilogTools.hpp"
 
 #include <wx/button.h>
 #include <wx/stattext.h>
 #include <wx/stc/stc.h>
+#include <wx/stdpaths.h>
 #include "../Theme/Theme.hpp"
 
 #include <set>
+
+// 事件类型定义（wxDECLARE_EVENT 在头文件声明，此处给出唯一定义）
+namespace VerilogPanelUI{
+wxDEFINE_EVENT(wxEVT_VERILOG_TOOL, VerilogToolEvent);
+}
 
 namespace{
 
@@ -106,7 +113,9 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
       code_(nullptr),
       diagnostics_(nullptr),
       generate_circuit_button_(nullptr),
-      generate_code_button_(nullptr){
+      generate_code_button_(nullptr),
+      lint_button_(nullptr),
+      waveform_button_(nullptr){
     wxBoxSizer* sizer = Content();
 
     //---- 编辑器（Scintilla）----
@@ -171,7 +180,18 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
     generate_code_button_ = new ThemedButton(
         this, wxID_ANY, wxString::FromUTF8("由图生成代码"));
     generate_code_button_->SetMinSize(wxSize(-1, FromDIP(38)));
-    buttons->Add(generate_code_button_, 0, wxEXPAND);
+    buttons->Add(generate_code_button_, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
+
+    // verilator / gtkwave 集成：代码检查 + 生成并查看波形
+    lint_button_ = new ThemedButton(
+        this, wxID_ANY, wxString::FromUTF8("代码检查（verilator）"));
+    lint_button_->SetMinSize(wxSize(-1, FromDIP(38)));
+    buttons->Add(lint_button_, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
+
+    waveform_button_ = new ThemedButton(
+        this, wxID_ANY, wxString::FromUTF8("生成并查看波形"));
+    waveform_button_->SetMinSize(wxSize(-1, FromDIP(38)));
+    buttons->Add(waveform_button_, 0, wxEXPAND);
     sizer->Add(buttons, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
 
     // 诊断框只读，放在操作按钮下方，避免与可编辑代码区混淆。
@@ -193,6 +213,22 @@ VerilogPanel::VerilogPanel(wxWindow* parent, Canvas* canvas)
         wxCommandEvent event;
         on_generate_code(event);
     });
+    lint_button_->SetClickHandler([this]{
+        wxCommandEvent event;
+        on_lint(event);
+    });
+    waveform_button_->SetClickHandler([this]{
+        wxCommandEvent event;
+        on_waveform(event);
+    });
+
+    //工作线程完成后回到主线程更新诊断区
+    Bind(wxEVT_VERILOG_TOOL, &VerilogPanel::on_tool_done, this);
+}
+
+VerilogPanel::~VerilogPanel(){
+    //等待后台 verilator 任务结束，避免线程使用已销毁的成员
+    if(tool_worker_.joinable()) tool_worker_.join();
 }
 
 void VerilogPanel::refresh_from_canvas(){
@@ -257,6 +293,86 @@ void VerilogPanel::on_generate_circuit(wxCommandEvent&){
 
 void VerilogPanel::on_generate_code(wxCommandEvent&){
     refresh_from_canvas();
+}
+
+//verilator 代码检查：后台线程跑 lint，完成后经事件回主线程显示报告。
+void VerilogPanel::on_lint(wxCommandEvent&){
+    if(!code_ || tool_busy_.load()) return;
+    const wxString source = code_->GetText();
+    if(source.IsEmpty()){
+        if(diagnostics_){
+            diagnostics_->SetValue(wxString::FromUTF8(
+                "请先输入 Verilog 代码，或点击“由图生成代码”。\n"));
+        }
+        return;
+    }
+
+    tool_busy_.store(true);
+    lint_button_->Disable();
+    waveform_button_->Disable();
+    if(diagnostics_){
+        diagnostics_->SetValue(wxString::FromUTF8("正在运行 verilator 代码检查…\n"));
+    }
+    tool_worker_ = std::thread([this, source]{
+        wxString report, err;
+        const int code = VerilogTools::lint_verilog(source, report, err);
+        const bool ok = code == 0;
+        wxQueueEvent(this, new VerilogToolEvent(wxEVT_VERILOG_TOOL, wxID_ANY,
+                                                report, err, ok, wxString()));
+    });
+}
+
+//生成并查看波形：后台线程 verilator 编译仿真出 VCD，再调 gtkwave 打开。
+void VerilogPanel::on_waveform(wxCommandEvent&){
+    if(!code_ || tool_busy_.load()) return;
+    const wxString source = code_->GetText();
+    if(source.IsEmpty()){
+        if(diagnostics_){
+            diagnostics_->SetValue(wxString::FromUTF8(
+                "请先输入 Verilog 代码，或点击“由图生成代码”。\n"));
+        }
+        return;
+    }
+
+    const wxString vcd = wxStandardPaths::Get().GetTempDir() + wxT("/tinyeda_wave.vcd");
+    tool_busy_.store(true);
+    lint_button_->Disable();
+    waveform_button_->Disable();
+    if(diagnostics_){
+        diagnostics_->SetValue(wxString::FromUTF8(
+            "正在生成波形（verilator 编译并仿真，可能需要十几秒）…\n"));
+    }
+    tool_worker_ = std::thread([this, source, vcd]{
+        wxString report, err;
+        bool ok = VerilogTools::generate_waveform(source, vcd, report, err);
+        if(ok){
+            wxString open_err;
+            if(!VerilogTools::open_waveform(vcd, open_err)){
+                report += wxT("\n") + open_err;   //波形已生成，gtkwave 未打开则附注
+            }
+        }
+        wxQueueEvent(this, new VerilogToolEvent(wxEVT_VERILOG_TOOL, wxID_ANY,
+                                                report, err, ok, vcd));
+    });
+}
+
+//工具任务完成：回到主线程，恢复按钮并显示结果。
+void VerilogPanel::on_tool_done(VerilogToolEvent& event){
+    if(tool_worker_.joinable()) tool_worker_.join();
+    tool_busy_.store(false);
+    lint_button_->Enable();
+    waveform_button_->Enable();
+
+    wxString text = event.Ok()
+        ? wxString::FromUTF8("完成：") + event.Report()
+        : wxString::FromUTF8("失败：") + event.Err();
+    if(!text.EndsWith(wxT("\n"))){
+        text += wxT("\n");
+    }
+    if(!event.Report().IsEmpty() && !event.Ok()){
+        text += event.Report();
+    }
+    if(diagnostics_) diagnostics_->SetValue(text);
 }
 
 //输入标识符字符后弹出补全列表：候选 = Verilog 关键字 + 文档内已有标识符。

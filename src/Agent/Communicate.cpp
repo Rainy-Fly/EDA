@@ -83,7 +83,9 @@ ChatResponse ChatCompletions(const std::string& base_url,
     curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, &response_body);
     curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, 15L);   //建连超时15s
-    curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, 180L);         //整体超时180s
+    //整体超时600s：AI 回复走非流式接口，服务器要生成完整响应才返回；
+    //高峰期/长回复/推理模型下生成时间可能超过原来的180s（导致"Timeout was reached"）
+    curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, 600L);
     curl_easy_setopt(curl.get(), CURLOPT_USERAGENT, "TinyEDA-Agent/0.1");
     //自动解压 gzip 等：不设置的话，若网络环境强制压缩，响应体会变成乱码解析失败
     curl_easy_setopt(curl.get(), CURLOPT_ACCEPT_ENCODING, "");
@@ -98,6 +100,13 @@ ChatResponse ChatCompletions(const std::string& base_url,
 
     if(rc != CURLE_OK){
         resp.error = std::string("网络请求失败: ") + curl_easy_strerror(rc);
+        if(rc == CURLE_OPERATION_TIMEDOUT){
+            resp.error += "（超过600秒未收到完整响应：请求已发出且连接正常，"
+                          "通常是非流式接口在等服务端生成完整回复，"
+                          "高峰期/长回复/推理模型时容易超时。"
+                          "请稍后重试；若持续出现，可确认模型为 deepseek-chat 而非推理模型，"
+                          "或清空对话历史减小上下文）";
+        }
         return resp;
     }
 

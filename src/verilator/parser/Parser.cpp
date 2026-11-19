@@ -125,15 +125,19 @@ Ast::Module Parser::parse_module() {
             parse_declaration(module, SignalKind::Output);
         } else if (check(TokenKind::KeywordWire)) {
             parse_declaration(module, SignalKind::Wire);
+        } else if (check(TokenKind::KeywordReg)) {
+            parse_declaration(module, SignalKind::Reg);
         } else if (check(TokenKind::KeywordAssign)) {
             module.assignments.push_back(parse_assignment());
+        } else if (check(TokenKind::KeywordAlways)) {
+            module.timingBlocks.push_back(parse_timing_block());
         } else if (check(TokenKind::UnsupportedKeyword)) {
             fail("VERILOG_UNSUPPORTED_SYNTAX",
                  "不支持的 Verilog 语法 '" + current().text + "'。",
                  current().location);
         } else {
             fail("VERILOG_SYNTAX_UNEXPECTED_TOKEN",
-                 "模块内部只支持 input/output/wire/assign，实际遇到 " +
+                 "模块内部只支持 input/output/wire/reg/assign/always，实际遇到 " +
                      token_display(current()) + "。",
                  current().location);
         }
@@ -221,6 +225,42 @@ Ast::Assignment Parser::parse_assignment() {
     assignment.expression = parse_expression();
     expect(TokenKind::Semicolon, "';'");
     return assignment;
+}
+
+// always @(posedge clk) q <= d;
+// 当前子集只支持：单个边沿触发 + 单个非阻塞赋值（D触发器）
+Ast::TimingBlock Parser::parse_timing_block() {
+    Ast::TimingBlock block;
+    block.location = current().location;
+    advance(); // always
+
+    expect(TokenKind::At, "'@'");
+    expect(TokenKind::LeftParen, "'('");
+    if (check(TokenKind::KeywordPosedge)) {
+        advance();
+        block.posedge = true;
+    } else if (check(TokenKind::UnsupportedKeyword) &&
+               current().text == "negedge") {
+        fail("VERILOG_UNSUPPORTED_SYNTAX",
+             "当前子集不支持 negedge 触发的时序块，只支持 posedge（上升沿）。",
+             current().location);
+    } else {
+        fail("VERILOG_SYNTAX_EXPECTED_POSEDGE",
+             "时序块期望 posedge，实际遇到 " + token_display(current()) + "。",
+             current().location);
+    }
+    const Token& clock = expect_identifier("时钟信号名");
+    block.clockName = clock.text;
+    expect(TokenKind::RightParen, "')'");
+
+    const Token& target = expect_identifier("时序块赋值目标");
+    block.target = target.text;
+    block.targetLocation = target.location;
+
+    expect(TokenKind::LessEqual, "'<='");
+    block.expression = parse_expression();
+    expect(TokenKind::Semicolon, "';'");
+    return block;
 }
 
 Ast::ExpressionPtr Parser::parse_expression() {

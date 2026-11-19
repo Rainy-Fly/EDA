@@ -29,6 +29,9 @@ const std::unordered_map<std::string, TokenKind>& keyword_table() {
         {std::string(kKeywordOutput), TokenKind::KeywordOutput},
         {std::string(kKeywordWire), TokenKind::KeywordWire},
         {std::string(kKeywordAssign), TokenKind::KeywordAssign},
+        {std::string(kKeywordAlways), TokenKind::KeywordAlways},
+        {std::string(kKeywordReg), TokenKind::KeywordReg},
+        {std::string(kKeywordPosedge), TokenKind::KeywordPosedge},
     };
     return table;
 }
@@ -231,6 +234,20 @@ std::vector<Token> Lexer::tokenize() {
             case '=':
                 advance();
                 tokens.push_back(Token{TokenKind::Equals, "=", location});
+                break;
+            case '<':
+                if (peek(1) == '=') {
+                    advance();
+                    advance();
+                    tokens.push_back(Token{TokenKind::LessEqual, "<=", location});
+                } else {
+                    fail("VERILOG_LEX_UNEXPECTED_CHARACTER",
+                         "无法识别的字符 '<'。", location);
+                }
+                break;
+            case '@':
+                advance();
+                tokens.push_back(Token{TokenKind::At, "@", location});
                 break;
             case '[':
             case ']':
