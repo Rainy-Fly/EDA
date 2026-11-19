@@ -1,6 +1,7 @@
 #pragma once
 #include "wx/wx.h"
 #include "wx/treectrl.h"
+#include "wx/srchctrl.h"
 #include "../Theme/CardPanel.hpp"
 #include <functional>
 #include <string>
@@ -29,10 +30,15 @@ public:
 
 private:
     wxTreeCtrl* m_treeCtrl;
+    wxSearchCtrl* m_search;          //顶部搜索框：按中文名/英文名/类型/分类过滤元件树
     wxImageList* m_imageList;
     ComponentSelectedCallback m_callback;
 
     // 内部初始化函数，保持构造函数整洁
     void InitTree(); 
+    // 按过滤词重建整棵树（filter 为空 = 显示全部）。
+    // 采用“重建”而不是逐项隐藏：wxTreeCtrl 没有可靠的隐藏 API，重建最简单也不会残留状态。
+    void BuildTree(const wxString& filter);
+    void OnSearchChanged(wxCommandEvent& event);
     void OnItemClick(wxTreeEvent& event);
 };

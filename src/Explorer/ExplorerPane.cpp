@@ -58,8 +58,38 @@ const std::map<std::string, CategoryInfo>& category_info(){
 ExplorerPane::ExplorerPane(wxWindow* parent)
     : CardPanel(parent, wxID_ANY, wxString::FromUTF8("元件库"), false,
                 parent->FromDIP(UiTheme::SpaceXs)),
+      m_treeCtrl(nullptr), m_search(nullptr), m_imageList(nullptr),
       m_callback(nullptr)
 {
+    // 元件搜索框：按中文名/英文名/类型/分类过滤下面的元件树。
+    // 元件多起来以后（电阻就 15 种、IC 12 种）纯靠翻树很难找。
+    m_search = new wxSearchCtrl(this, wxID_ANY);
+    m_search->SetBackgroundColour(UiTheme::Surface);
+    m_search->SetForegroundColour(UiTheme::Text);
+    m_search->ShowCancelButton(true);
+    m_search->SetDescriptiveText(wxString::FromUTF8("搜索元件（名称/英文/类型/分类）"));
+    m_search->Bind(wxEVT_TEXT, &ExplorerPane::OnSearchChanged, this);
+    // 点输入框右侧的 × ：清空过滤条件、还原完整元件树
+    m_search->Bind(wxEVT_SEARCHCTRL_CANCEL_BTN, [this](wxCommandEvent& e){
+        if(m_search) m_search->ChangeValue(wxString());
+        BuildTree(wxString());
+        e.Skip();
+    });
+    // 搜索框里按 Esc：清空并还原；同时吞掉这个 Esc，
+    // 避免它冒泡出去把画布上正在绘制的导线/放置模式取消掉
+    m_search->Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& e){
+        const int code = e.GetKeyCode();
+        if(code == WXK_ESCAPE){
+            if(m_search && !m_search->IsEmpty()){
+                m_search->ChangeValue(wxString());
+                BuildTree(wxString());
+            }
+            return;
+        }
+        if(code == WXK_RETURN) return;   //回车也不让它跑到别处
+        e.Skip();
+    });
+
     // 创建树状控件：去掉原生 3D 边框，让树和卡片内容区自然融合
     m_treeCtrl = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                 wxTR_HAS_BUTTONS | wxTR_SINGLE |
@@ -71,7 +101,8 @@ ExplorerPane::ExplorerPane(wxWindow* parent)
     
     m_treeCtrl->Bind(wxEVT_TREE_SEL_CHANGED, &ExplorerPane::OnItemClick, this);
 
-    // 将树状控件加入卡片内容区，比例为 1，填满剩余空间
+    // 搜索框在上（高度按需），树在下（占满剩余空间）
+    Content()->Add(m_search, 0, wxEXPAND | wxBOTTOM, parent->FromDIP(UiTheme::SpaceXs));
     Content()->Add(m_treeCtrl, 1, wxEXPAND);
 }
 
@@ -81,21 +112,48 @@ void ExplorerPane::SetComponentSelectedCallback(ComponentSelectedCallback cb){
 
 void ExplorerPane::InitTree()
 {
-    // 配置图标列表
+    // 配置图标列表（只在初始化时建一次；重建树时复用，不重复创建）
     m_imageList = new wxImageList(16, 16);
     m_imageList->Add(wxIcon(folder_xpm));
     m_imageList->Add(wxIcon(file_xpm));
     m_treeCtrl->AssignImageList(m_imageList);
 
+    BuildTree(wxString());   //空过滤词 = 显示全部元件
+}
+
+// 按过滤词重建整棵树（filter 为空 = 全量）。
+// 之所以“重建”而不是“隐藏不匹配节点”：wxTreeCtrl 没有可靠的隐藏 API，
+// 重建最直接，也不会残留上一次的展开/选中状态。
+void ExplorerPane::BuildTree(const wxString& filter)
+{
+    if(!m_treeCtrl) return;
+
+    //清空：wxTreeCtrl 会连同每个节点的 wxTreeItemData 一起释放，不会泄漏
+    m_treeCtrl->DeleteAllItems();
+
+    const wxString query = filter.Strip(wxString::both).Lower();
+    const bool filtering = !query.empty();
+
     wxTreeItemId rootId = m_treeCtrl->AddRoot(wxT("Untitled*"), 0, 0);
 
-    // 从元数据枚举所有元件，只取资源树展示的16个分类，
-    // 按“分类 -> 元件列表”分组（顺序稳定：分类按定义顺序、元件按id）
+    // 从元数据枚举所有元件，只取资源树展示的分类，按“分类 -> 元件列表”分组
     std::vector<MetaData*> all = load_all_metadata();
     std::map<std::string, std::vector<MetaData*>> by_category;
     for(MetaData* md : all){
         const auto& info = category_info();
-        if(info.find(md->get_category()) == info.end()) continue;   //非展示分类
+        auto catIt = info.find(md->get_category());
+        if(catIt == info.end()) continue;   //非展示分类
+        if(filtering){
+            //分类中文名命中（例如输入"电阻"）=> 整个分类都列出来
+            const bool categoryHit = wxString::FromUTF8(catIt->second.cn.c_str())
+                                         .Lower().Find(query) != wxNOT_FOUND;
+            //元件自身的中文名/英文名/类型串命中
+            const bool selfHit =
+                wxString::FromUTF8(md->get_name().c_str()).Lower().Find(query) != wxNOT_FOUND ||
+                wxString::FromUTF8(md->get_name_en().c_str()).Lower().Find(query) != wxNOT_FOUND ||
+                wxString::FromUTF8(md->get_type().c_str()).Lower().Find(query) != wxNOT_FOUND;
+            if(!categoryHit && !selfHit) continue;
+        }
         by_category[md->get_category()].push_back(md);
     }
 
@@ -105,6 +163,7 @@ void ExplorerPane::InitTree()
     std::sort(cats.begin(), cats.end(), [](const auto& a, const auto& b){
         return a.second.order < b.second.order;
     });
+    int shown = 0;
     for(const auto& kv : cats){
         const std::string& cat = kv.first;
         auto it = by_category.find(cat);
@@ -120,12 +179,26 @@ void ExplorerPane::InitTree()
                     wxString::FromUTF8(md->get_name().c_str()), 1, 1);
             m_treeCtrl->SetItemData(itemId,
                     new ComponentItemData(wxString::FromUTF8(md->get_type().c_str())));
+            ++shown;
         }
     }
 
     for(MetaData* md : all) delete md;   //元数据副本用完即释放
 
-    m_treeCtrl->Expand(rootId); // 默认展开根节点
+    if(filtering && shown == 0){
+        //没有匹配项时给一句提示（该节点没有组件数据，点了不会触发放置）
+        m_treeCtrl->AppendItem(rootId, wxString::FromUTF8("（没有匹配的元件）"), 0, 0);
+    }
+
+    //过滤时把所有分类展开（结果一眼可见）；平时只展开根节点
+    if(filtering) m_treeCtrl->ExpandAll();
+    else          m_treeCtrl->Expand(rootId);
+}
+
+void ExplorerPane::OnSearchChanged(wxCommandEvent& event)
+{
+    BuildTree(m_search ? m_search->GetValue() : wxString());
+    event.Skip();
 }
 
 void ExplorerPane::OnItemClick(wxTreeEvent& event)
