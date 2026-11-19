@@ -44,6 +44,8 @@ private:
     void on_export_kicad_netlist(wxCommandEvent& event);
     void on_export_verilog(wxCommandEvent& event);
     void on_set_default_dir(wxCommandEvent& event);
+    void on_undo(wxCommandEvent& event);
+    void on_redo(wxCommandEvent& event);
     void on_exit(wxCommandEvent& event);
     void on_close(wxCloseEvent& event);
 

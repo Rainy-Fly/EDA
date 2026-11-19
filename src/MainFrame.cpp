@@ -158,8 +158,13 @@ MainFrame::MainFrame()
     //菜单展开前再同步一次：面板可能被关闭按钮或快捷键改过
     Bind(wxEVT_MENU_OPEN, &MainFrame::OnMenuOpen, this);
 
-    //联动：属性栏里改过的属性也算改项目 -> 标记“未保存”
-    attribute_bar->set_edited_callback([this]{ file_actions->mark_modified(); });
+    //联动：属性栏里改过的属性也算改项目 -> 标记“未保存”（并记一个撤销点）
+    attribute_bar->set_edited_callback([this]{
+        //属性栏直接改元件字段，不走画布内部的改动通知，所以这里补记撤销点。
+        //key 固定为 "attr"：同一时间窗内连续输入会合并成一步（敲 "10k" 不算三步）
+        if(canvas) canvas->commit_undo_step("attr");
+        file_actions->mark_modified();
+    });
 
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(splitter, 1, wxEXPAND);

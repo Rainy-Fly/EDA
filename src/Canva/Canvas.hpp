@@ -5,8 +5,10 @@
 #include<functional>
 #include<vector>
 #include<tuple>
+#include<chrono>
 #include"./CanvasItem.hpp"
 #include"./ToolBar.hpp"
+#include"./UndoStack.hpp"
 using canvasPos=std::tuple<float,float>;
 
 // 项目级电气注解（XML 2.0）。画布当前不提供创建入口，但加载/保存必须原样保留，
@@ -95,7 +97,21 @@ public:
     //手动触发“内容已修改”。鼠标路径（放置/删除/拖动/画线）由画布内部自动调用；
     //Agent 工具等直接改元件字段（旋转/镜像/改属性）的路径需要自己调一次，
     //否则项目被改了但标题栏不会出现“未保存”标记。
+    //注意：它同时会记录一个撤销点（见下面的 commit_undo_step）。
     void notify_changed();
+
+    //----- 撤销 / 重做（快照式，实现见 src/Canva/UndoStack.hpp）-----
+    //只回滚电路内容，**不回滚视口**，也不恢复“当前选中”状态。
+    bool can_undo() const;
+    bool can_redo() const;
+    bool undo();
+    bool redo();
+    //记录一个撤销点。key 用于合并连续改动：同一个 key 且间隔很短（默认 700ms）的
+    //多次调用只记一步 —— 属性栏里敲 "10k" 不会变成三步撤销。
+    //直接改元件/画布状态的路径（属性栏、Agent 工具等）改完后调用它。
+    void commit_undo_step(const std::string& key = std::string());
+    //清空撤销历史并重新记基线（新建/打开项目后调用）
+    void reset_undo();
 
     //----- 仿真联动（类似 Logisim：元件状态与导线电平直接画在画布上）-----
     //注入仿真会话（不转移所有权；主窗口负责生命周期，析构前需设回 nullptr）
@@ -131,6 +147,18 @@ private:
     Simulation::SimulationSession* simulation;        //仿真会话（不拥有）
     wxFont badge_font;                                //元件状态徽标字体
     std::function<void(const wxPoint&, bool)> cursor_callback;  //光标逻辑坐标（状态栏坐标字段）
+
+    //----- 撤销栈状态 -----
+    CanvasUndo::UndoStack undo_stack;                  //历史（快照，条数+字节双限）
+    DealProjectXML::ProjectData undo_baseline;         //“当前状态”快照，下次改动把它压栈
+    bool undo_suppressed = false;                      //撤销/重做/加载期间禁止记录
+    std::string undo_last_key;                         //上一步的合并键
+    std::chrono::steady_clock::time_point undo_last_time;  //上一步的时间（合并判断用）
+
+    //采集当前画布状态（CollectFromCanvas 的薄封装）
+    DealProjectXML::ProjectData capture_undo_state() const;
+    //把状态写回画布：抑制记录、恢复交互状态、**保留当前视口**
+    void apply_undo_state(const DealProjectXML::ProjectData& state);
     std::function<void(const wxString&)> status_callback;       //当前模式提示（状态栏状态字段）
     std::function<void(float, int)> view_callback;              //缩放/网格（状态栏缩放到字段）
     wxString last_status;                    //上一次发出去的提示（避免重复刷状态栏）

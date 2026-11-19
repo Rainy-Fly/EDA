@@ -109,6 +109,9 @@ FileActions::FileActions(wxFrame* frame_, Canvas* canvas_)
     frame->Bind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
     frame->Bind(wxEVT_MENU, &FileActions::on_export_verilog, this, ID_EXPORT_VERILOG);
     frame->Bind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
+    //撤销/重做：Edit 菜单以前只有菜单项、没有任何处理函数，这里是它的实现
+    frame->Bind(wxEVT_MENU, &FileActions::on_undo, this, wxID_UNDO);
+    frame->Bind(wxEVT_MENU, &FileActions::on_redo, this, wxID_REDO);
     frame->Bind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     //关闭窗口也要走“是否保存”的确认，否则点右上角的×会绕过未保存检查
     frame->Bind(wxEVT_CLOSE_WINDOW, &FileActions::on_close, this);
@@ -133,6 +136,8 @@ FileActions::~FileActions(){
     frame->Unbind(wxEVT_MENU, &FileActions::on_save_as, this, wxID_SAVEAS);
     frame->Unbind(wxEVT_MENU, &FileActions::on_export_kicad_netlist, this, ID_EXPORT_KICAD_NETLIST);
     frame->Unbind(wxEVT_MENU, &FileActions::on_set_default_dir, this, ID_SET_DEFAULT_DIR);
+    frame->Unbind(wxEVT_MENU, &FileActions::on_undo, this, wxID_UNDO);
+    frame->Unbind(wxEVT_MENU, &FileActions::on_redo, this, wxID_REDO);
     frame->Unbind(wxEVT_MENU, &FileActions::on_exit,    this, wxID_EXIT);
     frame->Unbind(wxEVT_CLOSE_WINDOW, &FileActions::on_close, this);
 }
@@ -316,6 +321,28 @@ void FileActions::on_export_verilog(wxCommandEvent& event){
     if(frame) frame->SetStatusText(wxString::FromUTF8("Verilog 已导出"));
 }
 
+//撤销 / 重做（内容在画布侧，快照式；参见 src/Canva/UndoStack.hpp）
+void FileActions::on_undo(wxCommandEvent& event){
+    (void)event;
+    if(!canvas) return;
+    const bool done = canvas->undo();
+    if(frame){
+        frame->SetStatusText(done ? wxString::FromUTF8("已撤销")
+                                  : wxString::FromUTF8("没有可撤销的操作"));
+    }
+    //撤销后的内容变化由 canvas 的 changed_callback 统一标记“未保存”，这里不重复处理
+}
+
+void FileActions::on_redo(wxCommandEvent& event){
+    (void)event;
+    if(!canvas) return;
+    const bool done = canvas->redo();
+    if(frame){
+        frame->SetStatusText(done ? wxString::FromUTF8("已重做")
+                                  : wxString::FromUTF8("没有可重做的操作"));
+    }
+}
+
 //设置默认目录：选一个目录存进配置文件，“打开项目”里的“从默认目录打开”就用它
 void FileActions::on_set_default_dir(wxCommandEvent& event){
     (void)event;
@@ -411,6 +438,9 @@ bool FileActions::open_project(){
         return false;
     }
     info = loaded;
+    //刚打开的项目是撤销的“起点”：清空历史、把基线设成现在这份内容
+    //（ApplyToCanvas 重建时只在 clear_all_items 里记过一次基线，那会儿画布还是空的）
+    if(canvas) canvas->reset_undo();
 
     remember_path(path);
     //刚打开的文件视为“未修改”，所以标题上没有*

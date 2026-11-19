@@ -18,6 +18,10 @@ static const float MaxScale=100.0f;
 //导线端点吸附引脚的距离阈值（窗口像素）
 const float PinSnapPx = 14.0f;
 
+//撤销合并的时间窗：同一个 key（同一元件/同一字段）在这个时间内连续改动只算一步撤销。
+//700ms 大致覆盖“连续敲字、停一下”的感觉，属性栏敲 "10k" 不会变成三步。
+static const long long UndoMergeIntervalMs = 700;
+
 //wxPoint -> canvasPos 辅助转换
 static canvasPos to_canvas_pos(const wxPoint& p){
     return std::make_tuple((float)p.x, (float)p.y);
@@ -132,6 +136,9 @@ Canvas::Canvas(wxWindow* parent, wxWindowID id)
         if(cursor_callback) cursor_callback(wxPoint(), false);
         e.Skip();
     });
+
+    //撤销基线：构造时是空画布（之后每次改动都会把“改之前”的状态压栈）
+    undo_baseline = capture_undo_state();
 }
 
 Canvas::~Canvas(){
@@ -228,9 +235,84 @@ void Canvas::update_status(){
 }
 
 void Canvas::notify_changed(){
+    //先记一个撤销点（内部压入的是“这次改动之前”的状态）
+    commit_undo_step();
     if(changed_callback) changed_callback();
     //仿真重建走独立回调：不会覆盖 FileActions 挂在 changed_callback 上的"未保存"标记
     if(simulation_dirty_callback) simulation_dirty_callback();
+}
+
+//================ 撤销 / 重做（快照式） ================
+
+DealProjectXML::ProjectData Canvas::capture_undo_state() const{
+    //项目信息（名字/作者/时间）与撤销无关，用默认值即可：
+    //拿它只是为了凑 CollectFromCanvas 的参数
+    return DealProjectXML::CollectFromCanvas(this, DealProjectXML::ProjectInfo{});
+}
+
+void Canvas::commit_undo_step(const std::string& key){
+    if(undo_suppressed) return;
+
+    //合并判断：同一个 key 且间隔很短 => 算同一步（属性栏连续输入、拖动中的连续改动）
+    const auto now = std::chrono::steady_clock::now();
+    const long long elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now - undo_last_time).count();
+    const bool merge = !key.empty() && key == undo_last_key && elapsed_ms < UndoMergeIntervalMs;
+    undo_last_key = key;
+    undo_last_time = now;
+    if(merge) return;
+
+    undo_stack.push(undo_baseline);          //“改动之前”的状态入栈
+    undo_baseline = capture_undo_state();    //基线更新为改动之后
+}
+
+void Canvas::reset_undo(){
+    //撤销/重做内部的重建也会走到这里，必须跳过，否则历史会被自己清掉
+    if(undo_suppressed) return;
+    undo_stack.clear();
+    undo_last_key.clear();
+    undo_baseline = capture_undo_state();
+}
+
+bool Canvas::can_undo() const{ return undo_stack.can_undo(); }
+bool Canvas::can_redo() const{ return undo_stack.can_redo(); }
+
+bool Canvas::undo(){
+    if(undo_suppressed || !undo_stack.can_undo()) return false;
+    const DealProjectXML::ProjectData current = capture_undo_state();
+    DealProjectXML::ProjectData target;
+    if(!undo_stack.undo(current, &target)) return false;
+    apply_undo_state(target);
+    return true;
+}
+
+bool Canvas::redo(){
+    if(undo_suppressed || !undo_stack.can_redo()) return false;
+    const DealProjectXML::ProjectData current = capture_undo_state();
+    DealProjectXML::ProjectData target;
+    if(!undo_stack.redo(current, &target)) return false;
+    apply_undo_state(target);
+    return true;
+}
+
+void Canvas::apply_undo_state(const DealProjectXML::ProjectData& state){
+    //视口不参与撤销：记下当前视口，重建后再恢复，撤销时画面不跳
+    const wxPoint saved_offset = offset_coords;
+    const float saved_scale = scale;
+
+    undo_suppressed = true;                       //重建期间禁止记录/清栈
+    DealProjectXML::ApplyToCanvas(this, state);   //内部清空并重建元件/导线/注解
+    set_view(saved_offset, saved_scale);
+    undo_suppressed = false;
+
+    //还原后：基线=当前状态，并断开合并（紧接着的编辑不能被并进上一步）
+    undo_baseline = capture_undo_state();
+    undo_last_key.clear();
+
+    //撤销也是一次内容变化：标记未保存 + 让主窗口重建仿真
+    if(changed_callback) changed_callback();
+    if(simulation_dirty_callback) simulation_dirty_callback();
+    Refresh(false);
 }
 
 //中键滚轮缩放：鼠标在屏幕的pos不变，画布的逻辑坐标（offset_coords）改变
@@ -731,6 +813,8 @@ void Canvas::clear_all_items(){
     set_current_item(nullptr);
     Refresh(false);
     if(simulation_dirty_callback) simulation_dirty_callback();   //新建项目：仿真也要清空
+    //清空画布（新建/打开项目）后撤销历史没有意义；撤销/重做内部的重建会被 reset_undo 自行跳过
+    reset_undo();
 }
 
 //按实例ID查找元件（供 Agent 工具按id操作）；找不到返回nullptr

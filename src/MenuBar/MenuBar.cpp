@@ -14,8 +14,8 @@ MenuBar::MenuBar(){
     file_menu->Append(wxID_EXIT, wxString::FromUTF8("退出(&X)\tCtrl+Q"));
 
     wxMenu* edit_menu = new wxMenu;
-    edit_menu->Append(wxID_UNDO, wxString::FromUTF8("撤销"));
-    edit_menu->Append(wxID_REDO, wxString::FromUTF8("重做"));
+    edit_menu->Append(wxID_UNDO, wxString::FromUTF8("撤销\tCtrl+Z"));
+    edit_menu->Append(wxID_REDO, wxString::FromUTF8("重做\tCtrl+Y"));
     edit_menu->AppendSeparator();
     edit_menu->Append(wxID_DELETE, wxString::FromUTF8("删除"));
 
